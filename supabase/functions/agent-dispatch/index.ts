@@ -91,6 +91,14 @@ serve(async (req) => {
       filledTemplate = filledTemplate.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value as string);
     }
 
+    // Auto-build user message from inputs when no prompt template exists
+    if (!filledTemplate.trim() && inputs && Object.keys(inputs).length > 0) {
+      filledTemplate = "## Task Inputs\n\n" +
+        Object.entries(inputs)
+          .map(([key, value]) => `**${key}:** ${value}`)
+          .join("\n");
+    }
+
     const systemPromptText = systemPrompt || (AGENT_PERSONAS[agentType] || AGENT_PERSONAS.researcher);
     const finalSystemPrompt = systemPromptText + knowledgeContext;
 
