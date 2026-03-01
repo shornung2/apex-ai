@@ -1,0 +1,74 @@
+{
+  "skill_builder_version": "1.0",
+  "step_1_identity": {
+    "name": "general_research",
+    "display_name": "General Research",
+    "version": "1.0.0",
+    "description": "Open-ended research on any topic — flexible and exploratory.",
+    "icon": "search",
+    "department": "Marketing",
+    "agent_type": "Researcher"
+  },
+  "step_2_routing": {
+    "tags": ["research", "general", "flexible", "exploratory"],
+    "preferred_lane": "research_sonnet",
+    "preferred_model": "sonnet",
+    "trigger_keywords": [
+      "research", "look up", "find information", "tell me about",
+      "what is", "investigate", "explore", "learn about", "background on"
+    ]
+  },
+  "step_3_inputs": {
+    "inputs": [
+      {
+        "field": "research_topic",
+        "label": "Research Topic",
+        "type": "textarea",
+        "required": true,
+        "placeholder": "e.g. AI adoption trends in mid-market manufacturing companies",
+        "hint": "Describe what you want to know — be as specific or broad as you like"
+      },
+      {
+        "field": "intended_use",
+        "label": "How will you use this?",
+        "type": "select",
+        "required": true,
+        "options": ["Sales Conversation", "Client Presentation", "Internal Strategy", "Content Creation", "Meeting Preparation", "Competitive Response", "Personal Learning"],
+        "hint": "Shapes depth, tone, and format of the output"
+      },
+      {
+        "field": "output_length",
+        "label": "Desired Output Length",
+        "type": "select",
+        "required": false,
+        "options": ["Brief Summary (1-2 paragraphs)", "Standard Report (1-2 pages)", "Deep Dive (comprehensive)"],
+        "default": "Standard Report (1-2 pages)"
+      }
+    ],
+    "total_inputs": 3,
+    "required_count": 2
+  },
+  "step_4_system_prompt": {
+    "system_prompt": "You are a versatile research assistant for a B2B consulting and AI transformation firm. Your job is to produce clear, accurate, and useful research on any topic the team needs to understand better.\n\nApproach every research request by:\n\n1. **Clarifying the core question** — What does the person actually need to know? Identify the key questions embedded in the request.\n\n2. **Gathering relevant information** — Use web search and knowledge base to pull in current, credible sources. Prioritize primary sources (company websites, analyst reports, official publications) over aggregators.\n\n3. **Synthesizing clearly** — Don't just dump information. Organize it logically, highlight what matters most, and connect dots the user might not see.\n\n4. **Calibrating depth to purpose** — A brief summary for a passing conversation is different from a deep dive for a client presentation. Match the output to how it will be used.\n\n5. **Flagging uncertainty** — Be explicit when information is estimated, outdated, or contested. Don't fabricate — say 'I couldn't find reliable data on this' when appropriate.\n\n**Formatting principles:**\n- Use headers for anything more than 2 paragraphs\n- Lead with the most important finding, not background\n- Use bullet points for lists of 4+ items\n- Include a 'Key Takeaways' section for longer outputs\n- Cite sources inline (Source: [name/URL])\n\nRemember: the person asking this is a professional who will use this research in business contexts. Be thorough but efficient — their time is valuable."
+  },
+  "step_5_behavior": {
+    "token_budget": 20000,
+    "estimated_cost_usd": 0.20,
+    "required_capabilities": ["web_search", "knowledge_search"],
+    "web_search_enabled": true,
+    "memory_read": true,
+    "memory_write": false,
+    "approval_required": false,
+    "timeout_seconds": 120
+  },
+  "step_6_output": {
+    "output_format": "markdown",
+    "output_schema": {
+      "title": "Research: {research_topic}",
+      "sections": ["key_takeaways", "findings", "sources"],
+      "metadata": ["research_date", "sources_count"]
+    },
+    "shareable": true,
+    "export_formats": ["markdown", "pdf"]
+  }
+}

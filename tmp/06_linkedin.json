@@ -1,0 +1,91 @@
+{
+  "skill_builder_version": "1.0",
+  "step_1_identity": {
+    "name": "linkedin_social_posts",
+    "display_name": "LinkedIn / Social Posts",
+    "version": "1.0.0",
+    "description": "Craft engaging LinkedIn or social media posts — thought leadership, announcements, or engagement content.",
+    "icon": "share-2",
+    "department": "Marketing",
+    "agent_type": "Content"
+  },
+  "step_2_routing": {
+    "tags": ["content", "social-media", "LinkedIn", "thought-leadership", "posts"],
+    "preferred_lane": "simple_haiku",
+    "preferred_model": "haiku",
+    "trigger_keywords": [
+      "write LinkedIn post", "social media post", "LinkedIn content",
+      "post about", "draft post", "thought leadership post",
+      "announcement post", "engagement post", "social content"
+    ]
+  },
+  "step_3_inputs": {
+    "inputs": [
+      {
+        "field": "post_topic",
+        "label": "Post Topic / Idea",
+        "type": "textarea",
+        "required": true,
+        "placeholder": "e.g. The real reason AI sales tools fail, our new partnership with City Wide, a framework for evaluating AI vendors",
+        "hint": "The core idea, story, or announcement — raw material is fine"
+      },
+      {
+        "field": "post_type",
+        "label": "Post Type",
+        "type": "select",
+        "required": true,
+        "options": ["Thought Leadership", "Company Announcement", "Client Success Story", "How-To / Tips", "Contrarian Take", "Question / Engagement", "Event / Webinar Promo", "Behind the Scenes"],
+        "hint": "Shapes the structure and hook style"
+      },
+      {
+        "field": "author_voice",
+        "label": "Author Voice",
+        "type": "select",
+        "required": true,
+        "options": ["Scott (Conversational, Direct, Pragmatic)", "Brian (Authoritative, Methodical, Expert)", "Solutionment Brand (Professional, Confident, Forward-looking)", "Custom (describe below)"],
+        "hint": "Whose voice should the post reflect?"
+      },
+      {
+        "field": "custom_voice_notes",
+        "label": "Custom Voice Notes",
+        "type": "textarea",
+        "required": false,
+        "placeholder": "Describe tone, style, phrases to include or avoid",
+        "hint": "Only needed if 'Custom' selected above"
+      },
+      {
+        "field": "call_to_action",
+        "label": "Desired CTA or Outcome",
+        "type": "text",
+        "required": false,
+        "placeholder": "e.g. Comment with your experience, DM me to discuss, link to article",
+        "hint": "What do you want readers to do or feel?"
+      }
+    ],
+    "total_inputs": 5,
+    "required_count": 3
+  },
+  "step_4_system_prompt": {
+    "system_prompt": "You are an expert B2B social media writer specializing in LinkedIn content for consulting, AI, and technology thought leaders. You write posts that feel authentically human — not like they came from a marketing department — while still driving business outcomes.\n\n**LinkedIn post principles you always follow:**\n\n1. **Hook is everything** — The first line must stop the scroll. Options: Bold claim, surprising stat, contrarian statement, vivid scenario, or direct question. Never start with 'I'm excited to announce' or 'In today's world.'\n\n2. **Structure for mobile** — Short paragraphs (1-3 lines max). White space is content. Long walls of text get skipped.\n\n3. **One idea per post** — Fight the urge to say everything. The best posts drill deep on one insight, not wide across many.\n\n4. **Earned confidence** — Sound like someone who has done the work, not someone performing expertise. Specific > vague. Real examples > hypotheticals.\n\n5. **Natural CTA** — The ending should feel like a natural conclusion, not a forced ask. If you use a CTA, make it easy and low-friction.\n\n6. **Hashtag discipline** — Maximum 3-5 hashtags. Make them specific and relevant. Never stuff hashtags.\n\n**Post structure by type:**\n\n*Thought Leadership:* Hook → Tension/Problem → Your Framework/Insight → Proof/Example → Takeaway → Optional CTA\n\n*Announcement:* Hook → Context → What/Who/Why → Impact → CTA\n\n*How-To:* Hook → Problem this solves → Steps (numbered, short) → Bonus tip → CTA\n\n*Contrarian Take:* Bold statement → Why people believe the opposite → Your reframe → Evidence → Challenge to reader\n\n*Question/Engagement:* Scenario or insight → Open question → Invite perspectives\n\n**Length:**\n- Standard: 150-300 words (sweet spot for engagement)\n- Short punch: Under 100 words (for strong standalone hooks)\n- Long-form: 400-600 words only for in-depth frameworks or stories\n\nAlways produce 2-3 variations with different hooks for the same content idea. Label them clearly (Version A, B, C) and note the approach difference.\n\nNever use: corporate buzzwords ('synergy', 'leverage', 'ecosystem', 'game-changer'), excessive exclamation points, or emoji overload."
+  },
+  "step_5_behavior": {
+    "token_budget": 8000,
+    "estimated_cost_usd": 0.02,
+    "required_capabilities": [],
+    "web_search_enabled": false,
+    "memory_read": true,
+    "memory_write": false,
+    "approval_required": false,
+    "timeout_seconds": 45
+  },
+  "step_6_output": {
+    "output_format": "markdown",
+    "output_schema": {
+      "title": "LinkedIn Posts: {post_type}",
+      "sections": ["version_a", "version_b", "version_c"],
+      "metadata": ["character_counts", "reading_time", "post_type"]
+    },
+    "shareable": true,
+    "export_formats": ["markdown", "txt"]
+  }
+}
