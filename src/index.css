@@ -4,6 +4,51 @@
 
 @layer base {
   :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 10%;
+
+    --card: 0 0% 98%;
+    --card-foreground: 240 10% 10%;
+
+    --popover: 0 0% 98%;
+    --popover-foreground: 240 10% 10%;
+
+    --primary: 230 80% 56%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 6% 93%;
+    --secondary-foreground: 240 10% 10%;
+
+    --muted: 240 6% 93%;
+    --muted-foreground: 240 5% 46%;
+
+    --accent: 265 70% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 6% 88%;
+    --input: 240 6% 88%;
+    --ring: 230 80% 56%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 97%;
+    --sidebar-foreground: 240 5% 36%;
+    --sidebar-primary: 230 80% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 6% 93%;
+    --sidebar-accent-foreground: 240 10% 10%;
+    --sidebar-border: 240 6% 88%;
+    --sidebar-ring: 230 80% 56%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(230 80% 56%), hsl(265 70% 58%));
+    --gradient-glow: linear-gradient(135deg, hsl(230 80% 56% / 0.15), hsl(265 70% 58% / 0.15));
+    --shadow-glow: 0 0 30px -5px hsl(230 80% 56% / 0.2);
+  }
+
+  .dark {
     --background: 240 15% 4%;
     --foreground: 220 20% 93%;
 
@@ -32,8 +77,6 @@
     --input: 240 10% 14%;
     --ring: 230 80% 62%;
 
-    --radius: 0.75rem;
-
     --sidebar-background: 240 15% 5.5%;
     --sidebar-foreground: 220 10% 70%;
     --sidebar-primary: 230 80% 62%;
@@ -43,7 +86,6 @@
     --sidebar-border: 240 10% 12%;
     --sidebar-ring: 230 80% 62%;
 
-    /* Custom accent gradients */
     --gradient-primary: linear-gradient(135deg, hsl(230 80% 62%), hsl(265 70% 58%));
     --gradient-glow: linear-gradient(135deg, hsl(230 80% 62% / 0.2), hsl(265 70% 58% / 0.2));
     --shadow-glow: 0 0 30px -5px hsl(230 80% 62% / 0.3);
@@ -60,7 +102,6 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  /* Custom scrollbar for dark theme */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -69,11 +110,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(240 10% 20%);
+    background: hsl(var(--muted-foreground) / 0.3);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(240 10% 28%);
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 }
 
