@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { mockJobs, agentDefinitions, type AgentType, type JobStatus } from "@/data/mock-data";
+import { mockJobs, agentDefinitions, departmentDefinitions, type AgentType, type JobStatus } from "@/data/mock-data";
 import { Search, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -24,11 +24,13 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 export default function History() {
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [deptFilter, setDeptFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
   const filtered = mockJobs.filter((j) => {
     if (agentFilter !== "all" && j.agentType !== agentFilter) return false;
     if (statusFilter !== "all" && j.status !== statusFilter) return false;
+    if (deptFilter !== "all" && j.department !== deptFilter) return false;
     if (search && !j.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -45,6 +47,15 @@ export default function History() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search jobs..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-muted/50 border-border/50" />
         </div>
+        <Select value={deptFilter} onValueChange={setDeptFilter}>
+          <SelectTrigger className="w-[150px] bg-muted/50 border-border/50"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Depts</SelectItem>
+            {Object.entries(departmentDefinitions).map(([key, d]) => (
+              <SelectItem key={key} value={key}>{d.emoji} {d.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={agentFilter} onValueChange={setAgentFilter}>
           <SelectTrigger className="w-[150px] bg-muted/50 border-border/50"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -74,6 +85,7 @@ export default function History() {
               <TableHeader>
                 <TableRow className="border-border/50">
                   <TableHead>Date</TableHead>
+                  <TableHead>Dept</TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead>Task</TableHead>
                   <TableHead>Status</TableHead>
@@ -85,11 +97,15 @@ export default function History() {
               <TableBody>
                 {filtered.map((job) => {
                   const agent = agentDefinitions.find((a) => a.type === job.agentType);
+                  const dept = departmentDefinitions[job.department];
                   return (
                     <TableRow key={job.id} className="border-border/30 hover:bg-muted/30">
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(job.createdAt).toLocaleDateString()}<br />
                         {new Date(job.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">{dept?.name}</Badge>
                       </TableCell>
                       <TableCell>
                         <span className="flex items-center gap-1.5">
@@ -117,7 +133,7 @@ export default function History() {
                 })}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No jobs match your filters
                     </TableCell>
                   </TableRow>

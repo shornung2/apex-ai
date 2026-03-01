@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { mockJobs, agentDefinitions } from "@/data/mock-data";
+import { mockJobs, agentDefinitions, departmentDefinitions } from "@/data/mock-data";
 import { ArrowLeft, Copy, BookOpen, RotateCcw, CheckCircle, XCircle, Loader2, Clock, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,7 @@ export default function JobDetail() {
   const { toast } = useToast();
   const job = mockJobs.find((j) => j.id === jobId);
   const agent = job ? agentDefinitions.find((a) => a.type === job.agentType) : null;
+  const dept = job ? departmentDefinitions[job.department] : null;
 
   if (!job || !agent) {
     return (
@@ -55,7 +56,7 @@ export default function JobDetail() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">{job.title}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {agent.emoji} {agent.name} · {new Date(job.createdAt).toLocaleString()}
+            {dept?.name} · {agent.emoji} {agent.name} · {new Date(job.createdAt).toLocaleString()}
           </p>
         </div>
         <div className={`flex items-center gap-1.5 ${status.color}`}>
