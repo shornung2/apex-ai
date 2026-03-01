@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,93 +20,100 @@ export function SkillForm({ skill, onSubmit, isRunning = false }: SkillFormProps
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      {skill.inputs.map((input) => (
-        <div key={input.name} className="space-y-2">
-          <Label htmlFor={input.name}>
-            {input.label}
-            {input.required && <span className="text-destructive ml-1">*</span>}
-          </Label>
+      {skill.inputs.map((input) => {
+        const fieldName = input.name || input.field || input.label.toLowerCase().replace(/\s+/g, "_");
+        const rawType = input.type === "multiselect" ? "multi-select" : input.type;
+        const isTextField = rawType === "text" || rawType === "url";
 
-          {input.type === "text" && (
-            <Input
-              id={input.name}
-              placeholder={input.placeholder}
-              className="bg-muted/50 border-border/50"
-              disabled={isRunning}
-              {...register(input.name, { required: input.required && `${input.label} is required` })}
-            />
-          )}
+        return (
+          <div key={fieldName} className="space-y-2">
+            <Label htmlFor={fieldName}>
+              {input.label}
+              {input.required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            {input.hint && <p className="text-[10px] text-muted-foreground">{input.hint}</p>}
 
-          {input.type === "textarea" && (
-            <Textarea
-              id={input.name}
-              placeholder={input.placeholder}
-              rows={3}
-              className="bg-muted/50 border-border/50 resize-none"
-              disabled={isRunning}
-              {...register(input.name, { required: input.required && `${input.label} is required` })}
-            />
-          )}
+            {isTextField && (
+              <Input
+                id={fieldName}
+                placeholder={input.placeholder}
+                className="bg-muted/50 border-border/50"
+                disabled={isRunning}
+                {...register(fieldName, { required: input.required && `${input.label} is required` })}
+              />
+            )}
 
-          {input.type === "select" && input.options && (
-            <Select onValueChange={(v) => setValue(input.name, v)} defaultValue="" disabled={isRunning}>
-              <SelectTrigger className="bg-muted/50 border-border/50">
-                <SelectValue placeholder={`Select ${input.label.toLowerCase()}...`} />
-              </SelectTrigger>
-              <SelectContent>
+            {rawType === "textarea" && (
+              <Textarea
+                id={fieldName}
+                placeholder={input.placeholder}
+                rows={3}
+                className="bg-muted/50 border-border/50 resize-none"
+                disabled={isRunning}
+                {...register(fieldName, { required: input.required && `${input.label} is required` })}
+              />
+            )}
+
+            {rawType === "select" && input.options && (
+              <Select onValueChange={(v) => setValue(fieldName, v)} defaultValue={typeof input.default === "string" ? input.default : ""} disabled={isRunning}>
+                <SelectTrigger className="bg-muted/50 border-border/50">
+                  <SelectValue placeholder={`Select ${input.label.toLowerCase()}...`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {input.options.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {rawType === "radio" && input.options && (
+              <RadioGroup onValueChange={(v) => setValue(fieldName, v)} className="flex flex-wrap gap-3" disabled={isRunning}>
                 {input.options.map((opt) => (
-                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {input.type === "radio" && input.options && (
-            <RadioGroup onValueChange={(v) => setValue(input.name, v)} className="flex flex-wrap gap-3" disabled={isRunning}>
-              {input.options.map((opt) => (
-                <div key={opt} className="flex items-center gap-2">
-                  <RadioGroupItem value={opt} id={`${input.name}-${opt}`} />
-                  <Label htmlFor={`${input.name}-${opt}`} className="text-sm font-normal">{opt}</Label>
-                </div>
-              ))}
-            </RadioGroup>
-          )}
-
-          {input.type === "multi-select" && input.options && (
-            <div className="flex flex-wrap gap-3">
-              {input.options.map((opt) => {
-                const current = watch(input.name) || "";
-                const selected = current.split(",").filter(Boolean);
-                const isChecked = selected.includes(opt);
-                return (
                   <div key={opt} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`${input.name}-${opt}`}
-                      checked={isChecked}
-                      disabled={isRunning}
-                      onCheckedChange={(checked) => {
-                        const next = checked
-                          ? [...selected, opt]
-                          : selected.filter((s) => s !== opt);
-                        setValue(input.name, next.join(","));
-                      }}
-                    />
-                    <Label htmlFor={`${input.name}-${opt}`} className="text-sm font-normal">{opt}</Label>
+                    <RadioGroupItem value={opt} id={`${fieldName}-${opt}`} />
+                    <Label htmlFor={`${fieldName}-${opt}`} className="text-sm font-normal">{opt}</Label>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ))}
+              </RadioGroup>
+            )}
 
-          {errors[input.name] && (
-            <p className="text-xs text-destructive">{errors[input.name]?.message as string}</p>
-          )}
-        </div>
-      ))}
+            {rawType === "multi-select" && input.options && (
+              <div className="flex flex-wrap gap-3">
+                {input.options.map((opt) => {
+                  const current = watch(fieldName) || "";
+                  const selected = current.split(",").filter(Boolean);
+                  const isChecked = selected.includes(opt);
+                  return (
+                    <div key={opt} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`${fieldName}-${opt}`}
+                        checked={isChecked}
+                        disabled={isRunning}
+                        onCheckedChange={(checked) => {
+                          const next = checked
+                            ? [...selected, opt]
+                            : selected.filter((s) => s !== opt);
+                          setValue(fieldName, next.join(","));
+                        }}
+                      />
+                      <Label htmlFor={`${fieldName}-${opt}`} className="text-sm font-normal">{opt}</Label>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {errors[fieldName] && (
+              <p className="text-xs text-destructive">{errors[fieldName]?.message as string}</p>
+            )}
+          </div>
+        );
+      })}
 
       <Button type="submit" className="w-full" disabled={isRunning}>
         {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-        {isRunning ? "Running..." : `Run ${skill.name}`}
+        {isRunning ? "Running..." : `Run ${skill.displayName || skill.name}`}
       </Button>
     </form>
   );
