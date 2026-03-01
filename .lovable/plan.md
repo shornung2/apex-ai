@@ -1,48 +1,80 @@
 
 
-# Fix: Wire User Inputs Into the AI User Message
+# App Icons, Light/Dark Theme Toggle, and Live Token Usage
 
-## Problem
+## Overview
 
-The skills' system prompts ARE correctly loaded and sent to the AI agent. However, the **user's form inputs are not reaching the AI model** as the user message.
+Three changes:
+1. Add the Autopilot logo icons to the app (sidebar, favicon, browser tab title)
+2. Implement light/dark/system theme switching using `next-themes` (already installed)
+3. Replace hardcoded token usage in the sidebar with real data from the database
 
-Here's what happens:
-1. User fills out the skill form (e.g., Company Name = "City Wide", Meeting Type = "Discovery")
-2. Frontend sends `systemPrompt` (correct) and `promptTemplate` (empty string) to the edge function
-3. Edge function tries to fill `{{variables}}` in the prompt template, but since it's empty, the user message to the AI is an empty string
-4. The AI receives a detailed system prompt but no user message with the actual inputs
+---
 
-This means the AI is generating output based solely on the system prompt instructions, without knowing what the user actually typed.
+## 1. Add Logo Icons
 
-## Root Cause
+**Copy assets into the project:**
+- `image-3.jpg` (transparent background) -> `src/assets/logo-dark.jpg` -- used when dark mode is active
+- `image-1.jpg` (light background with rounded corners) -> `src/assets/logo-light.jpg` -- used when light mode is active  
+- `image.jpg` (silver/white background) -> `public/favicon.jpg` -- used as the browser favicon (works on both light and dark browser chrome)
 
-All 15 seeded skills have `prompt_template = ""` because the skill JSONs use `system_prompt` (step 4) for instructions but don't include a separate prompt template with `{{variable}}` placeholders. The edge function needs to auto-construct a user message from the inputs when no explicit template exists.
+**Update `index.html`:**
+- Change `<title>` from "Lovable App" to "Autopilot"
+- Update og:title to "Autopilot - AI Operating System"
+- Add favicon link: `<link rel="icon" type="image/jpeg" href="/favicon.jpg" />`
 
-## Fix
+**Update `AppSidebar.tsx` header:**
+- Replace the `<Zap>` icon div with an `<img>` tag that imports the logo
+- Use `next-themes`'s `useTheme()` to conditionally show `logo-dark` (transparent) on dark backgrounds or `logo-light` on light backgrounds
+- Size: 32x32px with `rounded-lg` to match current styling
 
-**File: `supabase/functions/agent-dispatch/index.ts`**
+---
 
-After line 92, when `filledTemplate` is empty (no prompt template defined), auto-build a user message from the inputs:
+## 2. Light/Dark/System Theme Toggle
 
-```text
-If filledTemplate is empty:
-  Build a structured user message like:
-  "## Task Inputs\n\n"
-  For each key/value in inputs:
-    "**{label}:** {value}\n"
-```
+**Add light mode CSS variables to `src/index.css`:**
+- Currently only dark theme variables exist under `:root`
+- Move existing dark values into a `.dark` selector
+- Add light theme values under `:root` (standard shadcn light palette -- white backgrounds, dark text, adjusted sidebar colors)
+- Update scrollbar styles to respect theme
 
-This ensures the AI always receives the user's actual data, whether or not a prompt template is defined. When a template IS defined, the existing `{{variable}}` replacement logic still works.
+**Update `src/App.tsx`:**
+- Wrap the app with `<ThemeProvider>` from `next-themes` with `attribute="class"`, `defaultTheme="dark"`, `storageKey="autopilot-theme"`
 
-## Verification
+**Add theme toggle to Settings page (`src/pages/Settings.tsx`):**
+- Add a new "Appearance" tab with a `Palette` icon
+- Inside: three radio-style cards for Light / Dark / System
+- Each card shows a small preview swatch and label
+- Uses `useTheme()` from `next-themes` to read/set the theme
+- Active card gets a highlighted border
 
-After this fix:
-- The system prompt (skill-specific instructions) continues to be sent as the system message
-- The user's form inputs are sent as the user message, formatted clearly
-- The AI has full context: what to do (system prompt) and what to do it with (user inputs)
+**Update `AppSidebar.tsx`:**
+- The sidebar logo switches between `logo-dark.jpg` and `logo-light.jpg` based on `resolvedTheme`
 
-## File Changes
+---
 
-**Modify:** `supabase/functions/agent-dispatch/index.ts` -- Add fallback user message construction from inputs when promptTemplate is empty
+## 3. Live Token Usage from Database
 
-No other files need changes. The frontend is already sending all the right data; the edge function just needs to use the inputs when there's no template.
+**Update `AppSidebar.tsx`:**
+- Replace the hardcoded `dashboardMetrics.tokensUsed` / `dashboardMetrics.tokenBudget` with a live query
+- Use `supabase.from("agent_jobs").select("tokens_used")` and sum client-side, or use an RPC
+- For simplicity: fetch on mount with `useEffect` + `useState`, sum `tokens_used` from all `agent_jobs` rows
+- Keep the `tokenBudget` as a constant (50,000) since there's no billing system yet
+- Show a loading skeleton while fetching
+- The current real total is 1,219 tokens from 1 job run
+
+---
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/assets/logo-dark.jpg` | New -- copied from uploaded transparent logo |
+| `src/assets/logo-light.jpg` | New -- copied from uploaded light-bg logo |
+| `public/favicon.jpg` | New -- copied from uploaded silver-bg logo |
+| `index.html` | Title, og:title, favicon link |
+| `src/index.css` | Add light theme variables, move dark to `.dark` |
+| `src/App.tsx` | Wrap with ThemeProvider |
+| `src/components/AppSidebar.tsx` | Logo image, live token query |
+| `src/pages/Settings.tsx` | Add Appearance tab with theme toggle |
+
