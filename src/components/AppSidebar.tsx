@@ -102,8 +102,8 @@ export function AppSidebar() {
           <img src={logo} alt="Autopilot" className="h-20 w-20 rounded-2xl object-cover shrink-0" />
           {!collapsed && (
             <div className="text-center">
-              <p className="text-[11px] font-medium text-muted-foreground">AI Operating System</p>
-              <p className="text-[10px] text-muted-foreground/60">by Solutionment</p>
+              <p className="text-xs font-medium text-muted-foreground">AI Operating System</p>
+              <p className="text-[11px] text-muted-foreground">by Solutionment</p>
             </div>
           )}
         </div>
