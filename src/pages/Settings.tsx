@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Key, Bot, BarChart3, Users } from "lucide-react";
 import { agentDefinitions } from "@/data/mock-data";
@@ -33,9 +32,7 @@ export default function SettingsPage() {
 
           <TabsContent value="general">
             <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-lg">Workspace</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-lg">Workspace</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Workspace Name</Label>
@@ -52,21 +49,15 @@ export default function SettingsPage() {
 
           <TabsContent value="api">
             <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-lg">API Keys & Integrations</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-lg">API Keys & Integrations</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  API keys are securely stored and never exposed in the client. Configure them through Lovable Cloud.
-                </p>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                    <div>
-                      <p className="text-sm font-medium">AI Gateway</p>
-                      <p className="text-xs text-muted-foreground">Connected via Lovable AI</p>
-                    </div>
-                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Active</Badge>
+                <p className="text-sm text-muted-foreground">API keys are securely stored and never exposed in the client.</p>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <p className="text-sm font-medium">AI Gateway</p>
+                    <p className="text-xs text-muted-foreground">Connected via Lovable AI</p>
                   </div>
+                  <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Active</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -74,9 +65,7 @@ export default function SettingsPage() {
 
           <TabsContent value="agents">
             <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-lg">Agent Configuration</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-lg">Agent Configuration</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 {agentDefinitions.map((agent) => (
                   <div key={agent.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
@@ -96,9 +85,7 @@ export default function SettingsPage() {
 
           <TabsContent value="usage">
             <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-lg">Usage & Billing</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-lg">Usage & Billing</CardTitle></CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">Usage charts and billing details will appear here once connected to the backend.</p>
               </CardContent>
@@ -107,9 +94,7 @@ export default function SettingsPage() {
 
           <TabsContent value="members">
             <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-lg">Workspace Members</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-lg">Workspace Members</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">Member management will be available after authentication is configured.</p>
                 <Button variant="outline" size="sm" disabled>Invite Member</Button>

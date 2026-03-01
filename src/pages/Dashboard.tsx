@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
-import { Zap, Brain, FileText, BarChart3, ArrowRight, Search, TrendingUp } from "lucide-react";
+import { Zap, Brain, FileText, TrendingUp, ArrowRight, Briefcase, Megaphone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { dashboardMetrics, mockJobs, agentDefinitions } from "@/data/mock-data";
+import { dashboardMetrics, mockJobs, agentDefinitions, departmentDefinitions } from "@/data/mock-data";
 import { Link } from "react-router-dom";
 
 const statusColors: Record<string, string> = {
@@ -24,6 +24,8 @@ const metrics = [
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
+const deptIcons: Record<string, React.ElementType> = { sales: Briefcase, marketing: Megaphone };
+
 export default function Dashboard() {
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8 max-w-7xl">
@@ -32,20 +34,25 @@ export default function Dashboard() {
         <div className="relative z-10">
           <h1 className="text-3xl font-bold tracking-tight">What do you need today?</h1>
           <p className="text-muted-foreground mt-2 max-w-lg">
-            Click an agent to get started, or let Alex route your request automatically.
+            Select a department to browse skills, or explore Capabilities to build new ones.
           </p>
           <div className="flex flex-wrap gap-3 mt-6">
-            {agentDefinitions.map((agent) => (
-              <Link key={agent.type} to="/agents">
-                <Button
-                  variant="outline"
-                  className="gap-2 border-border/50 bg-card/50 hover:bg-card hover:border-primary/50 transition-all"
-                >
-                  <span className="text-lg">{agent.emoji}</span>
-                  {agent.name}
-                </Button>
-              </Link>
-            ))}
+            {Object.entries(departmentDefinitions).map(([key, dept]) => {
+              const Icon = deptIcons[key];
+              return (
+                <Link key={key} to={`/departments/${key}`}>
+                  <Button variant="outline" className="gap-2 border-border/50 bg-card/50 hover:bg-card hover:border-primary/50 transition-all">
+                    <Icon className="h-4 w-4" />
+                    {dept.name}
+                  </Button>
+                </Link>
+              );
+            })}
+            <Link to="/capabilities">
+              <Button variant="outline" className="gap-2 border-border/50 bg-card/50 hover:bg-card hover:border-primary/50 transition-all">
+                ✨ Capabilities
+              </Button>
+            </Link>
           </div>
         </div>
       </motion.div>
@@ -84,16 +91,14 @@ export default function Dashboard() {
           <CardContent className="space-y-3">
             {mockJobs.slice(0, 5).map((job) => {
               const agent = agentDefinitions.find((a) => a.type === job.agentType);
+              const dept = departmentDefinitions[job.department];
               return (
-                <div
-                  key={job.id}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
+                <div key={job.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                   <span className="text-lg">{agent?.emoji}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{job.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {agent?.name} · {new Date(job.createdAt).toLocaleString()}
+                      {dept?.name} · {agent?.name} · {new Date(job.createdAt).toLocaleString()}
                     </p>
                   </div>
                   <Badge variant="outline" className={statusColors[job.status]}>
