@@ -14,7 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agent_jobs: {
+        Row: {
+          agent_type: string
+          completed_at: string | null
+          confidence_score: number | null
+          created_at: string
+          department: string
+          id: string
+          inputs: Json
+          output: string | null
+          skill_id: string
+          status: string
+          title: string
+          tokens_used: number | null
+        }
+        Insert: {
+          agent_type: string
+          completed_at?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          department: string
+          id?: string
+          inputs?: Json
+          output?: string | null
+          skill_id: string
+          status?: string
+          title: string
+          tokens_used?: number | null
+        }
+        Update: {
+          agent_type?: string
+          completed_at?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          department?: string
+          id?: string
+          inputs?: Json
+          output?: string | null
+          skill_id?: string
+          status?: string
+          title?: string
+          tokens_used?: number | null
+        }
+        Relationships: []
+      }
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          document_id: string
+          id: string
+          tokens: number | null
+        }
+        Insert: {
+          chunk_index?: number
+          content: string
+          created_at?: string
+          document_id: string
+          id?: string
+          tokens?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          tokens?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_documents: {
+        Row: {
+          content: string | null
+          created_at: string
+          doc_type: string
+          id: string
+          status: string
+          title: string
+          tokens: number | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          doc_type?: string
+          id?: string
+          status?: string
+          title: string
+          tokens?: number | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          doc_type?: string
+          id?: string
+          status?: string
+          title?: string
+          tokens?: number | null
+        }
+        Relationships: []
+      }
+      skills: {
+        Row: {
+          agent_type: string
+          created_at: string
+          department: string
+          description: string | null
+          emoji: string | null
+          id: string
+          inputs: Json
+          is_system: boolean
+          name: string
+          prompt_template: string
+        }
+        Insert: {
+          agent_type: string
+          created_at?: string
+          department: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          inputs?: Json
+          is_system?: boolean
+          name: string
+          prompt_template?: string
+        }
+        Update: {
+          agent_type?: string
+          created_at?: string
+          department?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          inputs?: Json
+          is_system?: boolean
+          name?: string
+          prompt_template?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

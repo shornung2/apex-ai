@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, Trash2, GripVertical, BookOpen, Wrench } from "lucide-react";
-import { skills, agentDefinitions, departmentDefinitions, type Department, type AgentType, type SkillInput } from "@/data/mock-data";
+import { Search, Plus, Trash2, GripVertical, BookOpen, Wrench, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { skills as systemSkills, agentDefinitions, departmentDefinitions, type Department, type AgentType, type SkillInput, type Skill } from "@/data/mock-data";
+import { useToast } from "@/hooks/use-toast";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -24,19 +26,43 @@ const inputTypes = [
 ];
 
 export default function Capabilities() {
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [agentFilter, setAgentFilter] = useState<string>("all");
+  const [dbSkills, setDbSkills] = useState<Skill[]>([]);
+  const [saving, setSaving] = useState(false);
 
   // Skill Builder state
   const [builderName, setBuilderName] = useState("");
   const [builderDesc, setBuilderDesc] = useState("");
+  const [builderEmoji, setBuilderEmoji] = useState("⚡");
   const [builderDept, setBuilderDept] = useState<Department | "">("");
   const [builderAgent, setBuilderAgent] = useState<AgentType | "">("");
   const [builderInputs, setBuilderInputs] = useState<Partial<SkillInput>[]>([]);
   const [builderPrompt, setBuilderPrompt] = useState("");
 
-  const filtered = skills.filter((s) => {
+  const fetchDbSkills = async () => {
+    const { data } = await supabase.from("skills").select("*").eq("is_system", false);
+    if (data) {
+      setDbSkills(data.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description || "",
+        department: s.department as Department,
+        agentType: s.agent_type as AgentType,
+        emoji: s.emoji || "⚡",
+        inputs: (s.inputs as SkillInput[]) || [],
+        promptTemplate: s.prompt_template || "",
+      })));
+    }
+  };
+
+  useEffect(() => { fetchDbSkills(); }, []);
+
+  const allSkills = [...systemSkills, ...dbSkills];
+
+  const filtered = allSkills.filter((s) => {
     if (deptFilter !== "all" && s.department !== deptFilter) return false;
     if (agentFilter !== "all" && s.agentType !== agentFilter) return false;
     if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.description.toLowerCase().includes(search.toLowerCase())) return false;
@@ -55,6 +81,52 @@ export default function Capabilities() {
     const next = [...builderInputs];
     (next[idx] as any)[field] = value;
     setBuilderInputs(next);
+  };
+
+  const saveSkill = async () => {
+    if (!builderName || !builderDept || !builderAgent) return;
+    setSaving(true);
+
+    const inputs = builderInputs.map((inp) => ({
+      name: (inp.label || "").toLowerCase().replace(/\s+/g, "_"),
+      label: inp.label || "",
+      type: inp.type || "text",
+      required: inp.required || false,
+      placeholder: inp.placeholder || "",
+      options: inp.options || [],
+    }));
+
+    const { error } = await supabase.from("skills").insert({
+      name: builderName,
+      description: builderDesc,
+      department: builderDept,
+      agent_type: builderAgent,
+      emoji: builderEmoji,
+      inputs,
+      prompt_template: builderPrompt,
+      is_system: false,
+    });
+
+    setSaving(false);
+    if (error) {
+      toast({ title: "Error saving skill", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Skill saved!" });
+      setBuilderName("");
+      setBuilderDesc("");
+      setBuilderEmoji("⚡");
+      setBuilderDept("");
+      setBuilderAgent("");
+      setBuilderInputs([]);
+      setBuilderPrompt("");
+      fetchDbSkills();
+    }
+  };
+
+  const deleteSkill = async (id: string) => {
+    await supabase.from("skills").delete().eq("id", id);
+    fetchDbSkills();
+    toast({ title: "Skill deleted" });
   };
 
   return (
@@ -102,14 +174,20 @@ export default function Capabilities() {
               {filtered.map((skill) => {
                 const agent = agentDefinitions.find((a) => a.type === skill.agentType);
                 const dept = departmentDefinitions[skill.department];
+                const isUserSkill = dbSkills.some((s) => s.id === skill.id);
                 return (
                   <Card key={skill.id} className="glass-card">
                     <CardContent className="p-5 space-y-3">
                       <div className="flex items-start justify-between">
                         <span className="text-2xl">{skill.emoji}</span>
-                        <div className="flex gap-1.5">
-                          <Badge variant="outline" className="text-[10px]">{dept.name}</Badge>
+                        <div className="flex gap-1.5 items-center">
+                          <Badge variant="outline" className="text-[10px]">{dept?.name}</Badge>
                           <Badge variant="outline" className="text-[10px]">{agent?.name}</Badge>
+                          {isUserSkill && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteSkill(skill.id)}>
+                              <Trash2 className="h-3 w-3 text-muted-foreground" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                       <div>
@@ -120,6 +198,7 @@ export default function Capabilities() {
                         <span>{skill.inputs.length} inputs</span>
                         <span>·</span>
                         <span>{skill.inputs.filter((i) => i.required).length} required</span>
+                        {isUserSkill && <Badge variant="outline" className="text-[10px] ml-auto">Custom</Badge>}
                       </div>
                     </CardContent>
                   </Card>
@@ -142,9 +221,15 @@ export default function Capabilities() {
                   <CardTitle className="text-lg">Create a New Skill</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Skill Name</Label>
-                    <Input value={builderName} onChange={(e) => setBuilderName(e.target.value)} placeholder="e.g. Competitive Analysis" className="bg-muted/50 border-border/50" />
+                  <div className="grid grid-cols-[60px_1fr] gap-3">
+                    <div className="space-y-2">
+                      <Label>Emoji</Label>
+                      <Input value={builderEmoji} onChange={(e) => setBuilderEmoji(e.target.value)} className="bg-muted/50 border-border/50 text-center text-lg" maxLength={2} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Skill Name</Label>
+                      <Input value={builderName} onChange={(e) => setBuilderName(e.target.value)} placeholder="e.g. Competitive Analysis" className="bg-muted/50 border-border/50" />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Description</Label>
@@ -188,12 +273,7 @@ export default function Capabilities() {
                         <GripVertical className="h-4 w-4 text-muted-foreground mt-2 shrink-0" />
                         <div className="flex-1 space-y-2">
                           <div className="grid grid-cols-2 gap-2">
-                            <Input
-                              placeholder="Field name"
-                              value={inp.label || ""}
-                              onChange={(e) => updateInput(idx, "label", e.target.value)}
-                              className="bg-muted/50 border-border/50 h-8 text-xs"
-                            />
+                            <Input placeholder="Field name" value={inp.label || ""} onChange={(e) => updateInput(idx, "label", e.target.value)} className="bg-muted/50 border-border/50 h-8 text-xs" />
                             <Select value={inp.type || "text"} onValueChange={(v) => updateInput(idx, "type", v)}>
                               <SelectTrigger className="bg-muted/50 border-border/50 h-8 text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
@@ -204,27 +284,14 @@ export default function Capabilities() {
                             </Select>
                           </div>
                           <div className="flex items-center gap-3">
-                            <Input
-                              placeholder="Placeholder text"
-                              value={inp.placeholder || ""}
-                              onChange={(e) => updateInput(idx, "placeholder", e.target.value)}
-                              className="bg-muted/50 border-border/50 h-8 text-xs flex-1"
-                            />
+                            <Input placeholder="Placeholder text" value={inp.placeholder || ""} onChange={(e) => updateInput(idx, "placeholder", e.target.value)} className="bg-muted/50 border-border/50 h-8 text-xs flex-1" />
                             <div className="flex items-center gap-1.5">
-                              <Switch
-                                checked={inp.required || false}
-                                onCheckedChange={(v) => updateInput(idx, "required", v)}
-                              />
+                              <Switch checked={inp.required || false} onCheckedChange={(v) => updateInput(idx, "required", v)} />
                               <span className="text-[10px] text-muted-foreground">Required</span>
                             </div>
                           </div>
                           {(inp.type === "select" || inp.type === "radio" || inp.type === "multi-select") && (
-                            <Input
-                              placeholder="Options (comma-separated)"
-                              value={(inp.options || []).join(", ")}
-                              onChange={(e) => updateInput(idx, "options", e.target.value.split(",").map((s) => s.trim()))}
-                              className="bg-muted/50 border-border/50 h-8 text-xs"
-                            />
+                            <Input placeholder="Options (comma-separated)" value={(inp.options || []).join(", ")} onChange={(e) => updateInput(idx, "options", e.target.value.split(",").map((s) => s.trim()))} className="bg-muted/50 border-border/50 h-8 text-xs" />
                           )}
                         </div>
                         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeInput(idx)}>
@@ -248,8 +315,9 @@ export default function Capabilities() {
                     />
                   </div>
 
-                  <Button className="w-full" disabled={!builderName || !builderDept || !builderAgent}>
-                    Save Skill
+                  <Button className="w-full" disabled={!builderName || !builderDept || !builderAgent || saving} onClick={saveSkill}>
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {saving ? "Saving..." : "Save Skill"}
                   </Button>
                 </CardContent>
               </Card>
@@ -262,9 +330,12 @@ export default function Capabilities() {
                 <CardContent className="space-y-4">
                   {builderName ? (
                     <>
-                      <div>
-                        <h3 className="font-semibold">{builderName}</h3>
-                        {builderDesc && <p className="text-sm text-muted-foreground mt-1">{builderDesc}</p>}
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{builderEmoji}</span>
+                        <div>
+                          <h3 className="font-semibold">{builderName}</h3>
+                          {builderDesc && <p className="text-sm text-muted-foreground mt-0.5">{builderDesc}</p>}
+                        </div>
                       </div>
                       <div className="flex gap-1.5">
                         {builderDept && <Badge variant="outline" className="text-[10px]">{departmentDefinitions[builderDept as Department]?.name}</Badge>}

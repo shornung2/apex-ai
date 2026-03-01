@@ -1,9 +1,11 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Zap, Brain, FileText, TrendingUp, ArrowRight, Briefcase, Megaphone } from "lucide-react";
+import { Zap, Brain, FileText, TrendingUp, ArrowRight, Briefcase, Megaphone, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { dashboardMetrics, mockJobs, agentDefinitions, departmentDefinitions } from "@/data/mock-data";
+import { supabase } from "@/integrations/supabase/client";
+import { agentDefinitions, departmentDefinitions, type Department } from "@/data/mock-data";
 import { Link } from "react-router-dom";
 
 const statusColors: Record<string, string> = {
@@ -11,15 +13,7 @@ const statusColors: Record<string, string> = {
   running: "bg-primary/20 text-primary border-primary/30",
   queued: "bg-muted text-muted-foreground border-border",
   failed: "bg-destructive/20 text-destructive border-destructive/30",
-  retrying: "bg-amber-500/20 text-amber-400 border-amber-500/30",
 };
-
-const metrics = [
-  { label: "Agent Runs Today", value: dashboardMetrics.agentRunsToday, icon: Zap, color: "text-primary" },
-  { label: "Tokens Used", value: dashboardMetrics.tokensUsed.toLocaleString(), icon: Brain, color: "text-accent" },
-  { label: "Knowledge Base", value: `${dashboardMetrics.knowledgeBaseSize} docs`, icon: FileText, color: "text-emerald-400" },
-  { label: "Avg Confidence", value: `${dashboardMetrics.avgConfidence}%`, icon: TrendingUp, color: "text-amber-400" },
-];
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -27,6 +21,35 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 const deptIcons: Record<string, React.ElementType> = { sales: Briefcase, marketing: Megaphone };
 
 export default function Dashboard() {
+  const [recentJobs, setRecentJobs] = useState<any[]>([]);
+  const [jobCount, setJobCount] = useState(0);
+  const [docCount, setDocCount] = useState(0);
+  const [totalTokens, setTotalTokens] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [jobsRes, countRes, docsRes, tokensRes] = await Promise.all([
+        supabase.from("agent_jobs").select("*").order("created_at", { ascending: false }).limit(5),
+        supabase.from("agent_jobs").select("id", { count: "exact", head: true }),
+        supabase.from("knowledge_documents").select("id", { count: "exact", head: true }),
+        supabase.from("agent_jobs").select("tokens_used").eq("status", "complete"),
+      ]);
+      setRecentJobs(jobsRes.data || []);
+      setJobCount(countRes.count || 0);
+      setDocCount(docsRes.count || 0);
+      setTotalTokens((tokensRes.data || []).reduce((sum, j) => sum + (j.tokens_used || 0), 0));
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  const metrics = [
+    { label: "Total Runs", value: jobCount, icon: Zap, color: "text-primary" },
+    { label: "Tokens Used", value: totalTokens.toLocaleString(), icon: Brain, color: "text-accent" },
+    { label: "Knowledge Base", value: `${docCount} docs`, icon: FileText, color: "text-emerald-400" },
+  ];
+
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8 max-w-7xl">
       {/* Hero */}
@@ -58,7 +81,7 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Stat cards */}
-      <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {metrics.map((m) => (
           <Card key={m.label} className="glass-card">
             <CardContent className="p-5 flex items-center gap-4">
@@ -66,7 +89,7 @@ export default function Dashboard() {
                 <m.icon className={`h-5 w-5 ${m.color}`} />
               </div>
               <div>
-                <p className="text-2xl font-bold">{m.value}</p>
+                <p className="text-2xl font-bold">{loading ? "—" : m.value}</p>
                 <p className="text-xs text-muted-foreground">{m.label}</p>
               </div>
             </CardContent>
@@ -89,24 +112,34 @@ export default function Dashboard() {
             </Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {mockJobs.slice(0, 5).map((job) => {
-              const agent = agentDefinitions.find((a) => a.type === job.agentType);
-              const dept = departmentDefinitions[job.department];
-              return (
-                <div key={job.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <span className="text-lg">{agent?.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{job.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {dept?.name} · {agent?.name} · {new Date(job.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className={statusColors[job.status]}>
-                    {job.status}
-                  </Badge>
-                </div>
-              );
-            })}
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : recentJobs.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No agent runs yet. Go to a department and run a skill!</p>
+            ) : (
+              recentJobs.map((job) => {
+                const agent = agentDefinitions.find((a) => a.type === job.agent_type);
+                const dept = departmentDefinitions[job.department as Department];
+                return (
+                  <Link key={job.id} to={`/jobs/${job.id}`} className="block">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <span className="text-lg">{agent?.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{job.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {dept?.name} · {agent?.name} · {new Date(job.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className={statusColors[job.status] || ""}>
+                        {job.status}
+                      </Badge>
+                    </div>
+                  </Link>
+                );
+              })
+            )}
           </CardContent>
         </Card>
       </motion.div>

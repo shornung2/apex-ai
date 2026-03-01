@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,13 +15,18 @@ import {
   type Skill,
 } from "@/data/mock-data";
 import { SkillForm } from "@/components/SkillForm";
+import { runSkill } from "@/lib/agent-client";
+import { useToast } from "@/hooks/use-toast";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
 export default function Department() {
   const { dept } = useParams<{ dept: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
 
   if (!dept || !departmentDefinitions[dept as DeptType]) {
     return <Navigate to="/" replace />;
@@ -33,9 +38,33 @@ export default function Department() {
   const deptSkills = skills.filter((s) => s.department === department);
 
   const handleSubmit = (data: Record<string, string>) => {
-    console.log("Run skill:", selectedSkill?.id, data);
-    setSelectedSkill(null);
-    // TODO: call agent-dispatch edge function
+    if (!selectedSkill) return;
+    setIsRunning(true);
+
+    let jobId: string | null = null;
+
+    runSkill({
+      skill: selectedSkill,
+      inputs: data,
+      onJobId: (id) => {
+        jobId = id;
+        toast({ title: "Job started", description: "Redirecting to results..." });
+        setSelectedSkill(null);
+        setIsRunning(false);
+        navigate(`/jobs/${id}`);
+      },
+      onDelta: () => {},
+      onDone: () => {
+        setIsRunning(false);
+        if (!jobId) {
+          toast({ title: "Job completed", variant: "default" });
+        }
+      },
+      onError: (error) => {
+        setIsRunning(false);
+        toast({ title: "Error", description: error, variant: "destructive" });
+      },
+    });
   };
 
   return (
@@ -102,7 +131,7 @@ export default function Department() {
         })}
       </motion.div>
 
-      <Sheet open={!!selectedSkill} onOpenChange={(open) => !open && setSelectedSkill(null)}>
+      <Sheet open={!!selectedSkill} onOpenChange={(open) => !open && !isRunning && setSelectedSkill(null)}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
@@ -112,7 +141,7 @@ export default function Department() {
             <SheetDescription>{selectedSkill?.description}</SheetDescription>
           </SheetHeader>
           <div className="mt-6">
-            {selectedSkill && <SkillForm skill={selectedSkill} onSubmit={handleSubmit} />}
+            {selectedSkill && <SkillForm skill={selectedSkill} onSubmit={handleSubmit} isRunning={isRunning} />}
           </div>
         </SheetContent>
       </Sheet>

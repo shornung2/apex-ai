@@ -1,9 +1,12 @@
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { mockJobs, agentDefinitions, departmentDefinitions } from "@/data/mock-data";
+import { supabase } from "@/integrations/supabase/client";
+import { subscribeToJob } from "@/lib/agent-client";
+import { agentDefinitions, departmentDefinitions, type Department } from "@/data/mock-data";
 import { ArrowLeft, Copy, BookOpen, RotateCcw, CheckCircle, XCircle, Loader2, Clock, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
@@ -22,11 +25,43 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 export default function JobDetail() {
   const { jobId } = useParams<{ jobId: string }>();
   const { toast } = useToast();
-  const job = mockJobs.find((j) => j.id === jobId);
-  const agent = job ? agentDefinitions.find((a) => a.type === job.agentType) : null;
-  const dept = job ? departmentDefinitions[job.department] : null;
+  const [job, setJob] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  if (!job || !agent) {
+  useEffect(() => {
+    if (!jobId) return;
+
+    const fetchJob = async () => {
+      const { data, error } = await supabase
+        .from("agent_jobs")
+        .select("*")
+        .eq("id", jobId)
+        .single();
+
+      if (data) setJob(data);
+      setLoading(false);
+    };
+
+    fetchJob();
+
+    // Subscribe to realtime updates
+    const unsubscribe = subscribeToJob(jobId, (updated) => {
+      setJob(updated);
+    });
+
+    return unsubscribe;
+  }, [jobId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!job) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <p>Job not found</p>
@@ -35,7 +70,9 @@ export default function JobDetail() {
     );
   }
 
-  const status = statusConfig[job.status];
+  const agent = agentDefinitions.find((a) => a.type === job.agent_type);
+  const dept = departmentDefinitions[job.department as Department];
+  const status = statusConfig[job.status] || statusConfig.queued;
   const StatusIcon = status.icon;
 
   const copyMarkdown = () => {
@@ -44,6 +81,26 @@ export default function JobDetail() {
       toast({ title: "Copied to clipboard" });
     }
   };
+
+  const saveToKB = async () => {
+    if (!job.output) return;
+    setSaving(true);
+    const { error } = await supabase.from("knowledge_documents").insert({
+      title: job.title,
+      content: job.output,
+      doc_type: "agent_output",
+      status: "ready",
+      tokens: job.tokens_used || 0,
+    });
+    setSaving(false);
+    if (error) {
+      toast({ title: "Error saving", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Saved to Knowledge Base" });
+    }
+  };
+
+  const inputs = job.inputs as Record<string, string>;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-4xl">
@@ -56,7 +113,7 @@ export default function JobDetail() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">{job.title}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {dept?.name} · {agent.emoji} {agent.name} · {new Date(job.createdAt).toLocaleString()}
+            {dept?.name} · {agent?.emoji} {agent?.name} · {new Date(job.created_at).toLocaleString()}
           </p>
         </div>
         <div className={`flex items-center gap-1.5 ${status.color}`}>
@@ -73,7 +130,7 @@ export default function JobDetail() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
-              {Object.entries(job.inputs).map(([key, value]) => (
+              {Object.entries(inputs).map(([key, value]) => (
                 <div key={key}>
                   <p className="text-xs text-muted-foreground">{key}</p>
                   <p className="text-sm mt-0.5">{value}</p>
@@ -86,27 +143,27 @@ export default function JobDetail() {
 
       {/* Metadata */}
       <motion.div variants={item} className="flex gap-4">
-        {job.tokensUsed && (
+        {job.tokens_used > 0 && (
           <Card className="glass-card flex-1">
             <CardContent className="p-4 text-center">
-              <p className="text-xl font-bold">{job.tokensUsed.toLocaleString()}</p>
+              <p className="text-xl font-bold">{job.tokens_used.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">Tokens Used</p>
             </CardContent>
           </Card>
         )}
-        {job.confidenceScore && (
+        {job.confidence_score && (
           <Card className="glass-card flex-1">
             <CardContent className="p-4 text-center">
-              <p className="text-xl font-bold">{job.confidenceScore}%</p>
+              <p className="text-xl font-bold">{job.confidence_score}%</p>
               <p className="text-xs text-muted-foreground">Confidence</p>
             </CardContent>
           </Card>
         )}
-        {job.completedAt && (
+        {job.completed_at && (
           <Card className="glass-card flex-1">
             <CardContent className="p-4 text-center">
               <p className="text-xl font-bold">
-                {Math.round((new Date(job.completedAt).getTime() - new Date(job.createdAt).getTime()) / 1000)}s
+                {Math.round((new Date(job.completed_at).getTime() - new Date(job.created_at).getTime()) / 1000)}s
               </p>
               <p className="text-xs text-muted-foreground">Duration</p>
             </CardContent>
@@ -115,6 +172,17 @@ export default function JobDetail() {
       </motion.div>
 
       {/* Output */}
+      {job.status === "running" && !job.output && (
+        <motion.div variants={item}>
+          <Card className="glass-card">
+            <CardContent className="p-8 flex flex-col items-center text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+              <p className="text-sm text-muted-foreground">Agent is working...</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {job.output && (
         <motion.div variants={item}>
           <Card className="glass-card">
@@ -124,11 +192,8 @@ export default function JobDetail() {
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={copyMarkdown}>
                   <Copy className="h-3 w-3" /> Copy
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled>
-                  <BookOpen className="h-3 w-3" /> Save to KB
-                </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled>
-                  <RotateCcw className="h-3 w-3" /> Re-run
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={saveToKB} disabled={saving}>
+                  <BookOpen className="h-3 w-3" /> {saving ? "Saving..." : "Save to KB"}
                 </Button>
               </div>
             </CardHeader>
