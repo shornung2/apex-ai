@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,10 +13,11 @@ import type { Skill } from "@/data/mock-data";
 interface SkillFormProps {
   skill: Skill;
   onSubmit: (data: Record<string, string>) => void;
+  isRunning?: boolean;
 }
 
-export function SkillForm({ skill, onSubmit }: SkillFormProps) {
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<Record<string, string>>();
+export function SkillForm({ skill, onSubmit, isRunning = false }: SkillFormProps) {
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<Record<string, string>>();
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -31,6 +33,7 @@ export function SkillForm({ skill, onSubmit }: SkillFormProps) {
               id={input.name}
               placeholder={input.placeholder}
               className="bg-muted/50 border-border/50"
+              disabled={isRunning}
               {...register(input.name, { required: input.required && `${input.label} is required` })}
             />
           )}
@@ -41,12 +44,13 @@ export function SkillForm({ skill, onSubmit }: SkillFormProps) {
               placeholder={input.placeholder}
               rows={3}
               className="bg-muted/50 border-border/50 resize-none"
+              disabled={isRunning}
               {...register(input.name, { required: input.required && `${input.label} is required` })}
             />
           )}
 
           {input.type === "select" && input.options && (
-            <Select onValueChange={(v) => setValue(input.name, v)} defaultValue="">
+            <Select onValueChange={(v) => setValue(input.name, v)} defaultValue="" disabled={isRunning}>
               <SelectTrigger className="bg-muted/50 border-border/50">
                 <SelectValue placeholder={`Select ${input.label.toLowerCase()}...`} />
               </SelectTrigger>
@@ -59,7 +63,7 @@ export function SkillForm({ skill, onSubmit }: SkillFormProps) {
           )}
 
           {input.type === "radio" && input.options && (
-            <RadioGroup onValueChange={(v) => setValue(input.name, v)} className="flex flex-wrap gap-3">
+            <RadioGroup onValueChange={(v) => setValue(input.name, v)} className="flex flex-wrap gap-3" disabled={isRunning}>
               {input.options.map((opt) => (
                 <div key={opt} className="flex items-center gap-2">
                   <RadioGroupItem value={opt} id={`${input.name}-${opt}`} />
@@ -80,6 +84,7 @@ export function SkillForm({ skill, onSubmit }: SkillFormProps) {
                     <Checkbox
                       id={`${input.name}-${opt}`}
                       checked={isChecked}
+                      disabled={isRunning}
                       onCheckedChange={(checked) => {
                         const next = checked
                           ? [...selected, opt]
@@ -100,9 +105,9 @@ export function SkillForm({ skill, onSubmit }: SkillFormProps) {
         </div>
       ))}
 
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-        Run {skill.name}
+      <Button type="submit" className="w-full" disabled={isRunning}>
+        {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+        {isRunning ? "Running..." : `Run ${skill.name}`}
       </Button>
     </form>
   );
