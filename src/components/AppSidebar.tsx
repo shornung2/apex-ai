@@ -98,8 +98,9 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">
       <SidebarHeader className="px-4 pt-5 pb-6">
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-1.5">
           <img src={logo} alt="Autopilot" className="h-20 w-20 rounded-2xl object-cover shrink-0" />
+          {!collapsed && <p className="text-[10px] text-muted-foreground">by Solutionment</p>}
         </div>
       </SidebarHeader>
 
