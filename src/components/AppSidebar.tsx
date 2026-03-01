@@ -97,13 +97,13 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">
-      <SidebarHeader className="p-4 pb-5">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="Autopilot" className="h-12 w-12 rounded-xl object-cover shrink-0" />
+      <SidebarHeader className="px-4 pt-5 pb-6">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <img src={logo} alt="Autopilot" className="h-20 w-20 rounded-2xl object-cover shrink-0" />
           {!collapsed && (
             <div>
-              <h2 className="text-base font-bold tracking-tight text-foreground">Autopilot</h2>
-              <p className="text-[11px] text-muted-foreground">AI Operating System</p>
+              <h2 className="text-lg font-bold tracking-tight text-foreground">Autopilot</h2>
+              <p className="text-xs text-muted-foreground">AI Operating System</p>
             </div>
           )}
         </div>
