@@ -1,142 +1,154 @@
 
-# Restructure: Department + Skill-Driven Architecture
 
-## Core Concept Change
+# Wire Up Agent Execution Pipeline
 
-The current app treats agents as standalone entities with hardcoded forms. The correct architecture is:
+## Overview
 
-- **Agents are generic execution engines** (Researcher, Strategist, Content, Meeting Prep)
-- **Skills are prompt templates** (like Claude's skills) that tell an agent what to do and what inputs to collect
-- **Departments** (Sales, Marketing) organize which agent+skill combinations are available
-- **A Skill Builder** lets users/admins create new skills to expand the system
-
-This is a fundamental restructure of the data model, navigation, and page architecture.
+Build the complete backend infrastructure so that when a user fills out a skill form and clicks "Run", the system dispatches the job, calls AI (grounded in Knowledge Base content), streams the result back, and stores everything persistently.
 
 ---
 
-## What Changes
+## Phase 1: Database Tables
 
-### 1. Data Model Rewrite (`src/data/mock-data.ts`)
+Create the following tables with RLS policies:
 
-**Remove**: `pulse`, `concierge` agent types. Remove per-agent hardcoded capabilities.
+**`knowledge_documents`** -- uploaded docs and agent outputs
+- id (uuid, PK), title, content (text), doc_type ("upload" | "agent_output"), status ("processing" | "ready" | "failed"), tokens (int), created_at
 
-**New types**:
+**`knowledge_chunks`** -- chunked content for grounding
+- id (uuid, PK), document_id (FK -> knowledge_documents), content (text), chunk_index (int), tokens (int), created_at
 
-```text
-Department: "sales" | "marketing"
+**`agent_jobs`** -- every skill execution
+- id (uuid, PK), skill_id (text), agent_type (text), department (text), title (text), status (text, default "queued"), inputs (jsonb), output (text), tokens_used (int), confidence_score (int), created_at, completed_at
+- Enable realtime on this table for live status updates
 
-AgentType: "researcher" | "strategist" | "content" | "meeting-prep"
+**`skills`** -- user-created skills from the Skill Builder
+- id (uuid, PK), name, description, department (text), agent_type (text), emoji, inputs (jsonb), prompt_template (text), is_system (bool, default false), created_at
 
-Skill: {
-  id, name, description, department, agentType,
-  inputs: SkillInput[],  // dynamic form fields
-  promptTemplate: string // the skill.md content
-}
-
-SkillInput: {
-  name, label, type ("text"|"textarea"|"select"|"radio"|"multi-select"),
-  required, placeholder, options?
-}
-```
-
-**Department-Agent-Skill mapping**:
-
-Marketing:
-- Researcher: Company Research, Contact/Person Research, Market/Industry Trends, General Research
-- Strategist: Marketing Strategy
-- Content: LinkedIn/Social Posts, Marketing Copy, Thought Leadership Articles, General Marketing Content
-
-Sales:
-- Meeting Prep: Meeting Prep Coach (new agent, replaces the old strategist meeting prep form)
-- Content: Proposal (Word/PDF/PPT), SOW, Sales Email
-- Strategist: Deal Strategy, Account Strategy
-
-**Mock skills** with realistic input definitions for each skill above.
-
-### 2. Navigation Restructure (`AppSidebar.tsx`)
-
-Current: Overview, **Agents**, Knowledge Base, History, Settings
-
-New:
-```text
-Overview
-Departments (collapsible group)
-  - Sales        -> /departments/sales
-  - Marketing    -> /departments/marketing
-Capabilities     -> /capabilities
-Knowledge Base   -> /knowledge
-History          -> /history
-Settings         -> /settings
-```
-
-### 3. New Department Page (`/departments/:dept`)
-
-Replaces the flat Agents grid. Shows:
-- Department name and description header
-- Agent sections within the department (e.g., "Researcher", "Content")
-- Under each agent: skill cards showing available skills
-- Clicking a skill opens a side sheet with a **dynamically generated form** based on `skill.inputs`
-- No more hardcoded per-agent form components
-
-### 4. Dynamic Skill Form Component
-
-A single `SkillForm.tsx` component that renders form fields from a skill's `inputs[]` array:
-- `text` -> Input
-- `textarea` -> Textarea  
-- `select` -> Select dropdown
-- `radio` -> RadioGroup
-- `multi-select` -> Checkbox group
-
-This replaces all 5 hardcoded form files (`ResearcherForm.tsx`, `StrategistForm.tsx`, etc.).
-
-### 5. New Capabilities Page (`/capabilities`)
-
-Two sections:
-- **Skill Library**: Browse all skills, filter by department/agent, search by name. Each skill shows name, description, department badge, agent badge, input count.
-- **Skill Builder**: A form to create/edit a skill:
-  - Name, Description, Department (select), Agent Type (select)
-  - Dynamic input builder: add/remove/reorder form fields with name, label, type, required toggle, options (for select/radio)
-  - Prompt template editor (textarea with markdown support)
-  - Preview panel showing what the rendered form will look like
-
-### 6. Dashboard Updates
-
-- Remove Pulse and Concierge agent shortcuts from the hero
-- Replace agent shortcuts with department shortcuts (Sales, Marketing) or top skills
-- Update mock jobs to remove pulse/concierge references
-- Update activity feed to show department context
-
-### 7. File Cleanup
-
-**Delete**:
-- `src/components/agent-forms/PulseForm.tsx`
-- `src/components/agent-forms/ConciergeForm.tsx`
-- `src/components/agent-forms/ResearcherForm.tsx`
-- `src/components/agent-forms/StrategistForm.tsx`
-- `src/components/agent-forms/ContentForm.tsx`
-- `src/pages/Agents.tsx`
-
-**Create**:
-- `src/components/SkillForm.tsx` (dynamic form renderer)
-- `src/components/SkillBuilder.tsx` (skill creation/editing UI)
-- `src/pages/Department.tsx` (department view with agent sections + skill cards)
-- `src/pages/Capabilities.tsx` (skill library + builder)
-
-**Modify**:
-- `src/data/mock-data.ts` (complete rewrite)
-- `src/components/AppSidebar.tsx` (new nav structure)
-- `src/App.tsx` (new routes)
-- `src/pages/Dashboard.tsx` (remove pulse/concierge, add department shortcuts)
-- `src/pages/History.tsx` (update filters for new agent types, add department column)
-- `src/pages/JobDetail.tsx` (update for new agent types)
-- `src/pages/Settings.tsx` (update agents tab for new agent list)
+All tables will have RLS enabled. Initially policies will allow all authenticated users full access (auth will be added in a follow-up phase). For now, anon read/write will be permitted to keep the app functional without login.
 
 ---
 
-## Technical Details
+## Phase 2: Edge Function -- `agent-dispatch`
 
-- The Skill Builder stores skills in the mock data initially (will move to database later)
-- The dynamic form uses react-hook-form with programmatic field registration based on `skill.inputs`
-- Department pages use `useParams()` to get the department slug and filter skills accordingly
-- The sidebar uses SidebarGroup with collapsible department sub-items
-- `meeting-prep` is a new agent type specific to Sales (not a variant of Strategist)
+**Path:** `supabase/functions/agent-dispatch/index.ts`
+
+Receives a skill execution request from the frontend:
+```text
+POST { skillId, skillName, agentType, department, title, inputs, promptTemplate }
+```
+
+Steps:
+1. Insert a new row into `agent_jobs` with status "queued"
+2. Retrieve relevant knowledge chunks by searching `knowledge_chunks` for content related to the input values (simple text matching initially -- semantic search later)
+3. Build the full prompt:
+   - System prompt sets agent persona based on `agentType` (Researcher = analytical, Strategist = strategic, Content = writer, Meeting Prep = coach)
+   - Inject matched knowledge chunks as grounding context
+   - Fill the skill's `promptTemplate` with the user's input values
+4. Update job status to "running"
+5. Call Lovable AI gateway (google/gemini-3-flash-preview) with streaming
+6. Stream the response back to the client as SSE
+7. On completion: update `agent_jobs` with output, tokens_used, status "complete", completed_at
+8. On error: update status to "failed"
+
+---
+
+## Phase 3: Frontend Wiring
+
+### Agent client utility (`src/lib/agent-client.ts`)
+- `runSkill(skill, inputs)` -- calls agent-dispatch edge function, returns a readable stream
+- `subscribeToJob(jobId, callback)` -- subscribes to realtime changes on `agent_jobs` for live status
+
+### Update `SkillForm.tsx` / `Department.tsx`
+- On form submit: call `runSkill()`, create a job, navigate to `/jobs/:jobId`
+- Show toast: "Job submitted -- redirecting to results..."
+
+### Update `JobDetail.tsx`
+- Fetch job from `agent_jobs` table instead of mock data
+- Subscribe to realtime updates for status changes
+- Stream output rendering: show tokens as they arrive using the SSE stream
+- "Save to KB" button: inserts the output into `knowledge_documents` as type "agent_output"
+- "Re-run" button: re-submits the same skill + inputs
+
+### Update `History.tsx`
+- Fetch from `agent_jobs` table with filters and pagination
+- Replace mock data with real queries
+
+### Update `Dashboard.tsx`
+- Stat cards query real counts from `agent_jobs` and `knowledge_documents`
+- Recent activity from `agent_jobs` ordered by created_at desc, limit 5
+
+### Update `Capabilities.tsx` -- Skill Builder persistence
+- "Save Skill" button inserts into the `skills` table
+- Skill Library fetches from both hardcoded skills AND database skills (merged)
+- Delete/edit support for user-created skills (is_system = false)
+
+### Update `Knowledge.tsx`
+- Upload functionality using Supabase storage (create a `documents` bucket)
+- Document list from `knowledge_documents` table
+- Basic content viewer when clicking a document
+
+---
+
+## Phase 4: Agent Persona System Prompts
+
+Each agent type gets a tailored system prompt that defines its behavior:
+
+- **Researcher**: "You are a research analyst. Produce structured, factual analysis with citations and confidence ratings. Use the provided knowledge base context to ground your findings."
+- **Strategist**: "You are a strategic advisor. Produce actionable frameworks, risk assessments, and next-step recommendations. Reference the knowledge base for organizational context."
+- **Content**: "You are a professional business writer. Produce polished, on-brand content. Adapt tone and format to the request. Use knowledge base materials for accuracy."
+- **Meeting Prep**: "You are a sales coaching advisor. Produce meeting agendas, discovery questions, objection handling scripts, and talk tracks. Use knowledge base intel on the prospect."
+
+All prompts include: "Use the following knowledge base context to ground your response. If the context is relevant, incorporate it. If not, proceed with your best judgment."
+
+---
+
+## Knowledge Grounding Flow
+
+```text
+User submits skill form
+        |
+        v
+agent-dispatch receives inputs
+        |
+        v
+Extract key terms from inputs (company names, topics, etc.)
+        |
+        v
+Query knowledge_chunks WHERE content ILIKE any key term
+        |
+        v
+Inject top 5 matching chunks into system prompt as "CONTEXT"
+        |
+        v
+Fill promptTemplate with input values -> user message
+        |
+        v
+Call AI with [system + context, user message]
+        |
+        v
+Stream response -> store in agent_jobs
+```
+
+---
+
+## File Changes Summary
+
+**Create:**
+- `supabase/functions/agent-dispatch/index.ts` -- main execution edge function
+- `src/lib/agent-client.ts` -- frontend agent API utilities
+
+**Modify:**
+- `src/pages/Department.tsx` -- wire form submit to agent-dispatch
+- `src/pages/JobDetail.tsx` -- fetch from DB, realtime, streaming output
+- `src/pages/History.tsx` -- query agent_jobs table
+- `src/pages/Dashboard.tsx` -- real metrics from DB
+- `src/pages/Capabilities.tsx` -- persist skills to DB
+- `src/pages/Knowledge.tsx` -- upload + fetch documents
+- `src/components/SkillForm.tsx` -- loading/streaming state
+
+**Database migrations:**
+- Create `knowledge_documents`, `knowledge_chunks`, `agent_jobs`, `skills` tables
+- Create storage bucket `documents`
+- Enable realtime on `agent_jobs`
+
