@@ -1,174 +1,142 @@
 
+# Restructure: Department + Skill-Driven Architecture
 
-# SolutionIQ Autopilot — Complete Rebuild Plan
+## Core Concept Change
 
-## What's Wrong With the Current Build
+The current app treats agents as standalone entities with hardcoded forms. The correct architecture is:
 
-The current implementation uses a generic "departments" model (Marketing/Sales) with invented agents (Researcher, Content Writer, Lead Scorer, Proposal Writer) and a Skills Marketplace concept that doesn't exist in the PRD. The PRD defines a fundamentally different application:
+- **Agents are generic execution engines** (Researcher, Strategist, Content, Meeting Prep)
+- **Skills are prompt templates** (like Claude's skills) that tell an agent what to do and what inputs to collect
+- **Departments** (Sales, Marketing) organize which agent+skill combinations are available
+- **A Skill Builder** lets users/admins create new skills to expand the system
 
-- **5 specific agents**: Researcher, Strategist, Content, Pulse, and Alex (Concierge) -- not department-grouped generic agents
-- **No "Skills Marketplace" page** -- skills are IP-protected environment variables, not a browsable UI
-- **No "Departments" pages** -- the app is organized around agents, not departments
-- **Different navigation**: Overview, Agents, Knowledge Base, History, Settings
-- **Different dashboard**: "What do you need today?" hero with agent shortcuts, token usage bar, real-time activity feed
-- **Multi-tenant workspace model** with auth, RLS, and workspace context
-
-This is a near-complete rewrite of the frontend, plus setting up the backend foundation.
+This is a fundamental restructure of the data model, navigation, and page architecture.
 
 ---
 
-## Build Phases (Following PRD Phase Sequence)
+## What Changes
 
-### Phase 1: Foundation -- Auth, Database, Workspace Context
+### 1. Data Model Rewrite (`src/data/mock-data.ts`)
 
-Since the PRD calls for Supabase auth and a multi-tenant workspace model, we need to enable Lovable Cloud first.
+**Remove**: `pulse`, `concierge` agent types. Remove per-agent hardcoded capabilities.
 
-**What gets built:**
-- Enable Lovable Cloud (Supabase backend)
-- Create all database tables with RLS: `workspaces`, `workspace_settings`, `workspace_members`, `agent_jobs`, `knowledge_documents`, `knowledge_chunks`
-- Create the `get_user_workspace_id()` isolation function
-- Auth pages: `/login` (email + password + magic link), `/signup`, `/onboarding` (workspace setup)
-- `ProtectedRoute` component
-- `WorkspaceContext` provider exposing: user, workspace, workspaceId, isAdmin, isLoading
-- App router with protected routes
+**New types**:
 
-### Phase 2: Dashboard Shell and Agent UI
+```text
+Department: "sales" | "marketing"
 
-**Completely replace the current UI:**
+AgentType: "researcher" | "strategist" | "content" | "meeting-prep"
 
-**New sidebar navigation** (240px fixed):
-- Workspace name + plan badge at top
-- Navigation: Overview, Agents, Knowledge Base, History, Settings
-- Token usage progress bar at bottom (green/amber/red)
-- User avatar + logout at bottom
+Skill: {
+  id, name, description, department, agentType,
+  inputs: SkillInput[],  // dynamic form fields
+  promptTemplate: string // the skill.md content
+}
 
-**Overview page** (`/dashboard`):
-- "What do you need today?" hero with one-click shortcuts to each of the 5 agents
-- 4 stat cards: Agent Runs Today, Tokens Used, Knowledge Base Size, Avg Confidence Score
-- Recent Activity feed (last 10 agent_jobs, real-time via Supabase Realtime)
+SkillInput: {
+  name, label, type ("text"|"textarea"|"select"|"radio"|"multi-select"),
+  required, placeholder, options?
+}
+```
 
-**Agents page** (`/agents`):
-- 5 agent cards in a grid (Researcher, Strategist, Content, Pulse, Alex)
-- Each card: emoji icon, name (from workspace branding_config or default), description, capability tags, "Run Agent" button
-- Agent names from PRD:
-  - Researcher (system: `researcher`) -- Prospect intelligence, company research, ICP scoring
-  - Strategist (system: `strategist`) -- Meeting prep, discovery frameworks, objection handling
-  - Content (system: `content`) -- Proposals, SOWs, executive summaries, sales materials
-  - Pulse (system: `pulse`) -- Pipeline analysis, deal health, forecast commentary
-  - Alex (system: `concierge`) -- Natural language routing, orchestration
+**Department-Agent-Skill mapping**:
 
-**Submission forms** (one per agent, opened via side sheet):
-- Researcher: Company Name, Website URL, LinkedIn URL, Industry dropdown, Known context textarea, Research depth radio (Quick Brief / Standard / Deep Dive)
-- Strategist: Company Name, Meeting Type dropdown, Date/Time, Duration, Stakeholders (dynamic rows), Challenges textarea, Objectives textarea, Sensitivity textarea
-- Content: Document Type dropdown, Company/Recipient, Stakeholders (dynamic), Solution components, Investment range, Timeline, Key outcomes textarea, Personalization textarea
-- Pulse: Focus area multi-select, Pipeline stage multi-select, Time horizon dropdown, Context textarea
+Marketing:
+- Researcher: Company Research, Contact/Person Research, Market/Industry Trends, General Research
+- Strategist: Marketing Strategy
+- Content: LinkedIn/Social Posts, Marketing Copy, Thought Leadership Articles, General Marketing Content
 
-**Job Detail page** (`/jobs/:jobId`):
-- Status with animated indicators (queued=gray pulse, running=teal spin, complete=green check, failed=red X, retrying=amber clock)
-- Real-time status updates via Supabase Realtime
-- Structured output renderer per agent type (collapsible section cards)
-- "Save to Knowledge Base", "Copy as Markdown", "Re-run" buttons
+Sales:
+- Meeting Prep: Meeting Prep Coach (new agent, replaces the old strategist meeting prep form)
+- Content: Proposal (Word/PDF/PPT), SOW, Sales Email
+- Strategist: Deal Strategy, Account Strategy
 
-**History page** (`/history`):
-- Full-width table: Date/Time, Agent, Input Summary, Status, Tokens, Confidence, Actions
-- Filters: agent type, status, date range, search
-- Pagination (20/page), CSV export
+**Mock skills** with realistic input definitions for each skill above.
 
-### Phase 3: Edge Functions -- Agent Dispatch and Worker
+### 2. Navigation Restructure (`AppSidebar.tsx`)
 
-**Edge functions to create:**
-- `agent-dispatch`: Validates request, checks token budget, creates async job, triggers worker, returns job_id immediately
-- `agent-worker`: Loads skill from env var, retrieves knowledge chunks, calls AI (Lovable AI gateway initially, designed to swap to Claude), runs quality gate, stores output
+Current: Overview, **Agents**, Knowledge Base, History, Settings
 
-**Frontend wiring:**
-- `agentClient.ts` with `runAgent()`, `subscribeToJob()` functions
-- All submission forms call agent-dispatch via `supabase.functions.invoke()`
-- Error handling for token budget exceeded, API key not configured, agent not enabled
+New:
+```text
+Overview
+Departments (collapsible group)
+  - Sales        -> /departments/sales
+  - Marketing    -> /departments/marketing
+Capabilities     -> /capabilities
+Knowledge Base   -> /knowledge
+History          -> /history
+Settings         -> /settings
+```
 
-### Phase 4: Knowledge Base
+### 3. New Department Page (`/departments/:dept`)
 
-- Two-column layout: document library (left 40%) + document viewer/chunk inspector (right 60%)
-- Upload zone for PDF, DOCX, TXT (max 50MB)
-- Document list with status badges (processing/ready/failed)
-- Chunk viewer with type badges, token counts, quality scores
-- Semantic search with similarity sensitivity selector (Precise/Balanced/Creative)
-- Agent Outputs tab showing auto-saved agent results
-- `knowledge-ingest` Edge Function for structure-aware chunking
+Replaces the flat Agents grid. Shows:
+- Department name and description header
+- Agent sections within the department (e.g., "Researcher", "Content")
+- Under each agent: skill cards showing available skills
+- Clicking a skill opens a side sheet with a **dynamically generated form** based on `skill.inputs`
+- No more hardcoded per-agent form components
 
-### Phase 5: Admin Panel and Settings
+### 4. Dynamic Skill Form Component
 
-- Admin-only access guard (role check)
-- Settings tabs: General, API Key, Agent Configuration, Usage & Billing, Members
-- Vault-based API key storage (never plaintext in DB)
-- Usage charts (recharts)
-- Member management with role assignment
+A single `SkillForm.tsx` component that renders form fields from a skill's `inputs[]` array:
+- `text` -> Input
+- `textarea` -> Textarea  
+- `select` -> Select dropdown
+- `radio` -> RadioGroup
+- `multi-select` -> Checkbox group
 
-### Phase 6-8: IP Flywheel, White-Label, Polish
+This replaces all 5 hardcoded form files (`ResearcherForm.tsx`, `StrategistForm.tsx`, etc.).
 
-- Auto-save agent outputs to knowledge base
-- Branding config UI (logo, colors, custom agent names)
-- CSS custom property cascading for white-label colors
-- Loading skeletons, error states, empty states
-- Mobile responsive layout
-- Confirmation dialogs, toast notifications
+### 5. New Capabilities Page (`/capabilities`)
 
----
+Two sections:
+- **Skill Library**: Browse all skills, filter by department/agent, search by name. Each skill shows name, description, department badge, agent badge, input count.
+- **Skill Builder**: A form to create/edit a skill:
+  - Name, Description, Department (select), Agent Type (select)
+  - Dynamic input builder: add/remove/reorder form fields with name, label, type, required toggle, options (for select/radio)
+  - Prompt template editor (textarea with markdown support)
+  - Preview panel showing what the rendered form will look like
 
-## Data Model Changes
+### 6. Dashboard Updates
 
-**Remove entirely:**
-- Current `mock-data.ts` with its marketing/sales department model, Skills type, Agent type
+- Remove Pulse and Concierge agent shortcuts from the hero
+- Replace agent shortcuts with department shortcuts (Sales, Marketing) or top skills
+- Update mock jobs to remove pulse/concierge references
+- Update activity feed to show department context
 
-**Replace with:**
-- New types matching PRD schema: `Workspace`, `WorkspaceSettings`, `WorkspaceMember`, `AgentJob`, `KnowledgeDocument`, `KnowledgeChunk`
-- Agent types: `researcher | strategist | content | pulse | concierge`
-- Job statuses: `queued | running | complete | failed | retrying`
+### 7. File Cleanup
 
----
+**Delete**:
+- `src/components/agent-forms/PulseForm.tsx`
+- `src/components/agent-forms/ConciergeForm.tsx`
+- `src/components/agent-forms/ResearcherForm.tsx`
+- `src/components/agent-forms/StrategistForm.tsx`
+- `src/components/agent-forms/ContentForm.tsx`
+- `src/pages/Agents.tsx`
 
-## Pages to Remove
-- `/departments/:dept` -- no department pages in PRD
-- `/skills` -- no skills marketplace; skills are backend env vars
+**Create**:
+- `src/components/SkillForm.tsx` (dynamic form renderer)
+- `src/components/SkillBuilder.tsx` (skill creation/editing UI)
+- `src/pages/Department.tsx` (department view with agent sections + skill cards)
+- `src/pages/Capabilities.tsx` (skill library + builder)
 
-## Pages to Add
-- `/login`, `/signup`, `/onboarding`
-- `/agents` (the 5-agent card grid with submission forms)
-- `/jobs/:jobId` (job detail with real-time status)
-- `/history` (filterable job history table)
-- `/knowledge` (knowledge base with document library + search)
-
-## Pages to Heavily Rework
-- `/` (Dashboard) -- becomes Overview with hero, stat cards, activity feed
-- `/settings` -- becomes admin-only with 5 tabs per PRD
+**Modify**:
+- `src/data/mock-data.ts` (complete rewrite)
+- `src/components/AppSidebar.tsx` (new nav structure)
+- `src/App.tsx` (new routes)
+- `src/pages/Dashboard.tsx` (remove pulse/concierge, add department shortcuts)
+- `src/pages/History.tsx` (update filters for new agent types, add department column)
+- `src/pages/JobDetail.tsx` (update for new agent types)
+- `src/pages/Settings.tsx` (update agents tab for new agent list)
 
 ---
 
-## Implementation Priority
+## Technical Details
 
-For this first implementation pass, I will focus on **Phases 1-2** to establish the correct foundation and UI shell:
-
-1. Update the plan file to reflect the PRD
-2. Rewrite data types and mock data to match the 5-agent model
-3. Rebuild sidebar navigation (Overview, Agents, Knowledge Base, History, Settings)
-4. Rebuild Dashboard/Overview page per PRD spec
-5. Build Agents page with all 5 agent cards and submission forms
-6. Build Job Detail page with status indicators and output renderer
-7. Build History page with filters and pagination
-8. Build Knowledge Base page shell (UI ready, backend wired later)
-9. Rebuild Settings page with proper tabs
-
-Backend (Phases 3+) will follow once the UI shell is validated.
-
----
-
-## Technical Notes
-
-- All data fetching via React Query (TanStack Query)
-- Forms via react-hook-form + zod validation
-- Real-time via Supabase Realtime subscriptions
-- Date formatting via date-fns
-- Charts via Recharts
-- shadcn/ui components throughout
-- Dark theme maintained with the current color system
-- AI initially via Lovable AI gateway (google/gemini-3-flash-preview), architected to swap to Claude later
-
+- The Skill Builder stores skills in the mock data initially (will move to database later)
+- The dynamic form uses react-hook-form with programmatic field registration based on `skill.inputs`
+- Department pages use `useParams()` to get the department slug and filter skills accordingly
+- The sidebar uses SidebarGroup with collapsible department sub-items
+- `meeting-prep` is a new agent type specific to Sales (not a variant of Strategist)
