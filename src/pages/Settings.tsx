@@ -6,13 +6,23 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Key, Bot, BarChart3, Users } from "lucide-react";
+import { Building2, Key, Bot, BarChart3, Users, Palette, Sun, Moon, Monitor } from "lucide-react";
 import { agentDefinitions } from "@/data/mock-data";
+import { useTheme } from "next-themes";
+import { cn } from "@/lib/utils";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
+const themeOptions = [
+  { value: "light", label: "Light", icon: Sun, preview: "bg-white border-border" },
+  { value: "dark", label: "Dark", icon: Moon, preview: "bg-[hsl(240,15%,4%)] border-border" },
+  { value: "system", label: "System", icon: Monitor, preview: "bg-gradient-to-br from-white to-[hsl(240,15%,4%)] border-border" },
+] as const;
+
 export default function SettingsPage() {
+  const { theme, setTheme } = useTheme();
+
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-4xl">
       <motion.div variants={item}>
@@ -24,6 +34,7 @@ export default function SettingsPage() {
         <Tabs defaultValue="general" className="space-y-6">
           <TabsList className="bg-muted/50">
             <TabsTrigger value="general" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> General</TabsTrigger>
+            <TabsTrigger value="appearance" className="gap-1.5"><Palette className="h-3.5 w-3.5" /> Appearance</TabsTrigger>
             <TabsTrigger value="api" className="gap-1.5"><Key className="h-3.5 w-3.5" /> API Keys</TabsTrigger>
             <TabsTrigger value="agents" className="gap-1.5"><Bot className="h-3.5 w-3.5" /> Agents</TabsTrigger>
             <TabsTrigger value="usage" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Usage</TabsTrigger>
@@ -43,6 +54,35 @@ export default function SettingsPage() {
                   <Input defaultValue="Technology Consulting" className="bg-muted/50 border-border/50 max-w-sm" />
                 </div>
                 <Button size="sm">Save</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="appearance">
+            <Card className="glass-card">
+              <CardHeader><CardTitle className="text-lg">Appearance</CardTitle></CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">Choose your preferred color scheme.</p>
+                <div className="grid grid-cols-3 gap-4 max-w-md">
+                  {themeOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setTheme(opt.value)}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        theme === opt.value
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-muted-foreground/30"
+                      )}
+                    >
+                      <div className={cn("h-10 w-10 rounded-lg border", opt.preview)} />
+                      <div className="flex items-center gap-1.5 text-sm font-medium">
+                        <opt.icon className="h-3.5 w-3.5" />
+                        {opt.label}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
