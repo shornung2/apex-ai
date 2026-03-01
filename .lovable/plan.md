@@ -1,154 +1,149 @@
 
-
-# Wire Up Agent Execution Pipeline
+# Populate Skills Library, Click-to-Edit, Six-Step Builder, and Performance Fixes
 
 ## Overview
 
-Build the complete backend infrastructure so that when a user fills out a skill form and clicks "Run", the system dispatches the job, calls AI (grounded in Knowledge Base content), streams the result back, and stores everything persistently.
+Four workstreams in one implementation:
+1. Populate all 15 skills with full six-step data from the uploaded JSON files
+2. Click-to-edit skill cards in the Capabilities library
+3. Rebuild the Skill Builder as a six-step wizard
+4. Fix SSE streaming performance and token accuracy
 
 ---
 
-## Phase 1: Database Tables
+## 1. Database Schema Update + Skill Population
 
-Create the following tables with RLS policies:
+The uploaded skill JSONs have fields not in the current `skills` table schema. We need to add columns to support the full six-step structure, then seed all 15 skills.
 
-**`knowledge_documents`** -- uploaded docs and agent outputs
-- id (uuid, PK), title, content (text), doc_type ("upload" | "agent_output"), status ("processing" | "ready" | "failed"), tokens (int), created_at
+**Migration -- add columns to `skills` table:**
 
-**`knowledge_chunks`** -- chunked content for grounding
-- id (uuid, PK), document_id (FK -> knowledge_documents), content (text), chunk_index (int), tokens (int), created_at
+| New Column | Type | Default |
+|---|---|---|
+| display_name | text | null |
+| version | text | '1.0.0' |
+| system_prompt | text | '' |
+| tags | text[] | '{}' |
+| trigger_keywords | text[] | '{}' |
+| preferred_model | text | 'haiku' |
+| preferred_lane | text | 'simple_haiku' |
+| token_budget | integer | 10000 |
+| estimated_cost_usd | decimal(10,4) | null |
+| required_capabilities | text[] | '{}' |
+| web_search_enabled | boolean | false |
+| approval_required | boolean | false |
+| timeout_seconds | integer | 120 |
+| output_format | text | 'markdown' |
+| output_schema | jsonb | '{}' |
+| export_formats | text[] | '{}' |
+| updated_at | timestamptz | now() |
 
-**`agent_jobs`** -- every skill execution
-- id (uuid, PK), skill_id (text), agent_type (text), department (text), title (text), status (text, default "queued"), inputs (jsonb), output (text), tokens_used (int), confidence_score (int), created_at, completed_at
-- Enable realtime on this table for live status updates
+The existing `prompt_template` column currently holds a fill-in template like "Research {{company_name}}...". The new `system_prompt` column holds the full agent instructions from step_4. The `prompt_template` will continue to be auto-generated from inputs when not explicitly set.
 
-**`skills`** -- user-created skills from the Skill Builder
-- id (uuid, PK), name, description, department (text), agent_type (text), emoji, inputs (jsonb), prompt_template (text), is_system (bool, default false), created_at
+**Seed all 15 skills** using the SQL seed data, inserting the system prompts from each JSON file. Each skill gets `is_system = true`. The seed uses the full six-step data: identity, routing, inputs (as JSONB), system_prompt, behavior config, and output config.
 
-All tables will have RLS enabled. Initially policies will allow all authenticated users full access (auth will be added in a follow-up phase). For now, anon read/write will be permitted to keep the app functional without login.
+**Update `SkillInput` type** in `mock-data.ts` to add optional `hint`, `default`, and `url` type support (matching the JSON structure with `field` mapping to `name`).
 
----
+**Update `Skill` type** to include all new optional fields: `systemPrompt`, `tags`, `triggerKeywords`, `tokenBudget`, `estimatedCost`, `webSearchEnabled`, `approvalRequired`, `outputSchema`, `exportFormats`, `requiredCapabilities`, `timeoutSeconds`, `preferredModel`, `preferredLane`.
 
-## Phase 2: Edge Function -- `agent-dispatch`
-
-**Path:** `supabase/functions/agent-dispatch/index.ts`
-
-Receives a skill execution request from the frontend:
-```text
-POST { skillId, skillName, agentType, department, title, inputs, promptTemplate }
-```
-
-Steps:
-1. Insert a new row into `agent_jobs` with status "queued"
-2. Retrieve relevant knowledge chunks by searching `knowledge_chunks` for content related to the input values (simple text matching initially -- semantic search later)
-3. Build the full prompt:
-   - System prompt sets agent persona based on `agentType` (Researcher = analytical, Strategist = strategic, Content = writer, Meeting Prep = coach)
-   - Inject matched knowledge chunks as grounding context
-   - Fill the skill's `promptTemplate` with the user's input values
-4. Update job status to "running"
-5. Call Lovable AI gateway (google/gemini-3-flash-preview) with streaming
-6. Stream the response back to the client as SSE
-7. On completion: update `agent_jobs` with output, tokens_used, status "complete", completed_at
-8. On error: update status to "failed"
+**Remove hardcoded skills array** from `mock-data.ts` -- skills will be fetched from the database exclusively.
 
 ---
 
-## Phase 3: Frontend Wiring
+## 2. Click-to-Edit Skill Cards
 
-### Agent client utility (`src/lib/agent-client.ts`)
-- `runSkill(skill, inputs)` -- calls agent-dispatch edge function, returns a readable stream
-- `subscribeToJob(jobId, callback)` -- subscribes to realtime changes on `agent_jobs` for live status
-
-### Update `SkillForm.tsx` / `Department.tsx`
-- On form submit: call `runSkill()`, create a job, navigate to `/jobs/:jobId`
-- Show toast: "Job submitted -- redirecting to results..."
-
-### Update `JobDetail.tsx`
-- Fetch job from `agent_jobs` table instead of mock data
-- Subscribe to realtime updates for status changes
-- Stream output rendering: show tokens as they arrive using the SSE stream
-- "Save to KB" button: inserts the output into `knowledge_documents` as type "agent_output"
-- "Re-run" button: re-submits the same skill + inputs
-
-### Update `History.tsx`
-- Fetch from `agent_jobs` table with filters and pagination
-- Replace mock data with real queries
-
-### Update `Dashboard.tsx`
-- Stat cards query real counts from `agent_jobs` and `knowledge_documents`
-- Recent activity from `agent_jobs` ordered by created_at desc, limit 5
-
-### Update `Capabilities.tsx` -- Skill Builder persistence
-- "Save Skill" button inserts into the `skills` table
-- Skill Library fetches from both hardcoded skills AND database skills (merged)
-- Delete/edit support for user-created skills (is_system = false)
-
-### Update `Knowledge.tsx`
-- Upload functionality using Supabase storage (create a `documents` bucket)
-- Document list from `knowledge_documents` table
-- Basic content viewer when clicking a document
+**In `Capabilities.tsx`:**
+- Change `Tabs` from `defaultValue` to controlled `value` + `onValueChange`
+- Add `editingSkillId` state
+- When a skill card is clicked in the Library: populate all builder state from that skill, switch to the "builder" tab
+- Show "Update Skill" instead of "Save Skill" when editing
+- For database skills, update the existing record via `supabase.from("skills").update(...)`
+- Add a "Cancel / New Skill" button to reset the form
 
 ---
 
-## Phase 4: Agent Persona System Prompts
+## 3. Six-Step Skill Builder Wizard
 
-Each agent type gets a tailored system prompt that defines its behavior:
+Replace the current flat form with a stepped wizard matching the uploaded JSON structure:
 
-- **Researcher**: "You are a research analyst. Produce structured, factual analysis with citations and confidence ratings. Use the provided knowledge base context to ground your findings."
-- **Strategist**: "You are a strategic advisor. Produce actionable frameworks, risk assessments, and next-step recommendations. Reference the knowledge base for organizational context."
-- **Content**: "You are a professional business writer. Produce polished, on-brand content. Adapt tone and format to the request. Use knowledge base materials for accuracy."
-- **Meeting Prep**: "You are a sales coaching advisor. Produce meeting agendas, discovery questions, objection handling scripts, and talk tracks. Use knowledge base intel on the prospect."
+| Step | Name | Fields |
+|---|---|---|
+| 1 | Identity | Name, emoji, display name, version, description |
+| 2 | Routing | Department, Agent type, tags, trigger keywords, preferred model, preferred lane |
+| 3 | Inputs | Dynamic field builder with name, type, required, placeholder, hint, default, options |
+| 4 | System Prompt | Large markdown textarea for the skill's core AI instructions |
+| 5 | Behavior | Token budget, estimated cost, timeout, capabilities toggles (web search, knowledge search, memory), approval required |
+| 6 | Output | Output format, title template, sections list, export formats, shareable toggle |
 
-All prompts include: "Use the following knowledge base context to ground your response. If the context is relevant, incorporate it. If not, proceed with your best judgment."
-
----
-
-## Knowledge Grounding Flow
-
-```text
-User submits skill form
-        |
-        v
-agent-dispatch receives inputs
-        |
-        v
-Extract key terms from inputs (company names, topics, etc.)
-        |
-        v
-Query knowledge_chunks WHERE content ILIKE any key term
-        |
-        v
-Inject top 5 matching chunks into system prompt as "CONTEXT"
-        |
-        v
-Fill promptTemplate with input values -> user message
-        |
-        v
-Call AI with [system + context, user message]
-        |
-        v
-Stream response -> store in agent_jobs
-```
+**Implementation details:**
+- Add `builderStep` state (1-6)
+- Step indicator bar at top with numbered circles and connecting lines
+- Next/Back buttons at bottom
+- Per-step validation: Step 1 requires name; Step 2 requires department + agent; Step 3 requires at least 1 input; Step 4 requires system prompt
+- Step 6 shows summary and Save/Update button
+- Preview panel on the right continues to update live
+- New state fields for all six-step data
 
 ---
 
-## File Changes Summary
+## 4. Performance Fix -- SSE Streaming
 
-**Create:**
-- `supabase/functions/agent-dispatch/index.ts` -- main execution edge function
-- `src/lib/agent-client.ts` -- frontend agent API utilities
+**Root cause:** When user clicks "Run" on Department page, `runSkill()` starts an SSE fetch with no abort mechanism. After navigation to `/jobs/:id`, the stream keeps running in the background, causing browser hang.
 
-**Modify:**
-- `src/pages/Department.tsx` -- wire form submit to agent-dispatch
-- `src/pages/JobDetail.tsx` -- fetch from DB, realtime, streaming output
-- `src/pages/History.tsx` -- query agent_jobs table
-- `src/pages/Dashboard.tsx` -- real metrics from DB
-- `src/pages/Capabilities.tsx` -- persist skills to DB
-- `src/pages/Knowledge.tsx` -- upload + fetch documents
-- `src/components/SkillForm.tsx` -- loading/streaming state
+**Fix in `src/lib/agent-client.ts`:**
+- Return an `AbortController` from `runSkill()` so callers can cancel
+- Add `signal` to the fetch call
 
-**Database migrations:**
-- Create `knowledge_documents`, `knowledge_chunks`, `agent_jobs`, `skills` tables
-- Create storage bucket `documents`
-- Enable realtime on `agent_jobs`
+**Fix in `src/pages/Department.tsx`:**
+- Create `AbortController` before calling `runSkill()`
+- In `onJobId` callback, call `controller.abort()` after navigating away
 
+**Token accuracy fix in `supabase/functions/agent-dispatch/index.ts`:**
+- Add `stream_options: { include_usage: true }` to the AI gateway request body for accurate token counts
+
+**Update edge function to use skill's `system_prompt`:**
+- Instead of generic agent persona strings, use the skill's dedicated `system_prompt` from the database when available
+- Fall back to agent persona if no skill-specific system prompt exists
+
+---
+
+## 5. Update Department Page to Fetch from Database
+
+Since skills will now live in the database instead of hardcoded mock data:
+- `Department.tsx` fetches skills from the `skills` table filtered by department
+- Falls back gracefully if no skills exist yet
+
+---
+
+## 6. Update Agent Dispatch Edge Function
+
+- Accept optional `systemPrompt` field from the frontend (the skill's step_4 system prompt)
+- When present, use it as the primary system prompt instead of the generic agent persona
+- Still inject knowledge base context as before
+- Still fall back to agent persona if no skill system prompt provided
+
+---
+
+## Files Changed
+
+**Database:**
+- Migration: ALTER TABLE skills ADD COLUMN for all new six-step fields
+- Seed: INSERT 15 skills with full data from uploaded JSONs
+
+**Create/Modify:**
+- `src/data/mock-data.ts` -- Extended types, remove hardcoded skills array, keep agent/department definitions
+- `src/pages/Capabilities.tsx` -- Six-step wizard, click-to-edit, controlled tabs, fetch skills from DB
+- `src/pages/Department.tsx` -- Fetch skills from DB, abort stream on navigation
+- `src/lib/agent-client.ts` -- AbortController support, pass systemPrompt
+- `supabase/functions/agent-dispatch/index.ts` -- stream_options for tokens, accept skill system_prompt
+
+---
+
+## Sequencing
+
+1. Database migration (add columns)
+2. Seed 15 skills
+3. Update mock-data.ts types (remove hardcoded skills)
+4. Update agent-client.ts (AbortController + systemPrompt passthrough)
+5. Update agent-dispatch edge function (stream_options + skill system prompt)
+6. Update Department.tsx (fetch from DB + abort)
+7. Rebuild Capabilities.tsx (six-step wizard + click-to-edit + fetch from DB)
