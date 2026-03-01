@@ -37,7 +37,7 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    const { skillId, skillName, agentType, department, title, inputs, promptTemplate } = await req.json();
+    const { skillId, skillName, agentType, department, title, inputs, promptTemplate, systemPrompt } = await req.json();
 
     // 1. Insert job as queued
     const { data: job, error: insertError } = await supabase
@@ -91,7 +91,8 @@ serve(async (req) => {
       filledTemplate = filledTemplate.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value as string);
     }
 
-    const systemPrompt = (AGENT_PERSONAS[agentType] || AGENT_PERSONAS.researcher) + knowledgeContext;
+    const systemPromptText = systemPrompt || (AGENT_PERSONAS[agentType] || AGENT_PERSONAS.researcher);
+    const finalSystemPrompt = systemPromptText + knowledgeContext;
 
     // 4. Update status to running
     await supabase.from("agent_jobs").update({ status: "running" }).eq("id", jobId);
@@ -106,10 +107,11 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: finalSystemPrompt },
           { role: "user", content: filledTemplate },
         ],
         stream: true,
+        stream_options: { include_usage: true },
       }),
     });
 

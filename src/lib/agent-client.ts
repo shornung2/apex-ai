@@ -10,9 +10,10 @@ export interface RunSkillOptions {
   onJobId: (jobId: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
-export async function runSkill({ skill, inputs, onDelta, onJobId, onDone, onError }: RunSkillOptions) {
+export async function runSkill({ skill, inputs, onDelta, onJobId, onDone, onError, signal }: RunSkillOptions) {
   try {
     const resp = await fetch(DISPATCH_URL, {
       method: "POST",
@@ -25,10 +26,12 @@ export async function runSkill({ skill, inputs, onDelta, onJobId, onDone, onErro
         skillName: skill.name,
         agentType: skill.agentType,
         department: skill.department,
-        title: `${skill.name}: ${Object.values(inputs).filter(Boolean).slice(0, 2).join(", ")}`,
+        title: `${skill.displayName || skill.name}: ${Object.values(inputs).filter(Boolean).slice(0, 2).join(", ")}`,
         inputs,
         promptTemplate: skill.promptTemplate,
+        systemPrompt: skill.systemPrompt || "",
       }),
+      signal,
     });
 
     if (!resp.ok) {
@@ -46,35 +49,41 @@ export async function runSkill({ skill, inputs, onDelta, onJobId, onDone, onErro
     const decoder = new TextDecoder();
     let buffer = "";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
 
-      let newlineIdx: number;
-      while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
-        let line = buffer.slice(0, newlineIdx);
-        buffer = buffer.slice(newlineIdx + 1);
-        if (line.endsWith("\r")) line = line.slice(0, -1);
-        if (line.startsWith(":") || line.trim() === "") continue;
-        if (!line.startsWith("data: ")) continue;
-        const jsonStr = line.slice(6).trim();
-        if (jsonStr === "[DONE]") {
-          onDone();
-          return;
-        }
-        try {
-          const parsed = JSON.parse(jsonStr);
-          if (parsed.jobId) onJobId(parsed.jobId);
-          if (parsed.content) onDelta(parsed.content);
-        } catch {
-          // partial JSON
+        let newlineIdx: number;
+        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIdx);
+          buffer = buffer.slice(newlineIdx + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") {
+            onDone();
+            return;
+          }
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.jobId) onJobId(parsed.jobId);
+            if (parsed.content) onDelta(parsed.content);
+          } catch {
+            // partial JSON
+          }
         }
       }
+    } catch (e) {
+      if (signal?.aborted) return; // expected abort
+      throw e;
     }
 
     onDone();
   } catch (e) {
+    if (signal?.aborted) return; // expected abort
     onError(e instanceof Error ? e.message : "Network error");
   }
 }
