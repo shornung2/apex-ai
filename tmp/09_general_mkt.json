@@ -1,0 +1,75 @@
+{
+  "skill_builder_version": "1.0",
+  "step_1_identity": {
+    "name": "general_marketing_content",
+    "display_name": "General Marketing Content",
+    "version": "1.0.0",
+    "description": "Any marketing content not covered by other skills — flexible and open-ended.",
+    "icon": "layout",
+    "department": "Marketing",
+    "agent_type": "Content"
+  },
+  "step_2_routing": {
+    "tags": ["content", "marketing", "flexible", "general"],
+    "preferred_lane": "simple_haiku",
+    "preferred_model": "haiku",
+    "trigger_keywords": [
+      "create content", "write marketing", "marketing materials",
+      "content for", "draft marketing", "create marketing",
+      "event description", "bio", "speaker notes", "FAQ"
+    ]
+  },
+  "step_3_inputs": {
+    "inputs": [
+      {
+        "field": "content_request",
+        "label": "What Do You Need?",
+        "type": "textarea",
+        "required": true,
+        "placeholder": "Describe what you need — the type of content, what it should say, who it's for",
+        "hint": "Be as specific or general as you like — I'll ask clarifying questions if needed"
+      },
+      {
+        "field": "brand_voice",
+        "label": "Brand Voice / Tone",
+        "type": "select",
+        "required": false,
+        "options": ["Solutionment Standard (Professional, Direct, Confident)", "Conversational & Approachable", "Technical & Precise", "Executive / Formal", "Energetic & Promotional"],
+        "default": "Solutionment Standard (Professional, Direct, Confident)"
+      },
+      {
+        "field": "reference_material",
+        "label": "Reference Material",
+        "type": "textarea",
+        "required": false,
+        "placeholder": "Paste any background info, previous versions, or examples to guide the output",
+        "hint": "Optional but helpful context"
+      }
+    ],
+    "total_inputs": 3,
+    "required_count": 2
+  },
+  "step_4_system_prompt": {
+    "system_prompt": "You are a versatile marketing content creator for Solutionment, a B2B consulting firm specializing in presales transformation and AI-enabled sales processes.\n\nYou can handle any marketing content request that doesn't fit neatly into a specialized skill — event descriptions, speaker bios, award submissions, FAQs, sales sheets, capability summaries, talking points, meeting agendas, presentation narratives, and more.\n\n**How you approach every request:**\n\n1. Understand what's actually needed — read the request carefully and identify the real goal, not just the literal ask\n2. Apply the right format — structure the content appropriately for how it will be used\n3. Use Solutionment's brand voice — confident, direct, experienced, practical; never corporate-speak or hype\n4. Make it usable immediately — produce clean, polished output that requires minimal editing\n5. Offer alternatives when useful — if there are 2-3 distinct approaches, briefly describe them or produce variations\n\n**Solutionment brand context:**\n- B2B consulting firm focused on presales transformation\n- Ultimate Solutioneer methodology at the core\n- AI-enabled processes and platforms\n- Clients are enterprise and mid-market B2B companies\n- Voice: knowledgeable practitioner, not vendor; peer-to-peer, not talking down\n\nIf the request is vague, proceed with the most reasonable interpretation and note your assumption at the top. Better to produce something and adjust than to ask multiple clarifying questions."
+  },
+  "step_5_behavior": {
+    "token_budget": 8000,
+    "estimated_cost_usd": 0.02,
+    "required_capabilities": ["knowledge_search"],
+    "web_search_enabled": false,
+    "memory_read": true,
+    "memory_write": false,
+    "approval_required": false,
+    "timeout_seconds": 60
+  },
+  "step_6_output": {
+    "output_format": "markdown",
+    "output_schema": {
+      "title": "Marketing Content",
+      "sections": ["primary_content", "alternatives_if_any"],
+      "metadata": ["word_count", "content_type"]
+    },
+    "shareable": true,
+    "export_formats": ["markdown", "docx", "txt"]
+  }
+}

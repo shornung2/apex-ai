@@ -127,39 +127,90 @@ export type Database = {
       skills: {
         Row: {
           agent_type: string
+          approval_required: boolean
           created_at: string
           department: string
           description: string | null
+          display_name: string | null
           emoji: string | null
+          estimated_cost_usd: number | null
+          export_formats: string[]
           id: string
           inputs: Json
           is_system: boolean
           name: string
+          output_format: string
+          output_schema: Json
+          preferred_lane: string
+          preferred_model: string
           prompt_template: string
+          required_capabilities: string[]
+          system_prompt: string
+          tags: string[]
+          timeout_seconds: number
+          token_budget: number
+          trigger_keywords: string[]
+          updated_at: string
+          version: string
+          web_search_enabled: boolean
         }
         Insert: {
           agent_type: string
+          approval_required?: boolean
           created_at?: string
           department: string
           description?: string | null
+          display_name?: string | null
           emoji?: string | null
+          estimated_cost_usd?: number | null
+          export_formats?: string[]
           id?: string
           inputs?: Json
           is_system?: boolean
           name: string
+          output_format?: string
+          output_schema?: Json
+          preferred_lane?: string
+          preferred_model?: string
           prompt_template?: string
+          required_capabilities?: string[]
+          system_prompt?: string
+          tags?: string[]
+          timeout_seconds?: number
+          token_budget?: number
+          trigger_keywords?: string[]
+          updated_at?: string
+          version?: string
+          web_search_enabled?: boolean
         }
         Update: {
           agent_type?: string
+          approval_required?: boolean
           created_at?: string
           department?: string
           description?: string | null
+          display_name?: string | null
           emoji?: string | null
+          estimated_cost_usd?: number | null
+          export_formats?: string[]
           id?: string
           inputs?: Json
           is_system?: boolean
           name?: string
+          output_format?: string
+          output_schema?: Json
+          preferred_lane?: string
+          preferred_model?: string
           prompt_template?: string
+          required_capabilities?: string[]
+          system_prompt?: string
+          tags?: string[]
+          timeout_seconds?: number
+          token_budget?: number
+          trigger_keywords?: string[]
+          updated_at?: string
+          version?: string
+          web_search_enabled?: boolean
         }
         Relationships: []
       }
