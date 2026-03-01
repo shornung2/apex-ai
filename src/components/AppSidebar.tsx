@@ -1,12 +1,11 @@
 import {
   LayoutDashboard,
-  Megaphone,
-  TrendingUp,
-  Sparkles,
-  Activity,
+  Bot,
+  BookOpen,
+  Clock,
   Settings,
-  ChevronDown,
   Zap,
+  LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -23,21 +22,14 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
+import { dashboardMetrics } from "@/data/mock-data";
 
-const mainItems = [
-  { title: "Command Center", url: "/", icon: LayoutDashboard },
-  { title: "Skills Marketplace", url: "/skills", icon: Sparkles },
-  { title: "Agent Activity", url: "/activity", icon: Activity },
-];
-
-const departmentItems = [
-  { title: "Marketing", url: "/departments/marketing", icon: Megaphone },
-  { title: "Sales", url: "/departments/sales", icon: TrendingUp },
+const navItems = [
+  { title: "Overview", url: "/", icon: LayoutDashboard },
+  { title: "Agents", url: "/agents", icon: Bot },
+  { title: "Knowledge Base", url: "/knowledge", icon: BookOpen },
+  { title: "History", url: "/history", icon: Clock },
 ];
 
 const bottomItems = [
@@ -47,10 +39,12 @@ const bottomItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
-  const currentPath = location.pathname;
 
-  const isDeptActive = departmentItems.some((i) => currentPath.startsWith(i.url));
+  const tokenPercent = Math.round(
+    (dashboardMetrics.tokensUsed / dashboardMetrics.tokenBudget) * 100
+  );
+  const tokenColor =
+    tokenPercent > 80 ? "bg-destructive" : tokenPercent > 60 ? "bg-amber-500" : "bg-emerald-500";
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">
@@ -71,11 +65,11 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground/60 text-[10px] uppercase tracking-widest">
-            Overview
+            Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainItems.map((item) => (
+              {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -93,40 +87,25 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <SidebarGroup>
-          <Collapsible defaultOpen={isDeptActive || true}>
-            <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="text-muted-foreground/60 text-[10px] uppercase tracking-widest cursor-pointer flex items-center justify-between w-full">
-                Departments
-                {!collapsed && <ChevronDown className="h-3 w-3" />}
-              </SidebarGroupLabel>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {departmentItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url}
-                          className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                          activeClassName="bg-sidebar-accent text-primary font-medium"
-                        >
-                          <item.icon className="h-4 w-4" />
-                          {!collapsed && <span>{item.title}</span>}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="space-y-3">
+        {/* Token usage bar */}
+        {!collapsed && (
+          <div className="px-3 space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+              <span>Token Usage</span>
+              <span>{dashboardMetrics.tokensUsed.toLocaleString()} / {dashboardMetrics.tokenBudget.toLocaleString()}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${tokenColor}`}
+                style={{ width: `${tokenPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         <SidebarMenu>
           {bottomItems.map((item) => (
             <SidebarMenuItem key={item.title}>

@@ -5,9 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import Dashboard from "./pages/Dashboard";
-import Department from "./pages/Department";
-import Skills from "./pages/Skills";
-import Activity from "./pages/Activity";
+import Agents from "./pages/Agents";
+import History from "./pages/History";
+import JobDetail from "./pages/JobDetail";
+import Knowledge from "./pages/Knowledge";
 import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -22,9 +23,10 @@ const App = () => (
         <AppLayout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/departments/:dept" element={<Department />} />
-            <Route path="/skills" element={<Skills />} />
-            <Route path="/activity" element={<Activity />} />
+            <Route path="/agents" element={<Agents />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/jobs/:jobId" element={<JobDetail />} />
+            <Route path="/knowledge" element={<Knowledge />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

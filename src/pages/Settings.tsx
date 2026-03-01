@@ -1,97 +1,122 @@
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Building2, Key, Sparkles, Bell } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Building2, Key, Bot, BarChart3, Users } from "lucide-react";
+import { agentDefinitions } from "@/data/mock-data";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
 export default function SettingsPage() {
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8 max-w-3xl">
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-4xl">
       <motion.div variants={item}>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your organization and preferences</p>
+        <p className="text-muted-foreground mt-1">Workspace configuration and administration</p>
       </motion.div>
 
-      {/* Organization */}
       <motion.div variants={item}>
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /> Organization</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Company Name</Label>
-              <Input defaultValue="Solutionment" className="bg-muted/50 border-border/50" />
-            </div>
-            <div className="space-y-2">
-              <Label>Industry</Label>
-              <Input defaultValue="Technology Consulting" className="bg-muted/50 border-border/50" />
-            </div>
-            <Button size="sm">Save Changes</Button>
-          </CardContent>
-        </Card>
-      </motion.div>
+        <Tabs defaultValue="general" className="space-y-6">
+          <TabsList className="bg-muted/50">
+            <TabsTrigger value="general" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> General</TabsTrigger>
+            <TabsTrigger value="api" className="gap-1.5"><Key className="h-3.5 w-3.5" /> API Keys</TabsTrigger>
+            <TabsTrigger value="agents" className="gap-1.5"><Bot className="h-3.5 w-3.5" /> Agents</TabsTrigger>
+            <TabsTrigger value="usage" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Usage</TabsTrigger>
+            <TabsTrigger value="members" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Members</TabsTrigger>
+          </TabsList>
 
-      {/* API Keys */}
-      <motion.div variants={item}>
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2"><Key className="h-4 w-4 text-primary" /> API Keys & Integrations</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">External service connections will be configured here.</p>
-            <Button variant="outline" size="sm" disabled>Add Integration</Button>
-          </CardContent>
-        </Card>
-      </motion.div>
+          <TabsContent value="general">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-lg">Workspace</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Workspace Name</Label>
+                  <Input defaultValue="Solutionment" className="bg-muted/50 border-border/50 max-w-sm" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Industry</Label>
+                  <Input defaultValue="Technology Consulting" className="bg-muted/50 border-border/50 max-w-sm" />
+                </div>
+                <Button size="sm">Save</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      {/* Skill Management */}
-      <motion.div variants={item}>
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Skill Management</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {["Company/Market Research", "Content Generation", "Lead Research & Scoring", "Proposal/SOW Drafting"].map((skill) => (
-              <div key={skill} className="flex items-center justify-between">
-                <span className="text-sm">{skill}</span>
-                <Switch defaultChecked />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </motion.div>
+          <TabsContent value="api">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-lg">API Keys & Integrations</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  API keys are securely stored and never exposed in the client. Configure them through Lovable Cloud.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <div>
+                      <p className="text-sm font-medium">AI Gateway</p>
+                      <p className="text-xs text-muted-foreground">Connected via Lovable AI</p>
+                    </div>
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Active</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      {/* Preferences */}
-      <motion.div variants={item}>
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2"><Bell className="h-4 w-4 text-primary" /> Preferences</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Email Notifications</p>
-                <p className="text-xs text-muted-foreground">Receive alerts for task completions</p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-            <Separator className="bg-border/50" />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Auto-approve tasks</p>
-                <p className="text-xs text-muted-foreground">Skip human review for low-risk tasks</p>
-              </div>
-              <Switch />
-            </div>
-          </CardContent>
-        </Card>
+          <TabsContent value="agents">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-lg">Agent Configuration</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {agentDefinitions.map((agent) => (
+                  <div key={agent.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{agent.emoji}</span>
+                      <div>
+                        <p className="text-sm font-medium">{agent.name}</p>
+                        <p className="text-xs text-muted-foreground">{agent.type}</p>
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="usage">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-lg">Usage & Billing</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Usage charts and billing details will appear here once connected to the backend.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="members">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-lg">Workspace Members</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">Member management will be available after authentication is configured.</p>
+                <Button variant="outline" size="sm" disabled>Invite Member</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </motion.div>
     </motion.div>
   );
