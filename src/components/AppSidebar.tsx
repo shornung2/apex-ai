@@ -10,9 +10,10 @@ import {
   FolderOpen,
   HelpCircle,
   CalendarClock,
+  LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,8 +62,14 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
   const deptOpen = location.pathname.startsWith("/departments");
   const { resolvedTheme } = useTheme();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   const [tokensUsed, setTokensUsed] = useState<number | null>(null);
 
@@ -175,6 +182,12 @@ export function AppSidebar() {
         )}
         <SidebarMenu>
           {bottomItems.map((item) => renderNavItem(item))}
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={handleSignOut}>
+              <LogOut className="h-4 w-4" />
+              {!collapsed && <span>Sign Out</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
