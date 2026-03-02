@@ -238,6 +238,42 @@ Create custom skills with the guided wizard:
 - Upload documents to the Knowledge Base first — Alex will use them to give more relevant answers.
 - On Telegram, use \`/clear\` if Alex's responses seem off-track.`,
   },
+  {
+    id: "scheduled-tasks",
+    title: "Scheduled Tasks",
+    content: `Automate any eligible skill to run on a recurring schedule — daily, weekly, monthly, or with a custom cron expression.
+
+### Which Skills Can Be Scheduled?
+
+Skills that produce useful output when re-run with the same inputs are marked as "schedulable." Examples include Company Research, Market Trends, Social Media Posts, and Blog Articles. You can also mark custom skills as schedulable in the Skill Builder (Step 5: Behavior).
+
+### Creating a Scheduled Task
+
+1. Go to **Tasks** in the sidebar (or click "View all" on the Dashboard's Scheduled Tasks card).
+2. Click **New Task**.
+3. **Select a Skill** — only schedulable skills appear.
+4. **Fill Inputs** — provide the inputs the skill needs (same form as running it manually).
+5. **Set Schedule** — choose frequency (Once, Daily, Weekly, Monthly, Custom) and time.
+6. **Name & Confirm** — give it a name and create.
+
+### Managing Tasks
+
+- **Pause/Resume** — click the pause icon to temporarily stop a task.
+- **Delete** — remove a task entirely.
+- **View Last Run** — click to see the output of the most recent execution.
+- Each task card shows its schedule, status, next run time, and total run count.
+
+### Dashboard Integration
+
+The Overview dashboard shows up to 3 upcoming scheduled tasks with their next run times. Click "View all" to go to the full Tasks page.
+
+### Tips
+
+- All times are in UTC.
+- Tasks run hourly — the system checks each hour for due tasks.
+- "Once" tasks automatically move to "Completed" after running.
+- Paused tasks are skipped until resumed.`,
+  },
 ];
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.04 } } };

@@ -89,6 +89,7 @@ export default function Capabilities() {
   const [builderWebSearch, setBuilderWebSearch] = useState(false);
   const [builderApprovalRequired, setBuilderApprovalRequired] = useState(false);
   const [builderCapabilities, setBuilderCapabilities] = useState<string[]>([]);
+  const [builderSchedulable, setBuilderSchedulable] = useState(false);
   // Step 6: Output
   const [builderOutputFormat, setBuilderOutputFormat] = useState("markdown");
   const [builderExportFormats, setBuilderExportFormats] = useState("");
@@ -120,7 +121,7 @@ export default function Capabilities() {
     setBuilderDept(""); setBuilderAgent(""); setBuilderTags(""); setBuilderTriggerKeywords(""); setBuilderPreferredModel("haiku"); setBuilderPreferredLane("simple_haiku");
     setBuilderInputs([]);
     setBuilderSystemPrompt("");
-    setBuilderTokenBudget(10000); setBuilderEstimatedCost(""); setBuilderTimeout(120); setBuilderWebSearch(false); setBuilderApprovalRequired(false); setBuilderCapabilities([]);
+    setBuilderTokenBudget(10000); setBuilderEstimatedCost(""); setBuilderTimeout(120); setBuilderWebSearch(false); setBuilderApprovalRequired(false); setBuilderCapabilities([]); setBuilderSchedulable(false);
     setBuilderOutputFormat("markdown"); setBuilderExportFormats(""); setBuilderOutputTitle(""); setBuilderOutputSections("");
   };
 
@@ -146,6 +147,7 @@ export default function Capabilities() {
     setBuilderWebSearch(skill.webSearchEnabled || false);
     setBuilderApprovalRequired(skill.approvalRequired || false);
     setBuilderCapabilities(skill.requiredCapabilities || []);
+    setBuilderSchedulable((skill as any).schedulable || false);
     setBuilderOutputFormat(skill.outputFormat || "markdown");
     setBuilderExportFormats((skill.exportFormats || []).join(", "));
     setBuilderOutputTitle(skill.outputSchema?.title || "");
@@ -222,6 +224,7 @@ export default function Capabilities() {
       output_schema: { title: builderOutputTitle, sections },
       export_formats: exportFormats,
       is_system: false,
+      schedulable: builderSchedulable,
     };
 
     let error;
@@ -574,6 +577,10 @@ export default function Capabilities() {
                         <div className="flex items-center gap-1.5 pt-2">
                           <Switch checked={builderApprovalRequired} onCheckedChange={setBuilderApprovalRequired} />
                           <span className="text-xs text-muted-foreground">Require Approval Before Delivery</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 pt-2">
+                          <Switch checked={builderSchedulable} onCheckedChange={setBuilderSchedulable} />
+                          <span className="text-xs text-muted-foreground">Schedulable (can be automated via Tasks)</span>
                         </div>
                       </div>
                     </>
