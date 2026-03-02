@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { subscribeToJob } from "@/lib/agent-client";
 import { agentDefinitions, departmentDefinitions, type Department } from "@/data/mock-data";
-import { ArrowLeft, Copy, BookOpen, RotateCcw, CheckCircle, XCircle, Loader2, Clock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Copy, BookOpen, RotateCcw, CheckCircle, XCircle, Loader2, Clock, AlertTriangle, FileDown, Presentation } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
 import { SaveToLibraryDialog } from "@/components/SaveToLibraryDialog";
@@ -171,6 +171,28 @@ export default function JobDetail() {
           </Card>
         )}
       </motion.div>
+
+      {/* Download button for deck jobs */}
+      {job.file_url && (
+        <motion.div variants={item}>
+          <Card className="glass-card border-primary/20">
+            <CardContent className="p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Presentation className="h-6 w-6 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold">PowerPoint Deck Ready</p>
+                  <p className="text-xs text-muted-foreground">Download your generated presentation</p>
+                </div>
+              </div>
+              <Button asChild>
+                <a href={job.file_url} download target="_blank" rel="noopener noreferrer">
+                  <FileDown className="h-4 w-4 mr-2" /> Download .pptx
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Output */}
       {job.status === "running" && !job.output && (

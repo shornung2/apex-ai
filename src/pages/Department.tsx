@@ -15,7 +15,7 @@ import {
   type Skill,
 } from "@/data/mock-data";
 import { SkillForm } from "@/components/SkillForm";
-import { runSkill } from "@/lib/agent-client";
+import { runSkill, runDeckSkill } from "@/lib/agent-client";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -53,10 +53,28 @@ export default function Department() {
     fetchSkills();
   }, [department, isValidDept]);
 
-  const handleSubmit = (data: Record<string, string>) => {
+  const handleSubmit = async (data: Record<string, string>) => {
     if (!selectedSkill) return;
     setIsRunning(true);
 
+    // Deck generation flow (pptx output)
+    if (selectedSkill.outputFormat === "pptx") {
+      try {
+        const deckType = selectedSkill.name.toLowerCase().includes("proposal") ? "proposal" : "capabilities";
+        toast({ title: "Generating deck...", description: "This may take 30-60 seconds." });
+        const result = await runDeckSkill({ skill: selectedSkill, inputs: data, deckType });
+        setSelectedSkill(null);
+        setIsRunning(false);
+        toast({ title: "Deck ready!", description: `${result.slideCount} slides generated.` });
+        navigate(`/jobs/${result.jobId}`);
+      } catch (e) {
+        setIsRunning(false);
+        toast({ title: "Error", description: e instanceof Error ? e.message : "Deck generation failed", variant: "destructive" });
+      }
+      return;
+    }
+
+    // Standard streaming flow
     const controller = new AbortController();
     abortRef.current = controller;
 

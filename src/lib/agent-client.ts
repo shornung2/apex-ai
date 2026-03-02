@@ -88,6 +88,40 @@ export async function runSkill({ skill, inputs, onDelta, onJobId, onDone, onErro
   }
 }
 
+const DECK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-deck`;
+
+export interface RunDeckSkillOptions {
+  skill: Skill;
+  inputs: Record<string, string>;
+  deckType: "capabilities" | "proposal";
+}
+
+export async function runDeckSkill({ skill, inputs, deckType }: RunDeckSkillOptions): Promise<{ jobId: string; fileUrl: string; slideCount: number }> {
+  const resp = await fetch(DECK_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify({
+      skillId: skill.id,
+      skillName: skill.name,
+      agentType: skill.agentType,
+      department: skill.department,
+      title: `${skill.displayName || skill.name}: ${Object.values(inputs).filter(Boolean).slice(0, 2).join(", ")}`,
+      inputs,
+      deckType,
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: "Request failed" }));
+    throw new Error(err.error || `Error ${resp.status}`);
+  }
+
+  return resp.json();
+}
+
 export function subscribeToJob(jobId: string, callback: (job: any) => void) {
   const channel = supabase
     .channel(`job-${jobId}`)
