@@ -374,7 +374,7 @@ Skills that produce useful output when re-run with the same inputs are marked as
 3. **Select a Skill** — only schedulable skills appear.
 4. **Fill Inputs** — provide the inputs the skill needs (same form as running it manually).
 5. **Set Schedule** — choose frequency (Once, Daily, Weekly, Monthly, Custom) and time.
-6. **Name & Confirm** — give it a name and create.
+6. **Name & Confirm** — give your task a memorable name like "Morning Coffee" or "Daily Briefing," then confirm to create it.
 
 ### Managing Tasks
 
