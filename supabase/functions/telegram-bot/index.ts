@@ -162,6 +162,7 @@ async function handleHelp(chatId: number) {
       `2. Tap a skill to select it\n` +
       `3. I'll ask for each input one at a time\n` +
       `4. Once complete, I'll run the agent and send you the result\n\n` +
+      `📊 <b>Deck generation:</b> Skills with PowerPoint output automatically generate .pptx files and send you a download link.\n` +
       `📅 Use /tasks to see your automated scheduled tasks\n` +
       `💡 Or just <b>type any message</b> to chat with Alex, your AI assistant!`
   );
@@ -342,6 +343,50 @@ async function executeSkill(
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+    // Route pptx skills to generate-deck endpoint
+    if (skill.output_format === "pptx") {
+      await sendMessage(chatId, `📊 Generating PowerPoint deck for <b>${escapeHtml((skill.display_name || skill.name) as string)}</b>... This may take a minute.`);
+
+      const deckResponse = await fetch(`${supabaseUrl}/functions/v1/generate-deck`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          skillId: skill.id,
+          skillName: skill.name,
+          agentType: skill.agent_type,
+          department: skill.department,
+          title: `Telegram: ${skill.display_name || skill.name}`,
+          inputs,
+          promptTemplate: skill.prompt_template,
+          systemPrompt: skill.system_prompt,
+        }),
+      });
+
+      if (!deckResponse.ok) {
+        const errText = await deckResponse.text();
+        console.error("Deck generation error:", deckResponse.status, errText);
+        await sendMessage(chatId, `❌ Deck generation failed (${deckResponse.status}). Please try again later.`);
+        return;
+      }
+
+      const deckResult = await deckResponse.json();
+      if (deckResult.fileUrl) {
+        await sendMessage(
+          chatId,
+          `✅ <b>Deck generated!</b>\n\n` +
+            `📥 <a href="${deckResult.fileUrl}">Download your PowerPoint deck</a>\n\n` +
+            `Slides: ${deckResult.slideCount || "N/A"}`
+        );
+      } else {
+        await sendMessage(chatId, `⚠️ Deck was generated but no download link was returned. Check the web app for results.`);
+      }
+      return;
+    }
+
+    // Standard agent dispatch (SSE streaming)
     const response = await fetch(`${supabaseUrl}/functions/v1/agent-dispatch`, {
       method: "POST",
       headers: {

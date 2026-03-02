@@ -68,6 +68,34 @@ Apex AI is a platform that puts AI agents to work across your Sales and Marketin
 - You can **Copy** the output or **Save to Content Library** for later use.`,
   },
   {
+    id: "deck-generation",
+    title: "PowerPoint Deck Generation",
+    content: `Apex AI can generate branded PowerPoint (.pptx) decks using AI — currently supporting **Capabilities Overview** and **Proposal** deck types in the Sales department.
+
+### How to Generate a Deck
+1. Go to the **Sales** department.
+2. Select a deck skill (e.g. "Capabilities Overview" or "Proposal").
+3. Fill in the required inputs — company name, number of slides, key topics, etc.
+4. Click **Run Agent** to start generation.
+5. When complete, the Job Detail page will show a **Download .pptx** button.
+
+### What Gets Generated
+- A multi-slide branded PowerPoint file with structured content.
+- Each slide includes a title, subtitle, and bullet-point body content.
+- The AI uses your Knowledge Base for context and grounding.
+
+### Brand Context from Design System
+- The generator automatically pulls brand guidelines from your **Design System** folder in the Knowledge Base.
+- Upload your brand guide (colors, fonts, logo usage, tone of voice) as a .docx or .txt file to the "Design System" folder.
+- These guidelines are injected into the AI prompt so decks reflect your brand identity.
+- If no Design System folder or documents exist, built-in default styling is used.
+
+### Tips
+- For best results, upload your brand guidelines as a Word document (.docx) — text extraction is more reliable than PDF.
+- The more context in your Knowledge Base about your company, the better the deck content.
+- You can also generate decks via the **Telegram bot** — skills with PowerPoint output are automatically routed to the deck generator.`,
+  },
+  {
     id: "capabilities",
     title: "Capabilities & Skill Builder",
     content: `The Capabilities page is your skill library and builder.
@@ -85,7 +113,7 @@ Create custom skills with the guided wizard:
 3. **Inputs** — Define the form fields users fill in (text, textarea, select, radio, multi-select, and **file** for document uploads).
 4. **System Prompt** — Write the system prompt with variable placeholders like \`{{field_name}}\`.
 5. **Behavior** — Token budget, estimated cost, timeout, web search toggle, knowledge base toggle, approval required toggle, and **Schedulable** toggle (mark a skill as eligible for scheduled automation via Tasks).
-6. **Output** — Set the output format (markdown, JSON, HTML), output title template, sections, and export formats.
+6. **Output** — Set the output format (markdown, JSON, HTML, **pptx**), output title template, sections, and export formats.
 
 ### File Input Type
 - When adding inputs in Step 3, you can now select **"file"** as the input type.
@@ -145,25 +173,51 @@ Create custom skills with the guided wizard:
   {
     id: "content-library",
     title: "Content Library",
-    content: `The Content Library lets you save, organize, and manage agent-produced outputs.
+    content: `The Content Library lets you save, organize, and manage agent-produced outputs with full folder hierarchy, metadata tracking, and bulk operations.
 
-### Folders
-- Create folders to organize content by project, client, or topic.
-- Rename or delete folders from the folder panel.
-- Nested folders are supported.
+### Layout
+- Content is displayed in a **full-width data table** with sortable columns: Title, Department, Skill, Owner, Created date, and Views.
+- Click any row to open a **slide-in detail panel** from the right showing the full content preview and metadata.
+- The detail panel closes by clicking the X or clicking outside.
+
+### Nested Folders
+- Folders support **unlimited nesting** — create folders inside folders for deep organization.
+- **Breadcrumb navigation** at the top shows your current path (All Content > Folder > Subfolder).
+- Click any breadcrumb to jump back up the hierarchy.
+- Each folder shows a badge with the total item count (including nested subfolders).
+
+### Folder Operations
+- **Create Folder** — Click "New Folder" to create inside the current folder.
+- **Rename Folder** — Use the kebab menu (⋮) on any folder to rename it.
+- **Move Folder** — Move a folder to a different parent via the kebab menu.
+- **Delete Folder** — Deletes the folder and moves its contents (items and subfolders) to the parent folder. A confirmation dialog prevents accidental deletion.
 
 ### Saving Content
 - After any agent job completes, click **Save to Content Library** on the Job Detail page.
 - Choose a folder (or create a new one) and save.
 
-### Managing Content
-- **Search** — Filter items by title, agent type, skill, or department.
-- **Select & Download** — Check multiple items and download them as Markdown files.
-- **Delete** — Remove individual items or bulk-delete selected items.
-- Each item shows its date, owner, originating agent, skill, and department.
+### Content Item Operations
+- **View** — Click any row to open the detail panel with full Markdown preview and metadata.
+- **Rename** — Rename items from the kebab menu or the detail panel.
+- **Move** — Move items to a different folder via the kebab menu or detail panel.
+- **Download** — Download as a Markdown file.
+- **Copy** — Copy the raw content to clipboard from the detail panel.
+- **Delete** — Remove items with a confirmation dialog.
 
-### Content Viewer
-- Click any item to see a full Markdown preview with all metadata.`,
+### Metadata & Tracking
+- Each item tracks: creator (owner), creation date, last updated date, originating department, agent type, skill name, and **view count**.
+- The view count increments each time you open an item's detail panel.
+- Sort by any column — click a column header to toggle ascending/descending.
+
+### Bulk Operations
+- **Select multiple items** using the checkboxes in the table.
+- **Bulk Download** — Download all selected items as Markdown files.
+- **Bulk Move** — Move all selected items to a chosen folder.
+- **Bulk Delete** — Delete all selected items with confirmation.
+
+### Search & Filter
+- Use the search bar to filter items by title, department, skill name, owner, or content.
+- Search applies within the currently viewed folder.`,
   },
   {
     id: "history",
@@ -178,6 +232,7 @@ Create custom skills with the guided wizard:
 - **Metadata** — Tokens used, confidence score, and duration.
 - **Real-time Output** — For running jobs, watch the output stream live.
 - **Actions** — Copy output to clipboard, Save to Content Library, or Save to Knowledge Base.
+- **Download .pptx** — For deck generation skills, a download button appears when the job completes with a file URL.
 
 ### Status Indicators
 - 🕐 **Queued** — Waiting to be picked up.
@@ -238,6 +293,12 @@ Create custom skills with the guided wizard:
 3. Once all inputs are collected, the bot dispatches the job to the agent.
 4. The agent's output is sent back as a Telegram message, formatted in HTML.
 5. If the result is longer than Telegram's 4096-character limit, it's automatically **split into multiple messages** at paragraph boundaries.
+
+### PowerPoint Deck Generation via Telegram
+
+- Skills with **pptx output format** (e.g. Capabilities Overview, Proposal) are automatically detected and routed to the deck generator.
+- Once the deck is generated, the bot sends you a **download link** for the .pptx file.
+- The same brand context from the Design System folder is applied.
 
 ### Chatting with Alex on Telegram
 
@@ -354,6 +415,7 @@ Agents can receive context from multiple sources simultaneously:
 - **File attachments in skills** — When a user uploads a file to a skill form (e.g. meeting transcripts), the extracted text is passed directly as an input value in the prompt template.
 - **File attachments in Alex Chat** — When a user attaches a file while chatting with Alex, the content is injected into the system prompt alongside RAG results.
 - **Built-in platform knowledge** — Alex has embedded knowledge about all Apex AI features and navigation.
+- **Design System (for decks)** — The PowerPoint generator pulls brand guidelines from the "Design System" Knowledge Base folder automatically.
 
 ### Best Practices
 
@@ -361,7 +423,8 @@ Agents can receive context from multiple sources simultaneously:
 - **Use specific file names** — helps you identify documents later.
 - **Attach meeting transcripts** — use the file upload in Meeting Prep Coach for targeted prep.
 - **Keep documents current** — delete outdated documents and upload newer versions.
-- **All file types work equally** — PDF, DOCX, PPTX, TXT, MD, and CSV are all extracted and chunked identically.`,
+- **All file types work equally** — PDF, DOCX, PPTX, TXT, MD, and CSV are all extracted and chunked identically.
+- **Upload brand guidelines as .docx** — for best text extraction in deck generation.`,
   },
 ];
 
