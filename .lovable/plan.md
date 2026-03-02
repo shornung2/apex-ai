@@ -1,80 +1,104 @@
 
 
-# App Icons, Light/Dark Theme Toggle, and Live Token Usage
+# Plan: Help Center + Content Library
 
-## Overview
+## Feature 1: Help Page with User Guides
 
-Three changes:
-1. Add the Autopilot logo icons to the app (sidebar, favicon, browser tab title)
-2. Implement light/dark/system theme switching using `next-themes` (already installed)
-3. Replace hardcoded token usage in the sidebar with real data from the database
+Add a comprehensive Help page accessible from the sidebar (above Settings) with guides for every feature.
 
----
+### Sidebar Change
+- Add a "Help" nav item with `HelpCircle` icon at URL `/help`, placed above Settings in the footer section
+- Reorder `bottomItems` to: Help, then Settings
 
-## 1. Add Logo Icons
+### Help Page (`src/pages/Help.tsx`)
+- Accordion-based layout covering all app features:
+  - **Getting Started** -- Overview of the platform, navigation, and core concepts
+  - **Dashboard** -- Understanding metrics, token usage, and activity feed
+  - **Departments (Sales & Marketing)** -- How to browse skills, run agents, and view results
+  - **Capabilities** -- Skill Library browsing, Skill Builder wizard (6-step walkthrough)
+  - **Knowledge Base** -- Uploading documents, viewing content, how agents use KB
+  - **Content Library** -- Folders, saving agent outputs, search, download, deletion
+  - **History & Job Detail** -- Viewing past runs, real-time streaming, saving outputs
+  - **Settings** -- Workspace config, appearance, API keys, agent toggles
+- Each section includes step-by-step instructions written for non-technical users
+- Search bar to filter guide sections
 
-**Copy assets into the project:**
-- `image-3.jpg` (transparent background) -> `src/assets/logo-dark.jpg` -- used when dark mode is active
-- `image-1.jpg` (light background with rounded corners) -> `src/assets/logo-light.jpg` -- used when light mode is active  
-- `image.jpg` (silver/white background) -> `public/favicon.jpg` -- used as the browser favicon (works on both light and dark browser chrome)
-
-**Update `index.html`:**
-- Change `<title>` from "Lovable App" to "Autopilot"
-- Update og:title to "Autopilot - AI Operating System"
-- Add favicon link: `<link rel="icon" type="image/jpeg" href="/favicon.jpg" />`
-
-**Update `AppSidebar.tsx` header:**
-- Replace the `<Zap>` icon div with an `<img>` tag that imports the logo
-- Use `next-themes`'s `useTheme()` to conditionally show `logo-dark` (transparent) on dark backgrounds or `logo-light` on light backgrounds
-- Size: 32x32px with `rounded-lg` to match current styling
+### Route
+- Add `/help` route in `App.tsx`
 
 ---
 
-## 2. Light/Dark/System Theme Toggle
+## Feature 2: Content Library
 
-**Add light mode CSS variables to `src/index.css`:**
-- Currently only dark theme variables exist under `:root`
-- Move existing dark values into a `.dark` selector
-- Add light theme values under `:root` (standard shadcn light palette -- white backgrounds, dark text, adjusted sidebar colors)
-- Update scrollbar styles to respect theme
+A full-featured content management system for saving, organizing, and managing agent-produced outputs.
 
-**Update `src/App.tsx`:**
-- Wrap the app with `<ThemeProvider>` from `next-themes` with `attribute="class"`, `defaultTheme="dark"`, `storageKey="autopilot-theme"`
+### Database Changes (Migration)
 
-**Add theme toggle to Settings page (`src/pages/Settings.tsx`):**
-- Add a new "Appearance" tab with a `Palette` icon
-- Inside: three radio-style cards for Light / Dark / System
-- Each card shows a small preview swatch and label
-- Uses `useTheme()` from `next-themes` to read/set the theme
-- Active card gets a highlighted border
+**New table: `content_folders`**
+- `id` (uuid, PK)
+- `name` (text, not null)
+- `parent_id` (uuid, nullable, self-referencing FK for nested folders)
+- `created_at` (timestamptz)
 
-**Update `AppSidebar.tsx`:**
-- The sidebar logo switches between `logo-dark.jpg` and `logo-light.jpg` based on `resolvedTheme`
+**New table: `content_items`**
+- `id` (uuid, PK)
+- `title` (text, not null)
+- `content` (text, not null)
+- `folder_id` (uuid, nullable FK to content_folders)
+- `agent_type` (text) -- which agent produced it
+- `skill_id` (text) -- which skill produced it
+- `skill_name` (text) -- display name of the skill
+- `department` (text) -- originating department
+- `job_id` (uuid, nullable) -- link back to the agent job
+- `created_at` (timestamptz, default now())
+- `owner` (text, default 'system') -- placeholder for future auth
+
+RLS: open access (matching existing pattern -- no auth currently configured).
+
+Enable realtime on `content_items` for live updates.
+
+### Content Library Page (`src/pages/ContentLibrary.tsx`)
+
+**Left panel -- Folder tree + item list:**
+- Create/rename/delete folders
+- Drag or move items between folders via a "Move to" dropdown
+- "All Content" view showing everything regardless of folder
+- Search bar filtering by title, agent, skill, department
+
+**Right panel -- Content viewer:**
+- Markdown-rendered preview of selected item
+- Metadata display: date, owner, agent type, skill name, department
+- Actions: Download (as .md), Delete
+
+**Bulk operations toolbar:**
+- Checkbox selection on items
+- "Download Selected" (zips multiple .md files or downloads individually)
+- "Delete Selected"
+
+### Save to Content Library from Job Detail
+
+Update `src/pages/JobDetail.tsx`:
+- Replace or augment the existing "Save to KB" button with "Save to Content Library"
+- Opens a small dialog/popover to choose a folder (or create new)
+- Saves to `content_items` with agent_type, skill_id, skill_name, department, job_id metadata
+
+### Sidebar Navigation
+- Add "Content Library" with `FolderOpen` icon in the Tools section, between Knowledge Base and History
+
+### Route
+- Add `/content-library` route in `App.tsx`
 
 ---
 
-## 3. Live Token Usage from Database
+## Files to Create
+1. `src/pages/Help.tsx` -- Help center with accordion guides
+2. `src/pages/ContentLibrary.tsx` -- Full content library UI
 
-**Update `AppSidebar.tsx`:**
-- Replace the hardcoded `dashboardMetrics.tokensUsed` / `dashboardMetrics.tokenBudget` with a live query
-- Use `supabase.from("agent_jobs").select("tokens_used")` and sum client-side, or use an RPC
-- For simplicity: fetch on mount with `useEffect` + `useState`, sum `tokens_used` from all `agent_jobs` rows
-- Keep the `tokenBudget` as a constant (50,000) since there's no billing system yet
-- Show a loading skeleton while fetching
-- The current real total is 1,219 tokens from 1 job run
+## Files to Modify
+1. `src/components/AppSidebar.tsx` -- Add Help and Content Library nav items
+2. `src/App.tsx` -- Add routes for `/help` and `/content-library`
+3. `src/pages/JobDetail.tsx` -- Add "Save to Content Library" with folder picker
 
----
-
-## Files Changed
-
-| File | Change |
-|------|--------|
-| `src/assets/logo-dark.jpg` | New -- copied from uploaded transparent logo |
-| `src/assets/logo-light.jpg` | New -- copied from uploaded light-bg logo |
-| `public/favicon.jpg` | New -- copied from uploaded silver-bg logo |
-| `index.html` | Title, og:title, favicon link |
-| `src/index.css` | Add light theme variables, move dark to `.dark` |
-| `src/App.tsx` | Wrap with ThemeProvider |
-| `src/components/AppSidebar.tsx` | Logo image, live token query |
-| `src/pages/Settings.tsx` | Add Appearance tab with theme toggle |
+## Database Migration
+- Create `content_folders` and `content_items` tables with RLS policies
 
