@@ -167,6 +167,45 @@ Create custom skills with the guided wizard:
 ### Tips
 - If you're approaching your token budget, consider adjusting token budgets on individual skills in the Skill Builder.`,
   },
+  {
+    id: "telegram-bot",
+    title: "Telegram Bot Integration",
+    content: `Run any Autopilot skill directly from Telegram — same agents, same skills, just a chat interface.
+
+### Setup Guide (Step by Step)
+
+1. **Open Telegram** and search for **@BotFather** (the official Telegram bot for creating bots).
+2. Send the command \`/newbot\` to BotFather.
+3. **Choose a name** for your bot (e.g. "My Autopilot Bot") — this is the display name.
+4. **Choose a username** — must end in "bot" (e.g. \`my_autopilot_bot\`). BotFather will confirm creation and give you a **Bot Token** like \`123456789:ABCdefGHI-jklMNOpqrSTUvwxYZ\`.
+5. **Copy the token** and add it to your Autopilot workspace settings as the Telegram Bot Token.
+6. Once deployed, the webhook is registered automatically — no manual configuration needed.
+7. **Test it** — open your new bot in Telegram and send \`/start\`. You should see a welcome message.
+
+### Available Commands
+
+- \`/start\` — Welcome message and introduction to the bot.
+- \`/skills\` — Browse all available skills, grouped by department (Sales, Marketing).
+- \`/run <skill_name>\` — Start running a specific skill by name.
+- \`/cancel\` — Cancel the current skill input collection and return to idle.
+- \`/help\` — Show the list of available commands.
+
+### How Running a Skill Works
+
+1. Send \`/skills\` to see all available skills, or \`/run <name>\` if you know the skill name.
+2. The bot will ask for each required input **one at a time** — just reply with your answer.
+3. Once all inputs are collected, the bot dispatches the job to the agent.
+4. The agent's output is sent back as a Telegram message, formatted in HTML.
+5. If the result is longer than Telegram's 4096-character limit, it's automatically **split into multiple messages** at paragraph boundaries.
+
+### Tips & Troubleshooting
+
+- **Bot not responding?** Double-check that the bot token is correct and the webhook was registered successfully.
+- **Getting errors?** Make sure the skill name matches exactly when using \`/run\`.
+- **Results too long?** They're automatically split — no action needed on your part.
+- **Want to start over?** Send \`/cancel\` to reset, then try again.
+- **Multiple skills?** You can run skills back-to-back — just start a new \`/run\` after receiving results.`,
+  },
 ];
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.04 } } };
