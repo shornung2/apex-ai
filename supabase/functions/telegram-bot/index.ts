@@ -137,6 +137,7 @@ async function handleStart(chatId: number, firstName?: string) {
       `I'm your <b>Autopilot Assistant</b>. I can run any skill or agent for you right here in Telegram.\n\n` +
       `<b>Commands:</b>\n` +
       `/skills — Browse available skills\n` +
+      `/tasks — View your scheduled tasks\n` +
       `/cancel — Cancel current operation\n` +
       `/clear — Reset Alex conversation history\n` +
       `/help — Show this help message\n\n` +
@@ -151,6 +152,7 @@ async function handleHelp(chatId: number) {
     `<b>🤖 Autopilot Bot Commands</b>\n\n` +
       `/start — Welcome message\n` +
       `/skills — List all available skills by department\n` +
+      `/tasks — View your active scheduled tasks\n` +
       `/cancel — Cancel current skill input\n` +
       `/clear — Reset Alex conversation history\n` +
       `/help — Show this help\n\n` +
@@ -159,6 +161,7 @@ async function handleHelp(chatId: number) {
       `2. Tap a skill to select it\n` +
       `3. I'll ask for each input one at a time\n` +
       `4. Once complete, I'll run the agent and send you the result\n\n` +
+      `📅 Use /tasks to see your automated scheduled tasks\n` +
       `💡 Or just <b>type any message</b> to chat with Alex, your AI assistant!`
   );
 }
@@ -522,6 +525,30 @@ serve(async (req) => {
         .update({ conversation_history: [], updated_at: new Date().toISOString() })
         .eq("chat_id", chatId);
       await sendMessage(chatId, "🧹 Conversation history cleared. Start fresh!");
+      return new Response("ok");
+    }
+
+    if (text === "/tasks") {
+      const { data: tasks } = await supabase
+        .from("scheduled_tasks")
+        .select("*")
+        .eq("status", "active")
+        .order("next_run_at", { ascending: true })
+        .limit(10);
+
+      if (!tasks || tasks.length === 0) {
+        await sendMessage(chatId, "📅 <b>Scheduled Tasks</b>\n\nNo active scheduled tasks. Create them in the Autopilot web app under Tasks.");
+      } else {
+        let msg = "📅 <b>Scheduled Tasks</b>\n\n";
+        for (const task of tasks) {
+          const nextRun = task.next_run_at ? new Date(task.next_run_at).toUTCString() : "—";
+          msg += `• <b>${escapeHtml(task.title)}</b>\n`;
+          msg += `  ${escapeHtml(task.skill_name)} · ${escapeHtml(task.schedule_type)} · Runs: ${task.run_count}\n`;
+          msg += `  Next: ${nextRun}\n\n`;
+        }
+        msg += "Manage tasks in the Autopilot web app.";
+        await sendMessage(chatId, msg);
+      }
       return new Response("ok");
     }
 

@@ -19,9 +19,9 @@ Autopilot is a platform that puts AI agents to work across your Sales and Market
 4. **Jobs** are individual runs of a skill. You fill in the inputs, click Run, and the agent produces an output.
 
 ### Navigation
-- The **sidebar** on the left gives you access to every area: Overview, Departments, Capabilities, Knowledge Base, Content Library, History, Help, and Settings.
+- The **sidebar** on the left gives you access to every area: Overview, Departments, Capabilities, Tasks, Knowledge Base, Content Library, History, Help, and Settings.
 - Click any department to see its available skills and run them.
-- Use the **Overview** dashboard for a quick snapshot of activity and token usage.`,
+- Use the **Overview** dashboard for a quick snapshot of activity, token usage, and upcoming scheduled tasks.`,
   },
   {
     id: "dashboard",
@@ -29,15 +29,16 @@ Autopilot is a platform that puts AI agents to work across your Sales and Market
     content: `The Overview page is your command center.
 
 ### What you'll see
-- **Agent Runs Today** — number of jobs dispatched today.
-- **Tokens Used** — total tokens consumed vs. your budget.
-- **Knowledge Base Size** — number of documents stored.
-- **Average Confidence** — mean confidence score across completed jobs.
+- **Total Runs** — total number of agent jobs dispatched.
+- **Tokens Used** — total tokens consumed across all completed jobs.
+- **Knowledge Base** — number of documents stored.
+- **Scheduled Tasks** — up to 3 upcoming scheduled tasks with next run times, plus a "View all" link to the Tasks page.
 - **Recent Activity** — a live feed of the latest jobs with status indicators (queued, running, complete, failed).
 
 ### Tips
 - Click any job in the activity feed to view its full detail page.
-- The token usage bar in the sidebar gives you an at-a-glance budget view.`,
+- The token usage bar in the sidebar gives you an at-a-glance budget view.
+- Click "View all" on the Scheduled Tasks card to manage your automated tasks.`,
   },
   {
     id: "departments",
@@ -72,17 +73,18 @@ Autopilot is a platform that puts AI agents to work across your Sales and Market
 ### Skill Builder (6-Step Wizard)
 Create custom skills with the guided wizard:
 
-1. **Basics** — Name, description, emoji, department, and agent type.
-2. **Inputs** — Define the form fields users fill in (text, textarea, select, etc.).
-3. **Prompts** — Write the system prompt and prompt template with variable placeholders like \`{{Company Name}}\`.
-4. **Model & Budget** — Choose the preferred AI model, token budget, and timeout.
-5. **Output** — Set the output format (markdown, JSON), export formats, and output schema.
-6. **Review** — Preview everything and save.
+1. **Identity** — Name, display name, description, emoji, and version.
+2. **Routing** — Department, agent type, tags, trigger keywords, preferred model, and lane.
+3. **Inputs** — Define the form fields users fill in (text, textarea, select, radio, multi-select).
+4. **System Prompt** — Write the system prompt with variable placeholders like \`{{field_name}}\`.
+5. **Behavior** — Token budget, estimated cost, timeout, web search toggle, knowledge base toggle, approval required toggle, and **Schedulable** toggle (mark a skill as eligible for scheduled automation via Tasks).
+6. **Output** — Set the output format (markdown, JSON, HTML), output title template, sections, and export formats.
 
 ### Tips
-- Use \`{{field_name}}\` in your prompt template to reference input fields.
+- Use \`{{field_name}}\` in your system prompt to reference input fields.
 - Start with a lower token budget and increase if outputs are getting cut off.
-- Tags and trigger keywords help organize and search skills.`,
+- Tags and trigger keywords help organize and search skills.
+- Enable "Schedulable" on skills that produce useful output when re-run with the same inputs (e.g. market research, social media content).`,
   },
   {
     id: "knowledge-base",
@@ -170,7 +172,7 @@ Create custom skills with the guided wizard:
   {
     id: "telegram-bot",
     title: "Telegram Bot Integration",
-    content: `Run any Autopilot skill directly from Telegram — same agents, same skills, just a chat interface.
+    content: `Run any Autopilot skill directly from Telegram — same agents, same skills, just a chat interface. You can also chat with Alex, your AI assistant, and view your scheduled tasks.
 
 ### Setup Guide (Step by Step)
 
@@ -187,7 +189,9 @@ Create custom skills with the guided wizard:
 - \`/start\` — Welcome message and introduction to the bot.
 - \`/skills\` — Browse all available skills, grouped by department (Sales, Marketing).
 - \`/run <skill_name>\` — Start running a specific skill by name.
+- \`/tasks\` — View your active scheduled tasks with next run times.
 - \`/cancel\` — Cancel the current skill input collection and return to idle.
+- \`/clear\` — Reset your Alex conversation history.
 - \`/help\` — Show the list of available commands.
 
 ### How Running a Skill Works
@@ -197,6 +201,12 @@ Create custom skills with the guided wizard:
 3. Once all inputs are collected, the bot dispatches the job to the agent.
 4. The agent's output is sent back as a Telegram message, formatted in HTML.
 5. If the result is longer than Telegram's 4096-character limit, it's automatically **split into multiple messages** at paragraph boundaries.
+
+### Chatting with Alex
+
+- Just **type any message** (not a command) and Alex will respond.
+- Alex remembers your recent conversation (last 20 messages) for context.
+- Send \`/clear\` to reset your conversation history.
 
 ### Tips & Troubleshooting
 
