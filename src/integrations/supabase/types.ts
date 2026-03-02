@@ -115,6 +115,8 @@ export type Database = {
           skill_id: string | null
           skill_name: string | null
           title: string
+          updated_at: string
+          view_count: number
         }
         Insert: {
           agent_type?: string | null
@@ -128,6 +130,8 @@ export type Database = {
           skill_id?: string | null
           skill_name?: string | null
           title: string
+          updated_at?: string
+          view_count?: number
         }
         Update: {
           agent_type?: string | null
@@ -141,6 +145,8 @@ export type Database = {
           skill_id?: string | null
           skill_name?: string | null
           title?: string
+          updated_at?: string
+          view_count?: number
         }
         Relationships: [
           {
