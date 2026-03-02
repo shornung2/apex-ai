@@ -53,8 +53,15 @@ Apex AI is a platform that puts AI agents to work across your Sales and Marketin
 ### Running a Skill
 1. Click a skill card to open the input form.
 2. Fill in all required fields (marked with an asterisk).
-3. Click **Run Agent** to dispatch the job.
-4. You'll be taken to the Job Detail page where you can watch the output stream in real-time.
+3. Some skills support **file attachments** — click the paperclip icon to upload a document (PDF, DOCX, PPTX, TXT, MD, CSV). The file is automatically processed and its content is injected into the agent's prompt for grounding.
+4. Click **Run Agent** to dispatch the job.
+5. You'll be taken to the Job Detail page where you can watch the output stream in real-time.
+
+### File Attachments in Skills
+- Skills like **Meeting Prep Coach** include a file upload field for prior meeting transcripts or notes.
+- Uploaded files are processed server-side — text is extracted and used as additional context for the agent.
+- Supported formats: PDF, DOCX, PPTX, TXT, MD, CSV (max 20MB).
+- The extracted content flows through the same grounding pipeline as Knowledge Base documents.
 
 ### Viewing Results
 - Completed jobs show the full output rendered as Markdown.
@@ -75,10 +82,16 @@ Create custom skills with the guided wizard:
 
 1. **Identity** — Name, display name, description, emoji, and version.
 2. **Routing** — Department, agent type, tags, trigger keywords, preferred model, and lane.
-3. **Inputs** — Define the form fields users fill in (text, textarea, select, radio, multi-select).
+3. **Inputs** — Define the form fields users fill in (text, textarea, select, radio, multi-select, and **file** for document uploads).
 4. **System Prompt** — Write the system prompt with variable placeholders like \`{{field_name}}\`.
 5. **Behavior** — Token budget, estimated cost, timeout, web search toggle, knowledge base toggle, approval required toggle, and **Schedulable** toggle (mark a skill as eligible for scheduled automation via Tasks).
 6. **Output** — Set the output format (markdown, JSON, HTML), output title template, sections, and export formats.
+
+### File Input Type
+- When adding inputs in Step 3, you can now select **"file"** as the input type.
+- This renders a file attachment button in the skill form.
+- Users can upload PDF, DOCX, PPTX, TXT, MD, or CSV files.
+- The uploaded file's extracted text is injected as the input value, flowing into your \`{{field_name}}\` template variable.
 
 ### Tips
 - Use \`{{field_name}}\` in your system prompt to reference input fields.
@@ -89,20 +102,44 @@ Create custom skills with the guided wizard:
   {
     id: "knowledge-base",
     title: "Knowledge Base",
-    content: `The Knowledge Base stores documents that agents can reference during execution.
+    content: `The Knowledge Base stores documents that agents reference during execution. It supports multi-format file uploads, folder organization, and drag-and-drop management.
 
 ### Uploading Documents
 1. Go to **Knowledge Base** in the sidebar.
-2. Click **Upload Document**.
-3. Select a file — supported formats include text, PDF, and Markdown.
-4. The document will be processed, chunked, and indexed automatically.
+2. Click **Upload Files** or drag files directly onto the page.
+3. Supported formats: **PDF, DOCX, PPTX, TXT, MD, CSV** (max 20MB per file).
+4. Files are uploaded to storage, processed server-side, and automatically chunked and indexed.
+5. For PDFs, Word docs, and PowerPoint files, text is extracted on the server — no browser plugins needed.
 
-### Viewing Content
-- Click any document to see its full content and metadata (type, token count, status).
-- Documents show their processing status: processing, ready, or error.
+### Drag-and-Drop Upload
+- Drag files from your desktop directly onto the Knowledge Base page.
+- A full-page overlay ("Drop files to upload") appears when files are dragged over.
+- Dropped files are uploaded into the currently viewed folder.
+
+### Folder Organization
+- Click **New Folder** to create a folder in the current location.
+- Click a folder row to navigate into it.
+- **Breadcrumb navigation** at the top shows your current path (Root > Folder > Subfolder).
+- Rename or delete folders from the action buttons on each row.
+- Deleting a folder moves its documents to the parent folder.
+
+### Drag-and-Drop File Reorganization
+- **Drag any document row** and drop it onto a folder to move it.
+- Folders highlight when a file is dragged over them.
+- You can also drop files onto breadcrumb items to move them up the hierarchy.
+
+### File Actions
+- **Open** — Opens the file in a new browser tab (browser handles PDF, DOCX, etc. natively).
+- **Download** — Downloads the original file to your computer.
+- **Rename** — Click the pencil icon to rename inline.
+- **Delete** — Removes the document, its chunks, and the storage file. A confirmation dialog prevents accidental deletion.
 
 ### How Agents Use the Knowledge Base
-- When a skill has web search disabled, agents can draw on Knowledge Base content for context.
+- When an agent runs a skill, it searches Knowledge Base chunks for relevant context.
+- Key terms from user inputs are matched against document chunks using text search.
+- Matching chunks are injected into the agent's system prompt for grounding.
+- This works identically for all file types — PDF, DOCX, PPTX, TXT, etc.
+- Folder structure is purely organizational — it does not affect grounding. Chunks reference documents regardless of folder location.
 - The more relevant documents you upload, the better your agent outputs.`,
   },
   {
@@ -202,9 +239,10 @@ Create custom skills with the guided wizard:
 4. The agent's output is sent back as a Telegram message, formatted in HTML.
 5. If the result is longer than Telegram's 4096-character limit, it's automatically **split into multiple messages** at paragraph boundaries.
 
-### Chatting with Alex
+### Chatting with Alex on Telegram
 
 - Just **type any message** (not a command) and Alex will respond.
+- Alex is grounded in your **Knowledge Base** — responses reflect your organization's documents.
 - Alex remembers your recent conversation (last 20 messages) for context.
 - Send \`/clear\` to reset your conversation history.
 
@@ -226,6 +264,7 @@ Create custom skills with the guided wizard:
 - **Answer questions about the platform** — how to create skills, navigate departments, use the Knowledge Base, etc.
 - **Help with the Skill Builder** — guide you through creating custom skills step by step.
 - **Provide grounded answers** — Alex searches your Knowledge Base so responses reflect your organization's own documents.
+- **Process file attachments** — upload a document directly in chat and Alex will use its content to answer your questions.
 - **General assistance** — answer business questions, brainstorm ideas, draft content, and more.
 
 ### Using Alex in the Web App
@@ -234,6 +273,15 @@ Create custom skills with the guided wizard:
 2. A chat panel opens — type your question and press Send.
 3. Alex streams responses in real-time with Markdown formatting.
 4. The conversation resets when you reload the page.
+
+### File Attachments in Alex Chat
+
+1. Click the **paperclip icon** (📎) next to the text input.
+2. Select a file — supported formats: PDF, DOCX, PPTX, TXT, MD, CSV (max 20MB).
+3. The file is uploaded, processed server-side, and its extracted text appears as a chip above the input.
+4. Type your question and send — Alex receives the document content as additional context alongside Knowledge Base grounding.
+5. This is ideal for asking questions about a specific document, summarizing content, or extracting insights.
+6. Click the **X** on the chip to remove the attachment before sending.
 
 ### Using Alex on Telegram
 
@@ -246,6 +294,7 @@ Create custom skills with the guided wizard:
 
 - Ask Alex "How do I create a custom skill?" for a step-by-step walkthrough.
 - Upload documents to the Knowledge Base first — Alex will use them to give more relevant answers.
+- Use the paperclip button to attach a document and ask specific questions about it.
 - On Telegram, use \`/clear\` if Alex's responses seem off-track.`,
   },
   {
@@ -283,6 +332,36 @@ The Overview dashboard shows up to 3 upcoming scheduled tasks with their next ru
 - Tasks run hourly — the system checks each hour for due tasks.
 - "Once" tasks automatically move to "Completed" after running.
 - Paused tasks are skipped until resumed.`,
+  },
+  {
+    id: "grounding",
+    title: "Agent Grounding & Context",
+    content: `All agents in Apex AI are grounded in your organization's knowledge. Here's how it works end-to-end.
+
+### How Grounding Works
+
+1. **Knowledge Base documents** are chunked into smaller text segments and stored in the database.
+2. When an agent runs a skill, the system extracts key terms from user inputs.
+3. Those terms are searched against all knowledge chunks using text matching.
+4. The top matching chunks are injected into the agent's system prompt as context.
+5. The agent uses this context to produce more relevant, organization-specific outputs.
+
+### Sources of Context
+
+Agents can receive context from multiple sources simultaneously:
+
+- **Knowledge Base (RAG)** — Automatic. All uploaded documents (PDF, DOCX, PPTX, TXT, etc.) are chunked and searchable. Folder structure does not affect grounding.
+- **File attachments in skills** — When a user uploads a file to a skill form (e.g. meeting transcripts), the extracted text is passed directly as an input value in the prompt template.
+- **File attachments in Alex Chat** — When a user attaches a file while chatting with Alex, the content is injected into the system prompt alongside RAG results.
+- **Built-in platform knowledge** — Alex has embedded knowledge about all Apex AI features and navigation.
+
+### Best Practices
+
+- **Upload relevant documents** — the more context agents have, the better the outputs.
+- **Use specific file names** — helps you identify documents later.
+- **Attach meeting transcripts** — use the file upload in Meeting Prep Coach for targeted prep.
+- **Keep documents current** — delete outdated documents and upload newer versions.
+- **All file types work equally** — PDF, DOCX, PPTX, TXT, MD, and CSV are all extracted and chunked identically.`,
   },
 ];
 
