@@ -168,7 +168,41 @@ serve(async (req) => {
 
     const jobId = job.id;
 
-    // 2. Fetch knowledge context for grounding
+    // 2. Fetch brand context from "Design System" knowledge folder
+    let brandContext = "";
+    const { data: brandFolder } = await supabase
+      .from("knowledge_folders")
+      .select("id")
+      .eq("name", "Design System")
+      .limit(1)
+      .single();
+
+    if (brandFolder) {
+      const { data: brandDocs } = await supabase
+        .from("knowledge_documents")
+        .select("id")
+        .eq("folder_id", brandFolder.id);
+
+      if (brandDocs && brandDocs.length > 0) {
+        const docIds = brandDocs.map((d: any) => d.id);
+        const { data: brandChunks } = await supabase
+          .from("knowledge_chunks")
+          .select("content")
+          .in("document_id", docIds)
+          .order("chunk_index")
+          .limit(15);
+
+        if (brandChunks && brandChunks.length > 0) {
+          const useful = brandChunks.filter((c: any) => !c.content.includes("extraction was limited"));
+          if (useful.length > 0) {
+            brandContext = "\n\nBRAND & DESIGN SYSTEM GUIDELINES (from Knowledge Base):\n" +
+              useful.map((c: any) => c.content).join("\n\n");
+          }
+        }
+      }
+    }
+
+    // 3. Fetch knowledge context for grounding
     const inputValues = Object.values(inputs).join(" ");
     const searchTerms = inputValues.split(/\s+/).filter((t: string) => t.length > 3).slice(0, 10);
     let knowledgeContext = "";
@@ -185,7 +219,7 @@ serve(async (req) => {
       }
     }
 
-    // 3. Build user prompt from inputs
+    // 4. Build user prompt from inputs
     const slideCount = inputs["Number of Slides"] || inputs["number_of_slides"] || "12";
     let userPrompt = `Create a ${slideCount}-slide ${deckType === "capabilities" ? "Capabilities Overview" : "Proposal"} deck.\n\n`;
     for (const [key, value] of Object.entries(inputs)) {
@@ -193,8 +227,8 @@ serve(async (req) => {
     }
     userPrompt += knowledgeContext;
 
-    // 4. Call AI with tool calling for structured output
-    const systemPrompt = buildSystemPrompt(deckType || "capabilities");
+    // 5. Call AI with tool calling for structured output
+    const systemPrompt = buildSystemPrompt(deckType || "capabilities") + brandContext;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
