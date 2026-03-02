@@ -297,6 +297,7 @@ export type Database = {
         Row: {
           chat_id: number
           collected_inputs: Json
+          conversation_history: Json
           created_at: string
           current_input_index: number
           id: string
@@ -307,6 +308,7 @@ export type Database = {
         Insert: {
           chat_id: number
           collected_inputs?: Json
+          conversation_history?: Json
           created_at?: string
           current_input_index?: number
           id?: string
@@ -317,6 +319,7 @@ export type Database = {
         Update: {
           chat_id?: number
           collected_inputs?: Json
+          conversation_history?: Json
           created_at?: string
           current_input_index?: number
           id?: string
