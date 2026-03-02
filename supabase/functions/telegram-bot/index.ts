@@ -138,7 +138,9 @@ async function handleStart(chatId: number, firstName?: string) {
       `<b>Commands:</b>\n` +
       `/skills — Browse available skills\n` +
       `/cancel — Cancel current operation\n` +
+      `/clear — Reset Alex conversation history\n` +
       `/help — Show this help message\n\n` +
+      `💡 Just type any message to <b>chat with Alex</b>, your AI assistant!\n\n` +
       `Try <b>/skills</b> to get started!`
   );
 }
@@ -150,12 +152,14 @@ async function handleHelp(chatId: number) {
       `/start — Welcome message\n` +
       `/skills — List all available skills by department\n` +
       `/cancel — Cancel current skill input\n` +
+      `/clear — Reset Alex conversation history\n` +
       `/help — Show this help\n\n` +
       `<b>How it works:</b>\n` +
       `1. Use /skills to browse capabilities\n` +
       `2. Tap a skill to select it\n` +
       `3. I'll ask for each input one at a time\n` +
-      `4. Once complete, I'll run the agent and send you the result`
+      `4. Once complete, I'll run the agent and send you the result\n\n` +
+      `💡 Or just <b>type any message</b> to chat with Alex, your AI assistant!`
   );
 }
 
@@ -512,6 +516,15 @@ serve(async (req) => {
       return new Response("ok");
     }
 
+    if (text === "/clear") {
+      await supabase
+        .from("telegram_sessions")
+        .update({ conversation_history: [], updated_at: new Date().toISOString() })
+        .eq("chat_id", chatId);
+      await sendMessage(chatId, "🧹 Conversation history cleared. Start fresh!");
+      return new Response("ok");
+    }
+
     if (text.startsWith("/run ")) {
       const skillName = text.slice(5).trim();
       const { data: skill } = await supabase
@@ -536,11 +549,86 @@ serve(async (req) => {
       return new Response("ok");
     }
 
-    // Unknown message
-    await sendMessage(
-      chatId,
-      `I didn't understand that. Try /skills to browse available skills or /help for commands.`
-    );
+    // Route free-text messages to Alex
+    try {
+      const session = await getOrCreateSession(supabase, chatId);
+      const history = (session?.conversation_history as Array<{role: string; content: string}>) || [];
+
+      // Add user message to history
+      history.push({ role: "user", content: text });
+
+      // Cap at last 20 messages
+      const cappedHistory = history.slice(-20);
+
+      // Call alex-chat edge function
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+      const alexResponse = await fetch(`${supabaseUrl}/functions/v1/alex-chat`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages: cappedHistory }),
+      });
+
+      if (!alexResponse.ok) {
+        await sendMessage(chatId, "⚠️ Alex is temporarily unavailable. Try /skills to run a skill instead.");
+        return new Response("ok");
+      }
+
+      // Read SSE stream and accumulate Alex's response
+      const alexReader = alexResponse.body!.getReader();
+      const alexDecoder = new TextDecoder();
+      let alexOutput = "";
+      let alexBuffer = "";
+
+      while (true) {
+        const { done, value } = await alexReader.read();
+        if (done) break;
+        alexBuffer += alexDecoder.decode(value, { stream: true });
+
+        let newlineIdx: number;
+        while ((newlineIdx = alexBuffer.indexOf("\n")) !== -1) {
+          let line = alexBuffer.slice(0, newlineIdx);
+          alexBuffer = alexBuffer.slice(newlineIdx + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.content) alexOutput += parsed.content;
+          } catch {
+            // partial JSON
+          }
+        }
+      }
+
+      if (!alexOutput.trim()) {
+        await sendMessage(chatId, "🤔 I couldn't generate a response. Try again or use /skills.");
+        return new Response("ok");
+      }
+
+      // Save conversation history
+      cappedHistory.push({ role: "assistant", content: alexOutput });
+      await supabase
+        .from("telegram_sessions")
+        .update({
+          conversation_history: cappedHistory.slice(-20),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("chat_id", chatId);
+
+      // Send response
+      const htmlOutput = markdownToTelegramHtml(alexOutput);
+      await sendMessage(chatId, htmlOutput);
+    } catch (alexErr) {
+      console.error("Alex chat error:", alexErr);
+      await sendMessage(chatId, "⚠️ Something went wrong. Try /skills or /help.");
+    }
 
     return new Response("ok");
   } catch (e) {

@@ -206,6 +206,38 @@ Create custom skills with the guided wizard:
 - **Want to start over?** Send \`/cancel\` to reset, then try again.
 - **Multiple skills?** You can run skills back-to-back — just start a new \`/run\` after receiving results.`,
   },
+  {
+    id: "alex-assistant",
+    title: "Alex AI Assistant",
+    content: `Alex is your general-purpose AI assistant, available in the web app and on Telegram.
+
+### What Alex Can Do
+
+- **Answer questions about the platform** — how to create skills, navigate departments, use the Knowledge Base, etc.
+- **Help with the Skill Builder** — guide you through creating custom skills step by step.
+- **Provide grounded answers** — Alex searches your Knowledge Base so responses reflect your organization's own documents.
+- **General assistance** — answer business questions, brainstorm ideas, draft content, and more.
+
+### Using Alex in the Web App
+
+1. Click the **lightbulb icon** in the bottom-right corner of any page.
+2. A chat panel opens — type your question and press Send.
+3. Alex streams responses in real-time with Markdown formatting.
+4. The conversation resets when you reload the page.
+
+### Using Alex on Telegram
+
+- Just **type any message** (not a command) and Alex will respond.
+- Alex remembers your recent conversation (last 20 messages) for context.
+- Send \`/clear\` to reset your conversation history with Alex.
+- You can switch between chatting with Alex and running skills anytime.
+
+### Tips
+
+- Ask Alex "How do I create a custom skill?" for a step-by-step walkthrough.
+- Upload documents to the Knowledge Base first — Alex will use them to give more relevant answers.
+- On Telegram, use \`/clear\` if Alex's responses seem off-track.`,
+  },
 ];
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.04 } } };
