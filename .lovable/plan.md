@@ -1,110 +1,108 @@
 
-
-# Plan: Add Microsoft Entra ID Authentication + RLS Security
+# Plan: Enhanced Knowledge Base with File Management
 
 ## Overview
 
-Replicate the proven Azure AD auth pattern from your SolutionIQ Apex project, adapted for this app. This uses two edge functions for the OAuth flow and a frontend login page, with domain restriction to `@solutionment.com`.
+Upgrade the Knowledge Base to support PDF, Word, and PowerPoint uploads via a new edge function that extracts text server-side. Replace the inline document viewer with a clean file management UI (download, open, rename, delete). Store original files in the existing `documents` storage bucket. Ensure all agents (agent-dispatch, alex-chat, telegram-bot) use knowledge base content for grounding.
 
-## Prerequisites
+## 1. New Edge Function: `knowledge-ingest`
 
-You will need to provide three secrets:
-- **AZURE_CLIENT_ID** -- from your Azure App Registration
-- **AZURE_CLIENT_SECRET** -- from your Azure App Registration
-- **AZURE_TENANT_ID** -- your Entra ID tenant
+A backend function that handles text extraction from binary file formats.
 
-The Azure App Registration needs a redirect URI set to:
-`https://kelmihvxukrymegjmxoz.supabase.co/functions/v1/auth-azure-callback`
+**How it works:**
+- Frontend uploads the original file to the `documents` storage bucket
+- Frontend calls `knowledge-ingest` with the file path, title, and mime type
+- The function downloads the file from storage
+- For text files (.txt, .md, .csv): reads content directly
+- For PDF: extracts text using a lightweight Deno PDF parser (pdf-parse or similar)
+- For DOCX: unzips the .docx (which is a ZIP), parses `word/document.xml` to extract text
+- For PPTX: unzips the .pptx, parses `ppt/slides/slide*.xml` to extract text from all slides
+- Inserts a `knowledge_documents` record with extracted text content
+- Chunks the text by paragraphs and inserts into `knowledge_chunks`
+- Returns the created document record
 
-## 1. Create Edge Functions
+**Why server-side?** Binary file parsing (PDF, DOCX, PPTX) requires libraries that don't run in the browser. The edge function handles this reliably.
 
-### `auth-azure-login/index.ts`
-- Reads `AZURE_CLIENT_ID` and `AZURE_TENANT_ID` from secrets
-- Accepts a `redirect_to` query param (defaults to app origin + `/auth`)
-- Generates a CSRF state token with nonce + redirect URL
-- Redirects the browser to `https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/authorize`
+## 2. Database Changes
 
-### `auth-azure-callback/index.ts`
-- Receives the authorization code from Azure
-- Exchanges code for tokens via `POST /oauth2/v2.0/token`
-- Decodes the JWT id_token to extract email and name
-- Validates email ends with `@solutionment.com`
-- Uses Supabase Admin API to find or create the user
-- Generates a magic link token and redirects back to `/auth?token=...&type=...`
-
-Both functions are adapted from your existing SolutionIQ Apex implementation with the project-specific URLs updated.
-
-## 2. Create Auth Page (`src/pages/Auth.tsx`)
-
-- On mount: checks for `?token=` and `?type=` in URL and calls `supabase.auth.verifyOtp()` to establish a session
-- Shows error toasts from `?error=` query params
-- Checks if user already has a session and redirects to `/`
-- Renders a centered card with the Apex AI logo and a "Sign in with Microsoft" button
-- Button calls the `auth-azure-login` edge function URL
-- Handles iframe detection (Lovable preview) by trying `window.top.location.href` first
-- Shows "@solutionment.com only" notice
-
-## 3. Create Auth Guard (`src/components/AuthGuard.tsx`)
-
-- Wraps protected routes
-- Uses `supabase.auth.onAuthStateChange` and `getSession` to track auth state
-- If no session, redirects to `/auth`
-- Shows a loading spinner while checking session
-- Renders children when authenticated
-
-## 4. Update App Router (`src/App.tsx`)
-
-- Add `/auth` route (outside AppLayout, no sidebar)
-- Wrap all other routes inside `<AuthGuard>` so unauthenticated users are redirected
-
-```text
-Routes:
-  /auth          --> Auth page (public, no layout)
-  /              --> AuthGuard -> AppLayout -> Dashboard
-  /capabilities  --> AuthGuard -> AppLayout -> Capabilities
-  ... (all existing routes)
-```
-
-## 5. Add Sign-Out to Sidebar (`src/components/AppSidebar.tsx`)
-
-- Add a "Sign Out" button at the bottom of the sidebar
-- Calls `supabase.auth.signOut()` and navigates to `/auth`
-
-## 6. Tighten RLS Policies (Database Migration)
-
-Replace the current wide-open `true` RLS policies on all 7 tables with authenticated-only access:
+Add two columns to `knowledge_documents`:
 
 ```sql
--- For each table: agent_jobs, content_folders, content_items,
--- knowledge_chunks, knowledge_documents, scheduled_tasks,
--- skills, telegram_sessions
-
-DROP POLICY "Allow all access to <table>" ON public.<table>;
-
-CREATE POLICY "Authenticated users can do everything"
-ON public.<table>
-FOR ALL
-TO authenticated
-USING (true)
-WITH CHECK (true);
+ALTER TABLE public.knowledge_documents
+  ADD COLUMN file_path text,
+  ADD COLUMN mime_type text;
 ```
 
-This ensures only logged-in users (with a valid session) can read or write data. The `anon` key alone will no longer grant access.
+- `file_path`: path in the `documents` storage bucket (for download/open)
+- `mime_type`: original file type (application/pdf, etc.)
 
-## 7. Deploy and Configure
+## 3. Redesign Knowledge Base Page (`src/pages/Knowledge.tsx`)
 
-- Deploy both edge functions
-- Prompt for AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID secrets
+**Remove:**
+- The right-side document viewer panel (ReactMarkdown viewer)
+- The 2-column + 3-column grid layout
+- The `selectedDoc` state
+
+**New layout -- single full-width list:**
+- Search bar at top
+- Upload zone (now accepting PDF, DOCX, PPTX, TXT, MD, CSV)
+- Document list as a clean table/card list with columns: icon, title, type badge, tokens, date, actions
+- Each row has action buttons:
+  - **Download**: generates a signed URL from storage and triggers browser download
+  - **Open**: for files with a `file_path`, opens the storage URL in a new tab (browser handles PDF/DOCX natively)
+  - **Rename**: inline edit of the title (updates `knowledge_documents.title`)
+  - **Delete**: removes the document, its chunks, and the storage file
+
+**Upload flow:**
+1. User selects file(s)
+2. File uploaded to `documents` bucket with path `knowledge/{uuid}/{filename}`
+3. Call `knowledge-ingest` edge function to extract text and create chunks
+4. Show processing state while ingestion runs
+5. Refresh list on completion
+
+## 4. Grounding Verification
+
+The grounding logic already works correctly in all three agent functions:
+
+- **agent-dispatch** (line 66-86): Searches `knowledge_chunks` by input terms, injects into system prompt -- **already working**
+- **alex-chat** (line 107-131): Same RAG pattern on `knowledge_chunks` -- **already working**
+- **telegram-bot**: Need to verify it also uses knowledge chunks
+
+All three query `knowledge_chunks.content` with ilike filters. Since the new ingestion creates chunks identically to the current flow, grounding will work automatically for all uploaded file types.
+
+No changes needed to agent-dispatch or alex-chat -- they already consume knowledge_chunks.
+
+## 5. Storage Bucket RLS
+
+The `documents` bucket exists and is public. Add RLS policies on `storage.objects` for authenticated access:
+
+```sql
+CREATE POLICY "Authenticated users can upload documents"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'documents');
+
+CREATE POLICY "Authenticated users can read documents"
+ON storage.objects FOR SELECT TO authenticated
+USING (bucket_id = 'documents');
+
+CREATE POLICY "Authenticated users can delete documents"
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'documents');
+```
 
 ## Files Summary
 
 | Action | File |
 |--------|------|
-| Create | `supabase/functions/auth-azure-login/index.ts` |
-| Create | `supabase/functions/auth-azure-callback/index.ts` |
-| Create | `src/pages/Auth.tsx` |
-| Create | `src/components/AuthGuard.tsx` |
-| Modify | `src/App.tsx` -- add auth route + guard |
-| Modify | `src/components/AppSidebar.tsx` -- add sign-out |
-| Migration | Drop open RLS, add authenticated-only policies on all tables |
+| Migration | Add `file_path` and `mime_type` columns to `knowledge_documents`; add storage RLS policies |
+| Create | `supabase/functions/knowledge-ingest/index.ts` -- text extraction from PDF/DOCX/PPTX |
+| Rewrite | `src/pages/Knowledge.tsx` -- remove viewer, add file management UI, multi-format upload |
+| Config | `supabase/config.toml` -- add `knowledge-ingest` function entry |
 
+## Technical Notes
+
+- PDF text extraction in Deno uses `pdf-parse` or direct PDF stream parsing
+- DOCX/PPTX are ZIP archives; Deno's built-in `JSZip` or `fflate` can unzip and parse the XML inside
+- Files that fail text extraction will still be stored (for download) but marked with `status: 'failed'` and zero chunks
+- Maximum file size: 20MB (enforced client-side before upload)
+- The `knowledge-ingest` function uses the service role key to bypass RLS for inserting documents and chunks
