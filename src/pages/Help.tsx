@@ -371,10 +371,11 @@ Skills that produce useful output when re-run with the same inputs are marked as
 
 1. Go to **Tasks** in the sidebar (or click "View all" on the Dashboard's Scheduled Tasks card).
 2. Click **New Task**.
-3. **Select a Skill** — only schedulable skills appear.
-4. **Fill Inputs** — provide the inputs the skill needs (same form as running it manually).
-5. **Set Schedule** — choose frequency (Once, Daily, Weekly, Monthly, Custom) and time.
-6. **Name & Confirm** — give your task a memorable name like "Morning Coffee" or "Daily Briefing," then confirm to create it.
+3. **Name your task** — give it a memorable name like "Morning Coffee" or "Daily Briefing."
+4. **Select a Skill** — only schedulable skills appear. You must enter a name before selecting.
+5. **Fill Inputs** — provide the inputs the skill needs (same form as running it manually).
+6. **Set Schedule** — choose frequency (Once, Daily, Weekly, Monthly, Custom) and time.
+7. **Confirm** — review the summary and create.
 
 ### Managing Tasks
 
