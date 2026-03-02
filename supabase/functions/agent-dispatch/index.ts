@@ -23,7 +23,8 @@ STYLE CONSTRAINTS
 - Never use the phrase "lean in" in any form.
 - Never use the sentence structure "it's not about [X], it's about [Y]" or any variation.
 - Write like a seasoned human consultant, not like an AI. Avoid generic filler phrases.
-- Keep tone professional, direct, and outcome-focused.`;
+- Keep tone professional, direct, and outcome-focused.
+- The platform is called "Apex AI" (by Solutionment). Never refer to it as "Autopilot" or any other name.`;
 
 const AGENT_PERSONAS: Record<string, string> = {
   researcher:
