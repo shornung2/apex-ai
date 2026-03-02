@@ -1,88 +1,175 @@
 
-# Plan: Add Alex AI Assistant Chatbot
+
+# Plan: Scheduled Tasks Feature
 
 ## Overview
 
-Add "Alex," a general-purpose AI assistant accessible from both the web app (floating chat widget) and Telegram. Alex is grounded in the Knowledge Base and knows everything about the app via embedded help documentation.
+Add a Tasks system that lets users schedule any eligible skill to run automatically on a recurring basis. Tasks are powered by `pg_cron` and `pg_net` calling the existing `agent-dispatch` edge function. A new Tasks page shows all scheduled tasks with status, next run time, and history. The Dashboard gets a "Scheduled Tasks" card.
 
----
+## 1. Which Skills Are Schedulable
 
-## 1. Database Migration
+Add a `schedulable` boolean column to the `skills` table (default `false`). Skills that produce useful output when re-run with the same inputs get flagged as schedulable. Based on the current skill set:
 
-Add `conversation_history` column to `telegram_sessions` for Telegram chat context:
+| Skill | Schedulable | Rationale |
+|-------|-------------|-----------|
+| Company Research | Yes | Track competitors over time |
+| Contact Research | No | One-off person lookup |
+| Market & Industry Trends | Yes | Markets change; periodic refresh is valuable |
+| General Research | Yes | Monitor any topic over time |
+| Sales Email | No | Contextual, one-time per recipient |
+| Social Media Posts | Yes | Recurring content creation |
+| Article / Blog | Yes | Weekly content pipeline |
+| Proposal Draft | No | Deal-specific, one-time |
+| Meeting Prep | No | Tied to a specific meeting |
+| Deal Strategy | No | Point-in-time deal analysis |
 
-```sql
-ALTER TABLE public.telegram_sessions 
-ADD COLUMN conversation_history jsonb NOT NULL DEFAULT '[]'::jsonb;
+New skills created by users will default to `schedulable = false` but can be toggled on in the skill builder.
+
+## 2. Database Changes
+
+### New table: `scheduled_tasks`
+
+```text
+id              uuid PK (gen_random_uuid)
+skill_id        uuid FK -> skills.id
+skill_name      text (denormalized for display)
+department      text
+agent_type      text
+title           text (user-provided name like "Weekly Market Scan")
+inputs          jsonb (frozen inputs to use each run)
+schedule_type   text ('once' | 'daily' | 'weekly' | 'monthly' | 'custom')
+cron_expression text (e.g. '0 9 * * 1' for weekly Monday 9am)
+next_run_at     timestamptz (computed from cron)
+last_run_at     timestamptz
+last_job_id     uuid (FK -> agent_jobs.id, most recent run)
+status          text ('active' | 'paused' | 'completed')
+run_count       integer (default 0)
+created_at      timestamptz (default now())
 ```
 
----
+### Alter `skills` table
 
-## 2. New Edge Function: `alex-chat`
+```sql
+ALTER TABLE skills ADD COLUMN schedulable boolean NOT NULL DEFAULT false;
+```
 
-**File:** `supabase/functions/alex-chat/index.ts`
+Then update the known schedulable skills via INSERT tool (data operation).
 
-- Accepts `{ messages: [{role, content}] }` as POST body
-- RAG grounding: extracts search terms from the user message, queries `knowledge_chunks` (top 5 matches via `ilike`), injects as context
-- System prompt contains a condensed version of all help guide content (app features, skill builder steps, commands, Telegram setup, etc.) so Alex is an expert on the platform
-- Calls Lovable AI gateway (`google/gemini-3-flash-preview`) with streaming
-- Returns SSE stream (same pattern as `agent-dispatch`)
-- Config: `verify_jwt = false` in `supabase/config.toml`
+### Alter `agent_jobs` table
 
----
+```sql
+ALTER TABLE agent_jobs ADD COLUMN scheduled_task_id uuid REFERENCES scheduled_tasks(id);
+```
 
-## 3. Web App: Floating Chat Widget
+This links a job back to the task that triggered it, so task history is traceable.
 
-**New file:** `src/components/AlexChat.tsx`
+## 3. New Edge Function: `task-scheduler`
 
-- Floating button in bottom-right corner using the **lightbulb app icon** (`/favicon.jpg`) as the avatar/icon
-- Click to expand into a ~400x500px chat panel with:
-  - Header with "Alex" title and close button
-  - Scrollable message list (user and assistant bubbles)
-  - Simple markdown rendering for assistant responses
-  - Text input with send button
-- Streams responses token-by-token via SSE from `alex-chat`
-- Conversation state in React state (resets on reload)
-- Uses `position: fixed` with high z-index
+**File:** `supabase/functions/task-scheduler/index.ts`
 
-**Modify:** `src/components/AppLayout.tsx`
-- Import and render `<AlexChat />` inside the layout so it appears on every page
+A simple endpoint called by `pg_cron` that:
 
----
+1. Queries `scheduled_tasks` where `status = 'active'` and `next_run_at <= now()`
+2. For each due task:
+   - Fetches the skill from `skills` table
+   - Calls `agent-dispatch` internally with the frozen inputs
+   - Updates `last_run_at`, `last_job_id`, `run_count`
+   - Computes and sets `next_run_at` based on `cron_expression`
+   - If `schedule_type = 'once'`, sets `status = 'completed'`
+3. Returns summary of tasks executed
 
-## 4. Telegram Integration Update
+**Config:** `verify_jwt = false` in `supabase/config.toml` (called by pg_cron)
 
-**Modify:** `supabase/functions/telegram-bot/index.ts`
+### Cron Job Setup
 
-- Change the "unknown message" handler (lines 539-543): instead of "I didn't understand that," route free-text to `alex-chat` edge function
-- Maintain conversation history in `telegram_sessions.conversation_history` (capped at last 20 messages)
-- Add `/alex` command as explicit trigger and `/clear` to reset conversation history
-- Update `/start` and `/help` messages to mention Alex ("Just type any message to chat with Alex")
+Use `pg_cron` + `pg_net` to call `task-scheduler` every hour:
 
----
+```sql
+SELECT cron.schedule(
+  'run-scheduled-tasks',
+  '0 * * * *',  -- every hour on the hour
+  $$ SELECT net.http_post(
+    url := '<function_url>/functions/v1/task-scheduler',
+    headers := '{"Authorization": "Bearer <anon_key>"}'::jsonb,
+    body := '{}'::jsonb
+  ) $$
+);
+```
 
-## 5. Help Page Update
+## 4. New Page: `/tasks`
 
-**Modify:** `src/pages/Help.tsx`
+**File:** `src/pages/Tasks.tsx`
 
-Add an "Alex AI Assistant" section to `helpSections` covering:
-- What Alex is (general AI assistant grounded in Knowledge Base and app expertise)
-- How to use the chat widget (click the lightbulb icon in the bottom-right)
-- How to chat with Alex on Telegram (just type any message)
-- `/clear` command to reset conversation
+Layout:
+- Header: "Scheduled Tasks" with a "New Task" button
+- Task list showing each scheduled task as a card:
+  - Skill emoji + task title
+  - Schedule badge (Daily, Weekly, etc.)
+  - Status badge (Active, Paused, Completed)
+  - Next run time (relative, e.g. "in 3 hours")
+  - Last run result link (to the job detail page)
+  - Run count
+  - Pause/Resume and Delete actions
 
----
+### "New Task" Dialog
+
+A multi-step dialog:
+1. **Select Skill** -- shows only skills where `schedulable = true`, grouped by department
+2. **Fill Inputs** -- reuses the existing `SkillForm` input fields for the selected skill
+3. **Set Schedule** -- pick frequency (Once, Daily, Weekly, Monthly, Custom) with:
+   - Daily: pick time of day
+   - Weekly: pick day + time
+   - Monthly: pick day-of-month + time
+   - Custom: raw cron expression input (advanced)
+   - Once: pick date + time
+4. **Name & Confirm** -- give the task a title, review, and create
+
+## 5. Dashboard Update
+
+**File:** `src/pages/Dashboard.tsx`
+
+Add a new card between the stat cards and Recent Activity:
+
+- Title: "Scheduled Tasks" with a calendar icon
+- Shows up to 3 upcoming tasks with next run time
+- "View all" link to `/tasks`
+- If no tasks: "No scheduled tasks yet. Set one up to automate your skills."
+
+## 6. Sidebar Update
+
+**File:** `src/components/AppSidebar.tsx`
+
+Add "Tasks" to the `toolItems` array (with a `CalendarClock` icon from lucide) between "Capabilities" and "Knowledge Base".
+
+## 7. Skill Builder Integration
+
+**File:** `src/pages/Capabilities.tsx` (or wherever skill editing lives)
+
+Add a "Schedulable" toggle switch to the skill creation/edit form so users can mark custom skills as schedulable.
 
 ## Files Summary
 
 | Action | File |
 |--------|------|
-| Create | `supabase/functions/alex-chat/index.ts` |
-| Create | `src/components/AlexChat.tsx` |
-| Modify | `supabase/functions/telegram-bot/index.ts` |
-| Modify | `src/components/AppLayout.tsx` |
-| Modify | `src/pages/Help.tsx` |
-| Modify | `supabase/config.toml` |
-| Migration | Add `conversation_history` column |
+| Create | `src/pages/Tasks.tsx` |
+| Create | `supabase/functions/task-scheduler/index.ts` |
+| Modify | `src/pages/Dashboard.tsx` -- add upcoming tasks card |
+| Modify | `src/components/AppSidebar.tsx` -- add Tasks nav item |
+| Modify | `src/App.tsx` -- add `/tasks` route |
+| Modify | `src/pages/Capabilities.tsx` -- add schedulable toggle |
+| Modify | `src/pages/Help.tsx` -- add Tasks documentation |
+| Migration | Create `scheduled_tasks` table |
+| Migration | Add `schedulable` column to `skills` |
+| Migration | Add `scheduled_task_id` column to `agent_jobs` |
+| Migration | Enable `pg_cron` and `pg_net` extensions |
+| Data update | Set `schedulable = true` on eligible skills |
+| Data update | Create `pg_cron` job to call `task-scheduler` hourly |
 
-No new secrets needed -- uses existing `LOVABLE_API_KEY`.
+## Technical Notes
+
+- The scheduler runs hourly, so tasks are accurate to the hour (daily minimum granularity makes this fine)
+- `next_run_at` is computed server-side when a task is created or after each run
+- The `task-scheduler` function calls `agent-dispatch` internally (HTTP fetch to its own Supabase functions URL), reusing all existing agent logic
+- Jobs created by scheduled tasks have `scheduled_task_id` set, so the Tasks page can show run history
+- Pausing a task simply sets `status = 'paused'`; the scheduler skips paused tasks
+
