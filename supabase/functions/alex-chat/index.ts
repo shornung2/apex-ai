@@ -95,13 +95,22 @@ serve(async (req) => {
   );
 
   try {
-    const { messages } = await req.json();
+    const { messages, attachments } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: "messages array is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Build attachment context
+    let attachmentContext = "";
+    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+      attachmentContext = "\n\n## USER-UPLOADED DOCUMENTS\n" +
+        attachments.map((a: { title: string; content: string }) =>
+          `[Document: ${a.title}]\n${a.content}`
+        ).join("\n\n");
     }
 
     // RAG: extract search terms from the latest user message
@@ -143,7 +152,7 @@ Key traits:
 - Format responses in clean Markdown
 - If you don't know something specific to the organization, say so honestly
 
-${APP_KNOWLEDGE}${knowledgeContext}`;
+${APP_KNOWLEDGE}${knowledgeContext}${attachmentContext}`;
 
     // Call AI gateway with streaming
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

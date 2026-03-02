@@ -8,7 +8,7 @@ export type SkillInput = {
   name?: string;
   field?: string;
   label: string;
-  type: "text" | "textarea" | "select" | "radio" | "multi-select" | "multiselect" | "url";
+  type: "text" | "textarea" | "select" | "radio" | "multi-select" | "multiselect" | "url" | "file";
   required: boolean;
   placeholder?: string;
   hint?: string;

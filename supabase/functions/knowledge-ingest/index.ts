@@ -117,7 +117,7 @@ serve(async (req) => {
 
   try {
     const supabase = getServiceSupabase();
-    const { file_path, title, mime_type } = await req.json();
+    const { file_path, title, mime_type, folder_id } = await req.json();
 
     if (!file_path || !title) {
       return new Response(
@@ -192,6 +192,7 @@ serve(async (req) => {
         tokens,
         file_path,
         mime_type: mime_type || null,
+        folder_id: folder_id || null,
       })
       .select()
       .single();
