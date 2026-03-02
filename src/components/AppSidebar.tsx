@@ -31,8 +31,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import logoDark from "@/assets/logo-dark.jpg";
-import logoLight from "@/assets/logo-light.jpg";
+import apexLogo from "@/assets/apex-ai-logo.png";
 
 const topItems = [
   { title: "Overview", url: "/", icon: LayoutDashboard },
@@ -83,7 +82,7 @@ export function AppSidebar() {
   const tokenColor =
     tokenPercent > 80 ? "bg-destructive" : tokenPercent > 60 ? "bg-amber-500" : "bg-emerald-500";
 
-  const logo = resolvedTheme === "dark" ? logoDark : logoLight;
+  const logo = apexLogo;
 
   const renderNavItem = (navItem: { title: string; url: string; icon: React.ElementType }, end?: boolean) => (
     <SidebarMenuItem key={navItem.title}>
