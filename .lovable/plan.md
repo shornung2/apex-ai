@@ -1,63 +1,39 @@
 
 
-# Plan: Rename to "Apex AI" + Real Usage Data in Settings
+# Plan: Update App Icons + Fix Telegram Input Bug
 
-## Overview
+## 1. Replace App Icons with New Apex AI Logo
 
-Rename every occurrence of "Autopilot" to **"Apex AI"** across the entire application -- UI, Help system, Telegram bot, Alex assistant, HTML metadata, and theme storage key. Also replace the Settings Usage tab placeholder with live data queried from the database.
+Copy the first uploaded image (transparent background, best for sidebar/favicon) to two locations:
 
----
+- **Sidebar logo**: Copy to `src/assets/apex-ai-logo.png`, then update `AppSidebar.tsx` to import and use it instead of `logo-dark.jpg` / `logo-light.jpg` (single logo works for both themes since it has a transparent background).
+- **Favicon**: Copy to `public/favicon.png`, then update `index.html` to reference `/favicon.png` with `type="image/png"`.
 
-## 1. Global Rename: "Autopilot" to "Apex AI"
+Files modified: `src/components/AppSidebar.tsx`, `index.html`
+New files: `src/assets/apex-ai-logo.png`, `public/favicon.png`
 
-Every file containing "Autopilot" or "AI Operating System" will be updated:
+## 2. Fix Telegram Bot "Forgetting" Inputs
 
-| File | Changes |
-|------|---------|
-| `index.html` | Title: "Apex AI", meta description: "Apex AI by Solutionment", og:title |
-| `src/App.tsx` | Theme storage key: `"autopilot-theme"` to `"apex-ai-theme"` |
-| `src/components/AppSidebar.tsx` | Logo alt text: "Apex AI", subtitle: "Apex AI" instead of "AI Operating System", keep "by Solutionment" |
-| `src/components/AlexChat.tsx` | Welcome text: "Ask me anything about Apex AI..." |
-| `src/pages/Help.tsx` | All ~15 occurrences of "Autopilot" in help content replaced with "Apex AI"; footer text updated |
-| `supabase/functions/alex-chat/index.ts` | APP_KNOWLEDGE block: all "Autopilot" references to "Apex AI"; system prompt updated |
-| `supabase/functions/telegram-bot/index.ts` | Bot welcome, help text, skill-not-found messages, task messages -- all "Autopilot" to "Apex AI" |
+**Root cause**: The skill inputs stored in the database use `field` as the property name (e.g., `field: "post_topic"`). But the Telegram bot's `SkillInput` interface defines `id` and the code saves answers using `currentInput.id` (line 293). Since `id` is always `undefined`, every answer overwrites the same key, so only the last answer survives.
 
----
+**Fix**:
+- Update the `SkillInput` interface in `telegram-bot/index.ts` to include `field?: string`
+- Change line 293 from `collectedInputs[currentInput.id]` to `collectedInputs[currentInput.field || currentInput.id]`
+- Similarly update the filter on line 232 and the prompt display on lines 256-264 to use `field || id` consistently
+- Also update the `requiredInputs` filter on line 287 to properly match the input key
 
-## 2. Settings Usage Tab -- Real Data
+This is a one-line root-cause fix with a few defensive fallbacks.
 
-Replace the placeholder text in the Usage tab with a live dashboard querying real data from the database:
+**File modified**: `supabase/functions/telegram-bot/index.ts`
 
-### Data Sources
-- **Total Runs**: `SELECT count(*) FROM agent_jobs`
-- **Tokens Used**: `SELECT sum(tokens_used) FROM agent_jobs WHERE status = 'complete'`
-- **Token Budget**: 50,000 (matches sidebar)
-- **Knowledge Docs**: `SELECT count(*) FROM knowledge_documents`
-- **Active Skills**: `SELECT count(*) FROM skills`
-- **Scheduled Tasks**: `SELECT count(*) FROM scheduled_tasks WHERE status = 'active'`
-- **Success Rate**: computed from complete vs total jobs
-
-### UI Layout
-The Usage tab will show:
-1. **Token Usage** -- progress bar with used/budget, matching the sidebar style
-2. **Stats Grid** -- 4 metric cards: Total Runs, Success Rate, Knowledge Docs, Active Skills
-3. **Scheduled Tasks** -- count of active automated tasks
-4. All data fetched on mount via `useEffect` with a loading skeleton
-
----
-
-## Files Summary
+## 3. Summary
 
 | Action | File |
 |--------|------|
-| Modify | `index.html` -- title and meta tags |
-| Modify | `src/App.tsx` -- theme storage key |
-| Modify | `src/components/AppSidebar.tsx` -- logo alt, subtitle |
-| Modify | `src/components/AlexChat.tsx` -- welcome text |
-| Modify | `src/pages/Help.tsx` -- all help content |
-| Modify | `src/pages/Settings.tsx` -- Usage tab with live data |
-| Modify | `supabase/functions/alex-chat/index.ts` -- APP_KNOWLEDGE and system prompt |
-| Modify | `supabase/functions/telegram-bot/index.ts` -- all user-facing messages |
-
-No database changes needed. No new files.
+| Copy | uploaded image to `src/assets/apex-ai-logo.png` |
+| Copy | uploaded image to `public/favicon.png` |
+| Modify | `src/components/AppSidebar.tsx` -- use new logo |
+| Modify | `index.html` -- favicon to PNG |
+| Modify | `supabase/functions/telegram-bot/index.ts` -- fix `field` vs `id` bug |
+| Redeploy | `telegram-bot` edge function |
 
