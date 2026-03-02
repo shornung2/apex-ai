@@ -28,6 +28,7 @@ interface TelegramUpdate {
 
 interface SkillInput {
   id: string;
+  field?: string;
   label: string;
   type: string;
   placeholder?: string;
@@ -290,7 +291,7 @@ async function handleInputCollection(
 
   // Store the current input
   const currentInput = inputs[currentIndex];
-  collectedInputs[currentInput.id] = text;
+  collectedInputs[currentInput.field || currentInput.id] = text;
 
   const nextIndex = currentIndex + 1;
 
