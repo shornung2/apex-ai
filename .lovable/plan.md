@@ -1,100 +1,44 @@
 
 
-# Plan: Telegram Bot Integration for Autopilot
+# Plan: Add Telegram Bot Guide to Help Center
 
-## Overview
+## What Changes
 
-Create a Telegram bot webhook edge function that lets users run any Autopilot skill/agent directly from Telegram. The bot will support listing available skills, selecting one, providing inputs conversationally, and streaming back the result.
+Add a new "Telegram Bot Integration" section to the Help page's `helpSections` array, positioned after the Settings section. This is a single-file edit to `src/pages/Help.tsx`.
 
-## Architecture
+## New Section Content
 
-```text
-Telegram User --> Telegram API --> /telegram-bot (Edge Function) --> /agent-dispatch (existing)
-                                        |
-                                        v
-                                   Supabase DB
-                                (skills, agent_jobs, telegram_sessions)
-```
+The new accordion section will cover:
 
-## What You'll Need
+### Overview
+- What the Telegram bot does -- run any Autopilot skill directly from Telegram chat
+- How it connects to the platform (same agents and skills, just a different interface)
 
-A **Telegram Bot Token** from @BotFather on Telegram. You'll create a bot, get the token, and provide it to Lovable as a secret.
+### Step-by-Step Setup Guide
+1. **Create a Telegram Bot** -- Open Telegram, message @BotFather, send `/newbot`, choose a name and username
+2. **Copy the Bot Token** -- BotFather provides a token like `123456:ABC-DEF...`, copy it
+3. **Add the Token to Autopilot** -- Where to provide the token in Settings/configuration
+4. **Register the Webhook** -- Explain that the webhook is registered automatically on deployment
+5. **Test the Bot** -- Send `/start` to your new bot to confirm it's working
 
----
+### Available Commands
+- `/start` -- Welcome message and introduction
+- `/skills` -- Browse all available skills grouped by department
+- `/run <skill_name>` -- Start running a specific skill
+- `/cancel` -- Cancel an in-progress skill input collection
+- `/help` -- Show available commands
 
-## Database Changes
+### How Running a Skill Works
+- Step-by-step walkthrough of the conversational flow: select skill, provide inputs one at a time, receive result
+- Mention that long outputs are automatically split into multiple messages
 
-**New table: `telegram_sessions`** -- tracks conversational state per Telegram chat so the bot can collect inputs step-by-step.
+### Tips and Troubleshooting
+- Bot not responding? Check that the token is correct and webhook is registered
+- Results too long? They're automatically split at paragraph boundaries
+- Want to start over? Use `/cancel` then try again
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid (PK) | Session ID |
-| chat_id | bigint, unique | Telegram chat ID |
-| state | text | Current state: `idle`, `selecting_skill`, `collecting_inputs` |
-| selected_skill_id | uuid, nullable | The skill being configured |
-| collected_inputs | jsonb | Inputs gathered so far |
-| current_input_index | integer | Which input field we're asking for |
-| created_at | timestamptz | Created timestamp |
-| updated_at | timestamptz | Last updated |
+## Technical Details
 
-RLS: Open access (no auth on this project currently).
-
----
-
-## Edge Function: `telegram-bot`
-
-A single webhook endpoint that Telegram calls for every message.
-
-### Bot Commands
-
-| Command | Action |
-|---------|--------|
-| `/start` | Welcome message explaining the bot |
-| `/skills` | List all available skills grouped by department |
-| `/run <skill_name>` | Start running a specific skill -- begins collecting inputs |
-| `/cancel` | Cancel current skill execution |
-| `/help` | Show available commands |
-
-### Conversational Flow
-
-1. User sends `/skills` -- bot queries the `skills` table and returns a formatted list with inline keyboard buttons
-2. User taps a skill (or sends `/run skill-name`) -- bot looks up the skill, stores it in `telegram_sessions`, and asks for the first required input
-3. Bot asks for each input one at a time (showing the label, placeholder, and hint from the skill definition)
-4. Once all inputs are collected, bot calls the existing `agent-dispatch` edge function internally (server-to-server, not via public URL)
-5. Bot sends the result back to the user as a Telegram message (splitting long responses into multiple messages if needed, since Telegram has a 4096-char limit)
-
-### Key Implementation Details
-
-- **Webhook registration**: A `/telegram-bot?action=set-webhook` GET endpoint to register the webhook URL with Telegram's API
-- **Inline keyboards**: For skill selection, department filtering, and confirmation prompts
-- **Markdown formatting**: Telegram supports MarkdownV2 -- results will be formatted accordingly
-- **Long response handling**: Split output into chunks of ~4000 chars at paragraph boundaries
-- **Error handling**: Graceful error messages sent back to the Telegram chat if agent execution fails
-
----
-
-## Files to Create
-
-1. **`supabase/functions/telegram-bot/index.ts`** -- Main webhook handler with:
-   - Command parsing (`/start`, `/skills`, `/run`, `/cancel`, `/help`)
-   - Session management (step-by-step input collection)
-   - Internal call to `agent-dispatch` for execution
-   - Telegram message sending with markdown formatting
-   - Webhook setup endpoint
-
-## Files to Modify
-
-None -- this is a self-contained addition. The existing `agent-dispatch` function is reused as-is via internal HTTP call.
-
-## Secret Required
-
-- **`TELEGRAM_BOT_TOKEN`** -- obtained from Telegram's @BotFather
-
-## Setup Steps (for the user)
-
-1. Open Telegram and message @BotFather
-2. Send `/newbot` and follow the prompts to name your bot
-3. Copy the bot token provided by BotFather
-4. Provide the token when prompted by Lovable
-5. After deployment, the webhook will be registered automatically
-
+**File to modify:** `src/pages/Help.tsx`
+- Add one new object to the `helpSections` array (after the "settings" entry, around line 169)
+- No other files need changes
