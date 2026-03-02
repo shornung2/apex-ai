@@ -107,7 +107,6 @@ export function AppSidebar() {
           <img src={logo} alt="Apex AI" className="h-20 w-20 rounded-2xl object-cover shrink-0" />
           {!collapsed && (
             <div className="text-center">
-              <p className="text-xs font-medium text-muted-foreground">Apex AI</p>
               <p className="text-[11px] text-muted-foreground">by Solutionment</p>
             </div>
           )}

@@ -291,7 +291,7 @@ async function handleInputCollection(
 
   // Store the current input
   const currentInput = inputs[currentIndex];
-  collectedInputs[currentInput.field || currentInput.id] = text;
+  collectedInputs[currentInput.field || currentInput.id || currentInput.label] = text;
 
   const nextIndex = currentIndex + 1;
 

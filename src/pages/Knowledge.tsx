@@ -189,7 +189,7 @@ export default function Knowledge() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose prose-invert prose-sm max-w-none max-h-[60vh] overflow-y-auto">
+                  <div className="prose dark:prose-invert prose-sm max-w-none max-h-[60vh] overflow-y-auto">
                     <ReactMarkdown>{selectedDoc.content || "No content"}</ReactMarkdown>
                   </div>
                 </CardContent>

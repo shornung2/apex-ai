@@ -117,7 +117,7 @@ export function AlexChat() {
           className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 overflow-hidden border-2 border-primary/30 bg-background"
           aria-label="Chat with Alex"
         >
-          <img src="/favicon.jpg" alt="Alex" className="w-full h-full object-cover" />
+          <img src="/favicon.png" alt="Alex" className="w-full h-full object-cover" />
         </button>
       )}
 
@@ -126,7 +126,7 @@ export function AlexChat() {
         <div className="fixed bottom-6 right-6 z-50 w-[400px] h-[520px] flex flex-col rounded-xl border border-border bg-background shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0">
-            <img src="/favicon.jpg" alt="Alex" className="w-8 h-8 rounded-full object-cover" />
+            <img src="/favicon.png" alt="Alex" className="w-8 h-8 rounded-full object-cover" />
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-foreground">Alex</h3>
               <p className="text-xs text-muted-foreground">AI Assistant</p>
@@ -140,7 +140,7 @@ export function AlexChat() {
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 && (
               <div className="text-center py-8">
-                <img src="/favicon.jpg" alt="Alex" className="w-12 h-12 rounded-full mx-auto mb-3 object-cover" />
+                <img src="/favicon.png" alt="Alex" className="w-12 h-12 rounded-full mx-auto mb-3 object-cover" />
                 <p className="text-sm font-medium text-foreground">Hi! I'm Alex 👋</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Ask me anything about Apex AI or your Knowledge Base.
