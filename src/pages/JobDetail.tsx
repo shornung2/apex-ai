@@ -208,7 +208,7 @@ export default function JobDetail() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="prose dark:prose-invert prose-sm max-w-none">
+              <div className="prose dark:prose-invert max-w-none [&>h2]:mt-6 [&>h2]:mb-3 [&>h2]:text-lg [&>h2]:font-bold [&>h3]:mt-4 [&>h3]:mb-2 [&>h3]:text-base [&>h3]:font-semibold [&>p]:my-3 [&>ul]:my-3 [&>ol]:my-3 [&>p+p]:mt-4 [&>li]:my-1 [&>ul>li]:my-1">
                 <ReactMarkdown>{job.output}</ReactMarkdown>
               </div>
             </CardContent>

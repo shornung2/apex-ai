@@ -148,7 +148,7 @@ export function AlexChat() {
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
                   {msg.role === "assistant" ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
+                    <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&>h2]:mt-4 [&>h2]:mb-2 [&>h2]:text-base [&>h2]:font-bold [&>h3]:mt-3 [&>h3]:mb-1.5 [&>h3]:text-sm [&>h3]:font-semibold [&>p]:my-2 [&>ul]:my-2 [&>ol]:my-2 [&>p+p]:mt-3"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
                   ) : msg.content}
                 </div>
               </div>
