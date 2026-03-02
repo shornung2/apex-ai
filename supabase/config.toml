@@ -2,3 +2,9 @@ project_id = "kelmihvxukrymegjmxoz"
 
 [functions.telegram-bot]
 verify_jwt = false
+
+[functions.auth-azure-login]
+verify_jwt = false
+
+[functions.auth-azure-callback]
+verify_jwt = false
