@@ -293,6 +293,39 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_sessions: {
+        Row: {
+          chat_id: number
+          collected_inputs: Json
+          created_at: string
+          current_input_index: number
+          id: string
+          selected_skill_id: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          chat_id: number
+          collected_inputs?: Json
+          created_at?: string
+          current_input_index?: number
+          id?: string
+          selected_skill_id?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          chat_id?: number
+          collected_inputs?: Json
+          created_at?: string
+          current_input_index?: number
+          id?: string
+          selected_skill_id?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
