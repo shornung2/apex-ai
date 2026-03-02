@@ -1,108 +1,132 @@
 
-# Plan: Enhanced Knowledge Base with File Management
+# Plan: Knowledge Base Folders, Drag-and-Drop, and File Uploads for Agents
 
 ## Overview
 
-Upgrade the Knowledge Base to support PDF, Word, and PowerPoint uploads via a new edge function that extracts text server-side. Replace the inline document viewer with a clean file management UI (download, open, rename, delete). Store original files in the existing `documents` storage bucket. Ensure all agents (agent-dispatch, alex-chat, telegram-bot) use knowledge base content for grounding.
+Three major features: (1) folder organization with drag-and-drop in the Knowledge Base, (2) drag-and-drop file uploads, and (3) file attachment support in Alex Chat and relevant skill forms -- all feeding into the existing grounding pipeline via `knowledge_chunks`.
 
-## 1. New Edge Function: `knowledge-ingest`
+## 1. Database Migration
 
-A backend function that handles text extraction from binary file formats.
+### New `knowledge_folders` table
 
-**How it works:**
-- Frontend uploads the original file to the `documents` storage bucket
-- Frontend calls `knowledge-ingest` with the file path, title, and mime type
-- The function downloads the file from storage
-- For text files (.txt, .md, .csv): reads content directly
-- For PDF: extracts text using a lightweight Deno PDF parser (pdf-parse or similar)
-- For DOCX: unzips the .docx (which is a ZIP), parses `word/document.xml` to extract text
-- For PPTX: unzips the .pptx, parses `ppt/slides/slide*.xml` to extract text from all slides
-- Inserts a `knowledge_documents` record with extracted text content
-- Chunks the text by paragraphs and inserts into `knowledge_chunks`
-- Returns the created document record
+```sql
+CREATE TABLE public.knowledge_folders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  parent_id uuid REFERENCES public.knowledge_folders(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-**Why server-side?** Binary file parsing (PDF, DOCX, PPTX) requires libraries that don't run in the browser. The edge function handles this reliably.
+ALTER TABLE public.knowledge_folders ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Authenticated users can manage knowledge_folders"
+ON public.knowledge_folders FOR ALL TO authenticated
+USING (true) WITH CHECK (true);
+```
 
-## 2. Database Changes
-
-Add two columns to `knowledge_documents`:
+### Add `folder_id` to `knowledge_documents`
 
 ```sql
 ALTER TABLE public.knowledge_documents
-  ADD COLUMN file_path text,
-  ADD COLUMN mime_type text;
+ADD COLUMN folder_id uuid REFERENCES public.knowledge_folders(id) ON DELETE SET NULL;
 ```
 
-- `file_path`: path in the `documents` storage bucket (for download/open)
-- `mime_type`: original file type (application/pdf, etc.)
+This is a nullable FK -- documents without a folder sit at the root. Moving a file between folders is a single `UPDATE` on `folder_id`. Grounding is unaffected because `knowledge_chunks` references `document_id`, not folders.
 
-## 3. Redesign Knowledge Base Page (`src/pages/Knowledge.tsx`)
+## 2. Knowledge Base Page Redesign (`src/pages/Knowledge.tsx`)
 
-**Remove:**
-- The right-side document viewer panel (ReactMarkdown viewer)
-- The 2-column + 3-column grid layout
-- The `selectedDoc` state
+### Folder management
+- Add a "New Folder" button in the toolbar
+- Display folders as clickable rows above documents (folder icon, name, item count)
+- Breadcrumb navigation: Root > Folder > Subfolder
+- Right-click or action menu on folders: Rename, Delete
+- Clicking a folder navigates into it (filters documents by `folder_id`)
 
-**New layout -- single full-width list:**
-- Search bar at top
-- Upload zone (now accepting PDF, DOCX, PPTX, TXT, MD, CSV)
-- Document list as a clean table/card list with columns: icon, title, type badge, tokens, date, actions
-- Each row has action buttons:
-  - **Download**: generates a signed URL from storage and triggers browser download
-  - **Open**: for files with a `file_path`, opens the storage URL in a new tab (browser handles PDF/DOCX natively)
-  - **Rename**: inline edit of the title (updates `knowledge_documents.title`)
-  - **Delete**: removes the document, its chunks, and the storage file
+### Drag-and-drop file uploads
+- Wrap the page content area with `onDragOver` / `onDrop` handlers
+- Show a full-page overlay ("Drop files to upload") when files are dragged over
+- Dropped files go through the existing upload pipeline (storage + `knowledge-ingest`)
+- Files are uploaded into the currently viewed folder
 
-**Upload flow:**
-1. User selects file(s)
-2. File uploaded to `documents` bucket with path `knowledge/{uuid}/{filename}`
-3. Call `knowledge-ingest` edge function to extract text and create chunks
-4. Show processing state while ingestion runs
-5. Refresh list on completion
+### Drag-and-drop file reorganization
+- Make document rows and folder rows draggable (`draggable="true"`)
+- Folders act as drop targets -- dropping a document onto a folder updates its `folder_id`
+- Visual feedback: highlight target folder on drag-over
+- Support dragging files to breadcrumb items to move up the hierarchy
 
-## 4. Grounding Verification
+### Delete confirmation
+- Add an `AlertDialog` confirmation before deleting documents or folders
 
-The grounding logic already works correctly in all three agent functions:
+## 3. File Upload in Alex Chat (`src/components/AlexChat.tsx`)
 
-- **agent-dispatch** (line 66-86): Searches `knowledge_chunks` by input terms, injects into system prompt -- **already working**
-- **alex-chat** (line 107-131): Same RAG pattern on `knowledge_chunks` -- **already working**
-- **telegram-bot**: Need to verify it also uses knowledge chunks
+### UI changes
+- Add a paperclip/attachment button next to the text input
+- Hidden file input accepting `.pdf,.docx,.pptx,.txt,.md,.csv`
+- When a file is selected, show a file chip (name + remove button) above the input
+- On send: upload file to storage, call `knowledge-ingest`, then include the extracted text as context in the message payload
 
-All three query `knowledge_chunks.content` with ilike filters. Since the new ingestion creates chunks identically to the current flow, grounding will work automatically for all uploaded file types.
+### Backend changes (`supabase/functions/alex-chat/index.ts`)
+- Accept an optional `attachments` array in the request body: `[{ title, content }]`
+- Prepend attachment content to the system prompt as additional context:
+  ```
+  ## USER-UPLOADED DOCUMENT
+  [Document: filename.pdf]
+  <extracted text>
+  ```
+- This is additive to the existing RAG context -- both sources are injected
 
-No changes needed to agent-dispatch or alex-chat -- they already consume knowledge_chunks.
+## 4. File Upload in Skill Forms (`src/components/SkillForm.tsx`)
 
-## 5. Storage Bucket RLS
+### New `file` input type
+- Add a `file` input type to `SkillInput` in `src/data/mock-data.ts`
+- Render a file picker when `input.type === "file"`
+- On form submit: upload the file to storage, call `knowledge-ingest`, and pass extracted text as the input value (so it flows through the existing `{{variable}}` template system)
 
-The `documents` bucket exists and is public. Add RLS policies on `storage.objects` for authenticated access:
+### Update Meeting Prep skill
+- Add an optional "file" type input to the `meeting_prep_coach` skill: "Prior Meeting Transcript / Notes" with `type: "file"`, `required: false`
+- This is a data update (not a schema change)
 
-```sql
-CREATE POLICY "Authenticated users can upload documents"
-ON storage.objects FOR INSERT TO authenticated
-WITH CHECK (bucket_id = 'documents');
+### Agent grounding impact
+- **No changes needed** to `agent-dispatch` or `alex-chat` edge functions for skill-based file uploads because the extracted text is passed as a regular input value, which flows into the prompt template and the existing RAG search
 
-CREATE POLICY "Authenticated users can read documents"
-ON storage.objects FOR SELECT TO authenticated
-USING (bucket_id = 'documents');
+## 5. Tests
 
-CREATE POLICY "Authenticated users can delete documents"
-ON storage.objects FOR DELETE TO authenticated
-USING (bucket_id = 'documents');
-```
+### Frontend tests (`src/components/__tests__/`)
+
+**Knowledge.test.tsx:**
+- Renders document list correctly
+- Shows folder breadcrumbs
+- Create folder flow
+- Rename/delete folder
+- Drag-and-drop upload triggers file input
+- Search filters documents
+
+**AlexChat.test.tsx:**
+- Renders chat widget
+- Open/close toggle
+- File attachment chip appears when file selected
+- Send button disabled when loading
+
+**SkillForm.test.tsx:**
+- Renders all input types including file
+- File input shows selected filename
+- Form submission includes file data
 
 ## Files Summary
 
 | Action | File |
 |--------|------|
-| Migration | Add `file_path` and `mime_type` columns to `knowledge_documents`; add storage RLS policies |
-| Create | `supabase/functions/knowledge-ingest/index.ts` -- text extraction from PDF/DOCX/PPTX |
-| Rewrite | `src/pages/Knowledge.tsx` -- remove viewer, add file management UI, multi-format upload |
-| Config | `supabase/config.toml` -- add `knowledge-ingest` function entry |
+| Migration | Create `knowledge_folders` table, add `folder_id` to `knowledge_documents` |
+| Data update | Add file input to `meeting_prep_coach` skill |
+| Rewrite | `src/pages/Knowledge.tsx` -- folders, drag-drop, breadcrumbs |
+| Modify | `src/components/AlexChat.tsx` -- file attachment UI + payload |
+| Modify | `src/components/SkillForm.tsx` -- new `file` input type |
+| Modify | `src/data/mock-data.ts` -- add `file` to `SkillInput.type` union |
+| Modify | `supabase/functions/alex-chat/index.ts` -- accept attachments |
+| Modify | `src/lib/agent-client.ts` -- pass attachment data |
+| Create | `src/components/__tests__/Knowledge.test.tsx` |
+| Create | `src/components/__tests__/AlexChat.test.tsx` |
+| Create | `src/components/__tests__/SkillForm.test.tsx` |
 
-## Technical Notes
+## Grounding Integrity
 
-- PDF text extraction in Deno uses `pdf-parse` or direct PDF stream parsing
-- DOCX/PPTX are ZIP archives; Deno's built-in `JSZip` or `fflate` can unzip and parse the XML inside
-- Files that fail text extraction will still be stored (for download) but marked with `status: 'failed'` and zero chunks
-- Maximum file size: 20MB (enforced client-side before upload)
-- The `knowledge-ingest` function uses the service role key to bypass RLS for inserting documents and chunks
+The grounding pipeline is unaffected by folders -- `knowledge_chunks` references `document_id` regardless of folder structure. File uploads in Alex Chat and skill forms create temporary context injected directly into prompts (not persisted to the knowledge base unless explicitly saved). The existing RAG queries in `agent-dispatch`, `alex-chat`, and `telegram-bot` continue to work identically.
