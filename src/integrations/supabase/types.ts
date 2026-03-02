@@ -21,6 +21,7 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           department: string
+          file_url: string | null
           id: string
           inputs: Json
           output: string | null
@@ -36,6 +37,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           department: string
+          file_url?: string | null
           id?: string
           inputs?: Json
           output?: string | null
@@ -51,6 +53,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           department?: string
+          file_url?: string | null
           id?: string
           inputs?: Json
           output?: string | null
