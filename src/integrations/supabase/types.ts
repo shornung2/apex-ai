@@ -59,6 +59,85 @@ export type Database = {
         }
         Relationships: []
       }
+      content_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "content_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_items: {
+        Row: {
+          agent_type: string | null
+          content: string
+          created_at: string
+          department: string | null
+          folder_id: string | null
+          id: string
+          job_id: string | null
+          owner: string
+          skill_id: string | null
+          skill_name: string | null
+          title: string
+        }
+        Insert: {
+          agent_type?: string | null
+          content: string
+          created_at?: string
+          department?: string | null
+          folder_id?: string | null
+          id?: string
+          job_id?: string | null
+          owner?: string
+          skill_id?: string | null
+          skill_name?: string | null
+          title: string
+        }
+        Update: {
+          agent_type?: string | null
+          content?: string
+          created_at?: string
+          department?: string | null
+          folder_id?: string | null
+          id?: string
+          job_id?: string | null
+          owner?: string
+          skill_id?: string | null
+          skill_name?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_items_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "content_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_chunks: {
         Row: {
           chunk_index: number
