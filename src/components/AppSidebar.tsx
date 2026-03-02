@@ -114,7 +114,7 @@ export function AppSidebar() {
           <img src={logo} alt="Apex AI" className="h-20 w-20 rounded-2xl object-cover shrink-0" />
           {!collapsed && (
             <div className="text-center">
-              <p className="text-[11px] text-muted-foreground">by Solutionment</p>
+              <p className="text-[11px] text-foreground/60">by Solutionment</p>
             </div>
           )}
         </div>
@@ -132,7 +132,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <Collapsible defaultOpen={deptOpen || true}>
             <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="text-muted-foreground/60 text-[10px] uppercase tracking-widest cursor-pointer flex items-center justify-between pr-2">
+              <SidebarGroupLabel className="text-muted-foreground text-[10px] uppercase tracking-widest cursor-pointer flex items-center justify-between pr-2">
                 Departments
                 {!collapsed && <ChevronDown className="h-3 w-3" />}
               </SidebarGroupLabel>
@@ -148,7 +148,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground/60 text-[10px] uppercase tracking-widest">
+          <SidebarGroupLabel className="text-muted-foreground text-[10px] uppercase tracking-widest">
             Tools
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -166,7 +166,7 @@ export function AppSidebar() {
               <Skeleton className="h-6 w-full" />
             ) : (
               <>
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <div className="flex items-center justify-between text-[10px] text-foreground/60">
                   <span>Token Usage</span>
                   <span>{tokensUsed.toLocaleString()} / {TOKEN_BUDGET.toLocaleString()}</span>
                 </div>

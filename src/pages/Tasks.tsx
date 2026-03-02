@@ -337,7 +337,7 @@ export default function Tasks() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Task Name</Label>
-                  <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="e.g. Weekly Market Scan" className="bg-muted/50 border-border/50" />
+                  <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="e.g. Morning Coffee, Daily Briefing" className="bg-muted/50 border-border/50" />
                 </div>
 
                 <div className="p-4 rounded-lg bg-muted/30 space-y-2 text-sm">
