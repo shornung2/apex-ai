@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Zap, Brain, FileText, TrendingUp, ArrowRight, Briefcase, Megaphone, Loader2 } from "lucide-react";
+import { Zap, Brain, FileText, TrendingUp, ArrowRight, Briefcase, Megaphone, Loader2, CalendarClock, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { agentDefinitions, departmentDefinitions, type Department } from "@/data/mock-data";
 import { Link } from "react-router-dom";
+import { formatDistanceToNow } from "date-fns";
 
 const statusColors: Record<string, string> = {
   complete: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
@@ -25,20 +26,23 @@ export default function Dashboard() {
   const [jobCount, setJobCount] = useState(0);
   const [docCount, setDocCount] = useState(0);
   const [totalTokens, setTotalTokens] = useState(0);
+  const [upcomingTasks, setUpcomingTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const [jobsRes, countRes, docsRes, tokensRes] = await Promise.all([
+      const [jobsRes, countRes, docsRes, tokensRes, tasksRes] = await Promise.all([
         supabase.from("agent_jobs").select("*").order("created_at", { ascending: false }).limit(5),
         supabase.from("agent_jobs").select("id", { count: "exact", head: true }),
         supabase.from("knowledge_documents").select("id", { count: "exact", head: true }),
         supabase.from("agent_jobs").select("tokens_used").eq("status", "complete"),
+        supabase.from("scheduled_tasks").select("*").eq("status", "active").order("next_run_at", { ascending: true }).limit(3),
       ]);
       setRecentJobs(jobsRes.data || []);
       setJobCount(countRes.count || 0);
       setDocCount(docsRes.count || 0);
       setTotalTokens((tokensRes.data || []).reduce((sum, j) => sum + (j.tokens_used || 0), 0));
+      setUpcomingTasks(tasksRes.data || []);
       setLoading(false);
     };
     fetchData();
@@ -95,6 +99,52 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         ))}
+      </motion.div>
+
+      {/* Scheduled Tasks */}
+      <motion.div variants={item}>
+        <Card className="glass-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-primary" />
+              Scheduled Tasks
+            </CardTitle>
+            <Link to="/tasks">
+              <Button variant="ghost" size="sm" className="text-muted-foreground text-xs">
+                View all <ArrowRight className="ml-1 h-3 w-3" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : upcomingTasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No scheduled tasks yet. Set one up to automate your skills.</p>
+            ) : (
+              upcomingTasks.map((task: any) => (
+                <Link key={task.id} to="/tasks" className="block">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <CalendarClock className="h-4 w-4 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{task.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {task.skill_name} · {task.schedule_type}
+                      </p>
+                    </div>
+                    {task.next_run_at && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDistanceToNow(new Date(task.next_run_at), { addSuffix: true })}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Recent Activity */}

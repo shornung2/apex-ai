@@ -9,6 +9,7 @@ import {
   ChevronDown,
   FolderOpen,
   HelpCircle,
+  CalendarClock,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -44,6 +45,7 @@ const departmentItems = [
 
 const toolItems = [
   { title: "Capabilities", url: "/capabilities", icon: Sparkles },
+  { title: "Tasks", url: "/tasks", icon: CalendarClock },
   { title: "Knowledge Base", url: "/knowledge", icon: BookOpen },
   { title: "Content Library", url: "/content-library", icon: FolderOpen },
   { title: "History", url: "/history", icon: Clock },

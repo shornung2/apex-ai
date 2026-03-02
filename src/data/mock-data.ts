@@ -42,6 +42,7 @@ export type Skill = {
   outputSchema?: Record<string, any>;
   exportFormats?: string[];
   isSystem?: boolean;
+  schedulable?: boolean;
 };
 
 export type AgentDefinition = {
@@ -147,6 +148,7 @@ export function dbRowToSkill(row: any): Skill {
     outputSchema: row.output_schema || {},
     exportFormats: row.export_formats || [],
     isSystem: row.is_system || false,
+    schedulable: row.schedulable || false,
   };
 }
 

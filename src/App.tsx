@@ -15,6 +15,7 @@ import ContentLibrary from "./pages/ContentLibrary";
 import Help from "./pages/Help";
 import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Tasks from "./pages/Tasks";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/jobs/:jobId" element={<JobDetail />} />
               <Route path="/knowledge" element={<Knowledge />} />
               <Route path="/content-library" element={<ContentLibrary />} />
+              <Route path="/tasks" element={<Tasks />} />
               <Route path="/help" element={<Help />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />
