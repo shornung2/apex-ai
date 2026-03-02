@@ -11,6 +11,8 @@ import Capabilities from "./pages/Capabilities";
 import History from "./pages/History";
 import JobDetail from "./pages/JobDetail";
 import Knowledge from "./pages/Knowledge";
+import ContentLibrary from "./pages/ContentLibrary";
+import Help from "./pages/Help";
 import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -31,6 +33,8 @@ const App = () => (
               <Route path="/history" element={<History />} />
               <Route path="/jobs/:jobId" element={<JobDetail />} />
               <Route path="/knowledge" element={<Knowledge />} />
+              <Route path="/content-library" element={<ContentLibrary />} />
+              <Route path="/help" element={<Help />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

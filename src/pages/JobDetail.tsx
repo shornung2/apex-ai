@@ -10,6 +10,7 @@ import { agentDefinitions, departmentDefinitions, type Department } from "@/data
 import { ArrowLeft, Copy, BookOpen, RotateCcw, CheckCircle, XCircle, Loader2, Clock, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
+import { SaveToLibraryDialog } from "@/components/SaveToLibraryDialog";
 
 const statusConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
   queued: { icon: Clock, color: "text-muted-foreground", label: "Queued" },
@@ -195,6 +196,15 @@ export default function JobDetail() {
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={saveToKB} disabled={saving}>
                   <BookOpen className="h-3 w-3" /> {saving ? "Saving..." : "Save to KB"}
                 </Button>
+                <SaveToLibraryDialog
+                  title={job.title}
+                  content={job.output}
+                  agentType={job.agent_type}
+                  skillId={job.skill_id}
+                  skillName={agent?.name}
+                  department={job.department}
+                  jobId={job.id}
+                />
               </div>
             </CardHeader>
             <CardContent>
