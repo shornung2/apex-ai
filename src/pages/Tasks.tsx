@@ -210,16 +210,31 @@ export default function Tasks() {
           <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {wizardStep === 1 && "Select a Skill"}
+                {wizardStep === 1 && "Name & Select a Skill"}
                 {wizardStep === 2 && "Fill Inputs"}
                 {wizardStep === 3 && "Set Schedule"}
-                {wizardStep === 4 && "Name & Confirm"}
+                {wizardStep === 4 && "Confirm"}
               </DialogTitle>
             </DialogHeader>
 
             {/* Step 1: Select Skill */}
             {wizardStep === 1 && (
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Task Name</Label>
+                  <Input
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                    placeholder="e.g. Morning Coffee, Daily Briefing"
+                    className="bg-muted/50 border-border/50"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Select a Skill</Label>
+                  <p className="text-xs text-muted-foreground">Choose which skill this task will run.</p>
+                </div>
+
                 {Object.entries(groupedSkills).map(([dept, skills]) => (
                   <div key={dept}>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{dept}</p>
@@ -227,8 +242,13 @@ export default function Tasks() {
                       {skills.map((skill) => (
                         <button
                           key={skill.id}
-                          onClick={() => { setSelectedSkill(skill); setTaskTitle(`${skill.displayName || skill.name}`); setWizardStep(2); }}
-                          className="w-full flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors text-left"
+                          onClick={() => {
+                            setSelectedSkill(skill);
+                            if (!taskTitle) setTaskTitle(`${skill.displayName || skill.name}`);
+                            setWizardStep(2);
+                          }}
+                          disabled={!taskTitle.trim()}
+                          className="w-full flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <span className="text-xl">{skill.emoji}</span>
                           <div>
@@ -332,15 +352,10 @@ export default function Tasks() {
               </div>
             )}
 
-            {/* Step 4: Name & Confirm */}
             {wizardStep === 4 && selectedSkill && (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Task Name</Label>
-                  <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="e.g. Morning Coffee, Daily Briefing" className="bg-muted/50 border-border/50" />
-                </div>
-
                 <div className="p-4 rounded-lg bg-muted/30 space-y-2 text-sm">
+                  <p><span className="font-medium">Task Name:</span> {taskTitle}</p>
                   <p><span className="font-medium">Skill:</span> {selectedSkill.emoji} {selectedSkill.displayName || selectedSkill.name}</p>
                   <p><span className="font-medium">Schedule:</span> {scheduleType} {scheduleType !== "custom" && `at ${String(scheduleHour).padStart(2, "0")}:00 UTC`}</p>
                   {scheduleType === "weekly" && <p><span className="font-medium">Day:</span> {DAYS_OF_WEEK[parseInt(scheduleDow)]}</p>}
@@ -351,7 +366,7 @@ export default function Tasks() {
 
                 <div className="flex justify-between pt-2">
                   <Button variant="ghost" size="sm" onClick={() => setWizardStep(3)}>← Back</Button>
-                  <Button size="sm" disabled={creating || !taskTitle} onClick={createTask}>
+                  <Button size="sm" disabled={creating} onClick={createTask}>
                     {creating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                     Create Task
                   </Button>
