@@ -1,44 +1,88 @@
 
+# Plan: Add Alex AI Assistant Chatbot
 
-# Plan: Add Telegram Bot Guide to Help Center
+## Overview
 
-## What Changes
+Add "Alex," a general-purpose AI assistant accessible from both the web app (floating chat widget) and Telegram. Alex is grounded in the Knowledge Base and knows everything about the app via embedded help documentation.
 
-Add a new "Telegram Bot Integration" section to the Help page's `helpSections` array, positioned after the Settings section. This is a single-file edit to `src/pages/Help.tsx`.
+---
 
-## New Section Content
+## 1. Database Migration
 
-The new accordion section will cover:
+Add `conversation_history` column to `telegram_sessions` for Telegram chat context:
 
-### Overview
-- What the Telegram bot does -- run any Autopilot skill directly from Telegram chat
-- How it connects to the platform (same agents and skills, just a different interface)
+```sql
+ALTER TABLE public.telegram_sessions 
+ADD COLUMN conversation_history jsonb NOT NULL DEFAULT '[]'::jsonb;
+```
 
-### Step-by-Step Setup Guide
-1. **Create a Telegram Bot** -- Open Telegram, message @BotFather, send `/newbot`, choose a name and username
-2. **Copy the Bot Token** -- BotFather provides a token like `123456:ABC-DEF...`, copy it
-3. **Add the Token to Autopilot** -- Where to provide the token in Settings/configuration
-4. **Register the Webhook** -- Explain that the webhook is registered automatically on deployment
-5. **Test the Bot** -- Send `/start` to your new bot to confirm it's working
+---
 
-### Available Commands
-- `/start` -- Welcome message and introduction
-- `/skills` -- Browse all available skills grouped by department
-- `/run <skill_name>` -- Start running a specific skill
-- `/cancel` -- Cancel an in-progress skill input collection
-- `/help` -- Show available commands
+## 2. New Edge Function: `alex-chat`
 
-### How Running a Skill Works
-- Step-by-step walkthrough of the conversational flow: select skill, provide inputs one at a time, receive result
-- Mention that long outputs are automatically split into multiple messages
+**File:** `supabase/functions/alex-chat/index.ts`
 
-### Tips and Troubleshooting
-- Bot not responding? Check that the token is correct and webhook is registered
-- Results too long? They're automatically split at paragraph boundaries
-- Want to start over? Use `/cancel` then try again
+- Accepts `{ messages: [{role, content}] }` as POST body
+- RAG grounding: extracts search terms from the user message, queries `knowledge_chunks` (top 5 matches via `ilike`), injects as context
+- System prompt contains a condensed version of all help guide content (app features, skill builder steps, commands, Telegram setup, etc.) so Alex is an expert on the platform
+- Calls Lovable AI gateway (`google/gemini-3-flash-preview`) with streaming
+- Returns SSE stream (same pattern as `agent-dispatch`)
+- Config: `verify_jwt = false` in `supabase/config.toml`
 
-## Technical Details
+---
 
-**File to modify:** `src/pages/Help.tsx`
-- Add one new object to the `helpSections` array (after the "settings" entry, around line 169)
-- No other files need changes
+## 3. Web App: Floating Chat Widget
+
+**New file:** `src/components/AlexChat.tsx`
+
+- Floating button in bottom-right corner using the **lightbulb app icon** (`/favicon.jpg`) as the avatar/icon
+- Click to expand into a ~400x500px chat panel with:
+  - Header with "Alex" title and close button
+  - Scrollable message list (user and assistant bubbles)
+  - Simple markdown rendering for assistant responses
+  - Text input with send button
+- Streams responses token-by-token via SSE from `alex-chat`
+- Conversation state in React state (resets on reload)
+- Uses `position: fixed` with high z-index
+
+**Modify:** `src/components/AppLayout.tsx`
+- Import and render `<AlexChat />` inside the layout so it appears on every page
+
+---
+
+## 4. Telegram Integration Update
+
+**Modify:** `supabase/functions/telegram-bot/index.ts`
+
+- Change the "unknown message" handler (lines 539-543): instead of "I didn't understand that," route free-text to `alex-chat` edge function
+- Maintain conversation history in `telegram_sessions.conversation_history` (capped at last 20 messages)
+- Add `/alex` command as explicit trigger and `/clear` to reset conversation history
+- Update `/start` and `/help` messages to mention Alex ("Just type any message to chat with Alex")
+
+---
+
+## 5. Help Page Update
+
+**Modify:** `src/pages/Help.tsx`
+
+Add an "Alex AI Assistant" section to `helpSections` covering:
+- What Alex is (general AI assistant grounded in Knowledge Base and app expertise)
+- How to use the chat widget (click the lightbulb icon in the bottom-right)
+- How to chat with Alex on Telegram (just type any message)
+- `/clear` command to reset conversation
+
+---
+
+## Files Summary
+
+| Action | File |
+|--------|------|
+| Create | `supabase/functions/alex-chat/index.ts` |
+| Create | `src/components/AlexChat.tsx` |
+| Modify | `supabase/functions/telegram-bot/index.ts` |
+| Modify | `src/components/AppLayout.tsx` |
+| Modify | `src/pages/Help.tsx` |
+| Modify | `supabase/config.toml` |
+| Migration | Add `conversation_history` column |
+
+No new secrets needed -- uses existing `LOVABLE_API_KEY`.
