@@ -1,0 +1,238 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+function getServiceSupabase() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+}
+
+/** Extract text from a DOCX file (ZIP containing word/document.xml) */
+async function extractDocxText(data: Uint8Array): Promise<string> {
+  const { JSZip } = await import("https://esm.sh/jszip@3.10.1");
+  const zip = await JSZip.loadAsync(data);
+  const docXml = await zip.file("word/document.xml")?.async("string");
+  if (!docXml) return "";
+  // Strip XML tags, keep text content
+  return docXml
+    .replace(/<w:p[^>]*>/g, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Extract text from a PPTX file (ZIP containing ppt/slides/slide*.xml) */
+async function extractPptxText(data: Uint8Array): Promise<string> {
+  const { JSZip } = await import("https://esm.sh/jszip@3.10.1");
+  const zip = await JSZip.loadAsync(data);
+  const slideTexts: string[] = [];
+
+  const slideFiles = Object.keys(zip.files)
+    .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
+    .sort((a, b) => {
+      const numA = parseInt(a.match(/slide(\d+)/)?.[1] || "0");
+      const numB = parseInt(b.match(/slide(\d+)/)?.[1] || "0");
+      return numA - numB;
+    });
+
+  for (const slidePath of slideFiles) {
+    const xml = await zip.file(slidePath)?.async("string");
+    if (!xml) continue;
+    const text = xml
+      .replace(/<a:p[^>]*>/g, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .trim();
+    if (text) slideTexts.push(text);
+  }
+
+  return slideTexts.join("\n\n---\n\n");
+}
+
+/** Extract text from a PDF using pdf-parse */
+async function extractPdfText(data: Uint8Array): Promise<string> {
+  try {
+    // Use a lightweight PDF text extraction approach
+    // pdf-parse doesn't work well in Deno, so we do basic extraction
+    const text = new TextDecoder("utf-8", { fatal: false }).decode(data);
+    
+    // Try to extract text streams from PDF
+    const textParts: string[] = [];
+    const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+    let match;
+    
+    while ((match = streamRegex.exec(text)) !== null) {
+      const streamContent = match[1];
+      // Look for text operators: Tj, TJ, ', "
+      const tjRegex = /\(([^)]*)\)\s*Tj/g;
+      let tjMatch;
+      while ((tjMatch = tjRegex.exec(streamContent)) !== null) {
+        textParts.push(tjMatch[1]);
+      }
+      
+      // TJ array operator
+      const tjArrayRegex = /\[([^\]]*)\]\s*TJ/g;
+      let tjArrayMatch;
+      while ((tjArrayMatch = tjArrayRegex.exec(streamContent)) !== null) {
+        const arrayContent = tjArrayMatch[1];
+        const stringRegex = /\(([^)]*)\)/g;
+        let strMatch;
+        while ((strMatch = stringRegex.exec(arrayContent)) !== null) {
+          textParts.push(strMatch[1]);
+        }
+      }
+    }
+    
+    const extracted = textParts.join(" ").replace(/\\n/g, "\n").replace(/\s+/g, " ").trim();
+    
+    if (extracted.length > 50) return extracted;
+    
+    // Fallback: return a note that text extraction was limited
+    return "[PDF text extraction was limited. The file has been stored for download.]";
+  } catch {
+    return "[PDF text extraction failed. The file has been stored for download.]";
+  }
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = getServiceSupabase();
+    const { file_path, title, mime_type } = await req.json();
+
+    if (!file_path || !title) {
+      return new Response(
+        JSON.stringify({ error: "file_path and title are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Download file from storage
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("documents")
+      .download(file_path);
+
+    if (downloadError || !fileData) {
+      return new Response(
+        JSON.stringify({ error: `Failed to download file: ${downloadError?.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const arrayBuffer = await fileData.arrayBuffer();
+    const uint8 = new Uint8Array(arrayBuffer);
+    let extractedText = "";
+    let status = "ready";
+
+    try {
+      const mt = (mime_type || "").toLowerCase();
+
+      if (
+        mt.includes("text/") ||
+        mt.includes("csv") ||
+        mt.includes("markdown") ||
+        title.endsWith(".txt") ||
+        title.endsWith(".md") ||
+        title.endsWith(".csv")
+      ) {
+        extractedText = new TextDecoder().decode(uint8);
+      } else if (
+        mt.includes("wordprocessingml") ||
+        mt.includes("msword") ||
+        title.endsWith(".docx")
+      ) {
+        extractedText = await extractDocxText(uint8);
+      } else if (
+        mt.includes("presentationml") ||
+        mt.includes("powerpoint") ||
+        title.endsWith(".pptx")
+      ) {
+        extractedText = await extractPptxText(uint8);
+      } else if (mt.includes("pdf") || title.endsWith(".pdf")) {
+        extractedText = await extractPdfText(uint8);
+      } else {
+        extractedText = "";
+        status = "failed";
+      }
+    } catch (err) {
+      console.error("Text extraction error:", err);
+      extractedText = "";
+      status = "failed";
+    }
+
+    const tokens = Math.ceil(extractedText.length / 4);
+
+    // Insert document record
+    const { data: doc, error: insertError } = await supabase
+      .from("knowledge_documents")
+      .insert({
+        title,
+        content: extractedText || null,
+        doc_type: "upload",
+        status,
+        tokens,
+        file_path,
+        mime_type: mime_type || null,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      return new Response(
+        JSON.stringify({ error: `Failed to insert document: ${insertError.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create chunks (split by paragraphs)
+    if (doc && extractedText.length > 0) {
+      const paragraphs = extractedText
+        .split(/\n\n+/)
+        .filter((p) => p.trim().length > 20);
+      const chunks = paragraphs.map((content, idx) => ({
+        document_id: doc.id,
+        content: content.trim(),
+        chunk_index: idx,
+        tokens: Math.ceil(content.length / 4),
+      }));
+
+      if (chunks.length > 0) {
+        const { error: chunkError } = await supabase
+          .from("knowledge_chunks")
+          .insert(chunks);
+        if (chunkError) {
+          console.error("Chunk insert error:", chunkError);
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({ document: doc }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("knowledge-ingest error:", err);
+    return new Response(
+      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});

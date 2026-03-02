@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.auth-azure-callback]
 verify_jwt = false
+
+[functions.knowledge-ingest]
+verify_jwt = false

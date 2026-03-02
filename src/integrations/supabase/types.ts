@@ -189,7 +189,9 @@ export type Database = {
           content: string | null
           created_at: string
           doc_type: string
+          file_path: string | null
           id: string
+          mime_type: string | null
           status: string
           title: string
           tokens: number | null
@@ -198,7 +200,9 @@ export type Database = {
           content?: string | null
           created_at?: string
           doc_type?: string
+          file_path?: string | null
           id?: string
+          mime_type?: string | null
           status?: string
           title: string
           tokens?: number | null
@@ -207,7 +211,9 @@ export type Database = {
           content?: string | null
           created_at?: string
           doc_type?: string
+          file_path?: string | null
           id?: string
+          mime_type?: string | null
           status?: string
           title?: string
           tokens?: number | null
