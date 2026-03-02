@@ -1,104 +1,100 @@
 
 
-# Plan: Help Center + Content Library
+# Plan: Telegram Bot Integration for Autopilot
 
-## Feature 1: Help Page with User Guides
+## Overview
 
-Add a comprehensive Help page accessible from the sidebar (above Settings) with guides for every feature.
+Create a Telegram bot webhook edge function that lets users run any Autopilot skill/agent directly from Telegram. The bot will support listing available skills, selecting one, providing inputs conversationally, and streaming back the result.
 
-### Sidebar Change
-- Add a "Help" nav item with `HelpCircle` icon at URL `/help`, placed above Settings in the footer section
-- Reorder `bottomItems` to: Help, then Settings
+## Architecture
 
-### Help Page (`src/pages/Help.tsx`)
-- Accordion-based layout covering all app features:
-  - **Getting Started** -- Overview of the platform, navigation, and core concepts
-  - **Dashboard** -- Understanding metrics, token usage, and activity feed
-  - **Departments (Sales & Marketing)** -- How to browse skills, run agents, and view results
-  - **Capabilities** -- Skill Library browsing, Skill Builder wizard (6-step walkthrough)
-  - **Knowledge Base** -- Uploading documents, viewing content, how agents use KB
-  - **Content Library** -- Folders, saving agent outputs, search, download, deletion
-  - **History & Job Detail** -- Viewing past runs, real-time streaming, saving outputs
-  - **Settings** -- Workspace config, appearance, API keys, agent toggles
-- Each section includes step-by-step instructions written for non-technical users
-- Search bar to filter guide sections
+```text
+Telegram User --> Telegram API --> /telegram-bot (Edge Function) --> /agent-dispatch (existing)
+                                        |
+                                        v
+                                   Supabase DB
+                                (skills, agent_jobs, telegram_sessions)
+```
 
-### Route
-- Add `/help` route in `App.tsx`
+## What You'll Need
+
+A **Telegram Bot Token** from @BotFather on Telegram. You'll create a bot, get the token, and provide it to Lovable as a secret.
 
 ---
 
-## Feature 2: Content Library
+## Database Changes
 
-A full-featured content management system for saving, organizing, and managing agent-produced outputs.
+**New table: `telegram_sessions`** -- tracks conversational state per Telegram chat so the bot can collect inputs step-by-step.
 
-### Database Changes (Migration)
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid (PK) | Session ID |
+| chat_id | bigint, unique | Telegram chat ID |
+| state | text | Current state: `idle`, `selecting_skill`, `collecting_inputs` |
+| selected_skill_id | uuid, nullable | The skill being configured |
+| collected_inputs | jsonb | Inputs gathered so far |
+| current_input_index | integer | Which input field we're asking for |
+| created_at | timestamptz | Created timestamp |
+| updated_at | timestamptz | Last updated |
 
-**New table: `content_folders`**
-- `id` (uuid, PK)
-- `name` (text, not null)
-- `parent_id` (uuid, nullable, self-referencing FK for nested folders)
-- `created_at` (timestamptz)
+RLS: Open access (no auth on this project currently).
 
-**New table: `content_items`**
-- `id` (uuid, PK)
-- `title` (text, not null)
-- `content` (text, not null)
-- `folder_id` (uuid, nullable FK to content_folders)
-- `agent_type` (text) -- which agent produced it
-- `skill_id` (text) -- which skill produced it
-- `skill_name` (text) -- display name of the skill
-- `department` (text) -- originating department
-- `job_id` (uuid, nullable) -- link back to the agent job
-- `created_at` (timestamptz, default now())
-- `owner` (text, default 'system') -- placeholder for future auth
+---
 
-RLS: open access (matching existing pattern -- no auth currently configured).
+## Edge Function: `telegram-bot`
 
-Enable realtime on `content_items` for live updates.
+A single webhook endpoint that Telegram calls for every message.
 
-### Content Library Page (`src/pages/ContentLibrary.tsx`)
+### Bot Commands
 
-**Left panel -- Folder tree + item list:**
-- Create/rename/delete folders
-- Drag or move items between folders via a "Move to" dropdown
-- "All Content" view showing everything regardless of folder
-- Search bar filtering by title, agent, skill, department
+| Command | Action |
+|---------|--------|
+| `/start` | Welcome message explaining the bot |
+| `/skills` | List all available skills grouped by department |
+| `/run <skill_name>` | Start running a specific skill -- begins collecting inputs |
+| `/cancel` | Cancel current skill execution |
+| `/help` | Show available commands |
 
-**Right panel -- Content viewer:**
-- Markdown-rendered preview of selected item
-- Metadata display: date, owner, agent type, skill name, department
-- Actions: Download (as .md), Delete
+### Conversational Flow
 
-**Bulk operations toolbar:**
-- Checkbox selection on items
-- "Download Selected" (zips multiple .md files or downloads individually)
-- "Delete Selected"
+1. User sends `/skills` -- bot queries the `skills` table and returns a formatted list with inline keyboard buttons
+2. User taps a skill (or sends `/run skill-name`) -- bot looks up the skill, stores it in `telegram_sessions`, and asks for the first required input
+3. Bot asks for each input one at a time (showing the label, placeholder, and hint from the skill definition)
+4. Once all inputs are collected, bot calls the existing `agent-dispatch` edge function internally (server-to-server, not via public URL)
+5. Bot sends the result back to the user as a Telegram message (splitting long responses into multiple messages if needed, since Telegram has a 4096-char limit)
 
-### Save to Content Library from Job Detail
+### Key Implementation Details
 
-Update `src/pages/JobDetail.tsx`:
-- Replace or augment the existing "Save to KB" button with "Save to Content Library"
-- Opens a small dialog/popover to choose a folder (or create new)
-- Saves to `content_items` with agent_type, skill_id, skill_name, department, job_id metadata
-
-### Sidebar Navigation
-- Add "Content Library" with `FolderOpen` icon in the Tools section, between Knowledge Base and History
-
-### Route
-- Add `/content-library` route in `App.tsx`
+- **Webhook registration**: A `/telegram-bot?action=set-webhook` GET endpoint to register the webhook URL with Telegram's API
+- **Inline keyboards**: For skill selection, department filtering, and confirmation prompts
+- **Markdown formatting**: Telegram supports MarkdownV2 -- results will be formatted accordingly
+- **Long response handling**: Split output into chunks of ~4000 chars at paragraph boundaries
+- **Error handling**: Graceful error messages sent back to the Telegram chat if agent execution fails
 
 ---
 
 ## Files to Create
-1. `src/pages/Help.tsx` -- Help center with accordion guides
-2. `src/pages/ContentLibrary.tsx` -- Full content library UI
+
+1. **`supabase/functions/telegram-bot/index.ts`** -- Main webhook handler with:
+   - Command parsing (`/start`, `/skills`, `/run`, `/cancel`, `/help`)
+   - Session management (step-by-step input collection)
+   - Internal call to `agent-dispatch` for execution
+   - Telegram message sending with markdown formatting
+   - Webhook setup endpoint
 
 ## Files to Modify
-1. `src/components/AppSidebar.tsx` -- Add Help and Content Library nav items
-2. `src/App.tsx` -- Add routes for `/help` and `/content-library`
-3. `src/pages/JobDetail.tsx` -- Add "Save to Content Library" with folder picker
 
-## Database Migration
-- Create `content_folders` and `content_items` tables with RLS policies
+None -- this is a self-contained addition. The existing `agent-dispatch` function is reused as-is via internal HTTP call.
+
+## Secret Required
+
+- **`TELEGRAM_BOT_TOKEN`** -- obtained from Telegram's @BotFather
+
+## Setup Steps (for the user)
+
+1. Open Telegram and message @BotFather
+2. Send `/newbot` and follow the prompts to name your bot
+3. Copy the bot token provided by BotFather
+4. Provide the token when prompted by Lovable
+5. After deployment, the webhook will be registered automatically
 
