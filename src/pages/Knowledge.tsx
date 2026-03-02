@@ -296,7 +296,7 @@ export default function Knowledge() {
                   onDragLeave={() => setDragOverTarget(null)}
                   onDrop={(e) => handleFolderDrop(e, null)}
                 >
-                  <span className={dragOverTarget === "root" ? "text-primary font-semibold" : ""}>Root</span>
+                  <span className={dragOverTarget === "root" ? "text-primary font-semibold" : ""}>Home</span>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               {folderPath.map((f, i) => (
