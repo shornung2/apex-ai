@@ -24,6 +24,7 @@ export type Database = {
           id: string
           inputs: Json
           output: string | null
+          scheduled_task_id: string | null
           skill_id: string
           status: string
           title: string
@@ -38,6 +39,7 @@ export type Database = {
           id?: string
           inputs?: Json
           output?: string | null
+          scheduled_task_id?: string | null
           skill_id: string
           status?: string
           title: string
@@ -52,12 +54,21 @@ export type Database = {
           id?: string
           inputs?: Json
           output?: string | null
+          scheduled_task_id?: string | null
           skill_id?: string
           status?: string
           title?: string
           tokens_used?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agent_jobs_scheduled_task_id_fkey"
+            columns: ["scheduled_task_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       content_folders: {
         Row: {
@@ -203,6 +214,68 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_tasks: {
+        Row: {
+          agent_type: string
+          created_at: string
+          cron_expression: string
+          department: string
+          id: string
+          inputs: Json
+          last_job_id: string | null
+          last_run_at: string | null
+          next_run_at: string | null
+          run_count: number
+          schedule_type: string
+          skill_id: string
+          skill_name: string
+          status: string
+          title: string
+        }
+        Insert: {
+          agent_type: string
+          created_at?: string
+          cron_expression: string
+          department: string
+          id?: string
+          inputs?: Json
+          last_job_id?: string | null
+          last_run_at?: string | null
+          next_run_at?: string | null
+          run_count?: number
+          schedule_type?: string
+          skill_id: string
+          skill_name: string
+          status?: string
+          title: string
+        }
+        Update: {
+          agent_type?: string
+          created_at?: string
+          cron_expression?: string
+          department?: string
+          id?: string
+          inputs?: Json
+          last_job_id?: string | null
+          last_run_at?: string | null
+          next_run_at?: string | null
+          run_count?: number
+          schedule_type?: string
+          skill_id?: string
+          skill_name?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_tasks_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skills: {
         Row: {
           agent_type: string
@@ -224,6 +297,7 @@ export type Database = {
           preferred_model: string
           prompt_template: string
           required_capabilities: string[]
+          schedulable: boolean
           system_prompt: string
           tags: string[]
           timeout_seconds: number
@@ -253,6 +327,7 @@ export type Database = {
           preferred_model?: string
           prompt_template?: string
           required_capabilities?: string[]
+          schedulable?: boolean
           system_prompt?: string
           tags?: string[]
           timeout_seconds?: number
@@ -282,6 +357,7 @@ export type Database = {
           preferred_model?: string
           prompt_template?: string
           required_capabilities?: string[]
+          schedulable?: boolean
           system_prompt?: string
           tags?: string[]
           timeout_seconds?: number
