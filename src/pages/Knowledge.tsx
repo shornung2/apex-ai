@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, Search, FileText, Bot, Loader2, BookOpen, Trash2 } from "lucide-react";
+import {
+  Upload, Search, FileText, Bot, Loader2, Trash2, Download,
+  ExternalLink, Pencil, Check, X, File, FileSpreadsheet, Presentation,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import ReactMarkdown from "react-markdown";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -18,23 +21,43 @@ const statusBadge: Record<string, string> = {
   failed: "bg-destructive/20 text-destructive border-destructive/30",
 };
 
+const ACCEPTED_TYPES = ".pdf,.docx,.pptx,.txt,.md,.csv";
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+
+function fileIcon(mimeType?: string | null, title?: string) {
+  if (mimeType?.includes("pdf") || title?.endsWith(".pdf")) return <File className="h-4 w-4 text-red-400 shrink-0" />;
+  if (mimeType?.includes("presentation") || title?.endsWith(".pptx")) return <Presentation className="h-4 w-4 text-orange-400 shrink-0" />;
+  if (mimeType?.includes("spreadsheet") || mimeType?.includes("csv") || title?.endsWith(".csv")) return <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />;
+  if (mimeType?.includes("word") || title?.endsWith(".docx")) return <FileText className="h-4 w-4 text-blue-400 shrink-0" />;
+  return <FileText className="h-4 w-4 text-muted-foreground shrink-0" />;
+}
+
+function typeBadge(mimeType?: string | null, title?: string) {
+  if (mimeType?.includes("pdf") || title?.endsWith(".pdf")) return "PDF";
+  if (mimeType?.includes("presentation") || title?.endsWith(".pptx")) return "PPTX";
+  if (mimeType?.includes("word") || title?.endsWith(".docx")) return "DOCX";
+  if (mimeType?.includes("csv") || title?.endsWith(".csv")) return "CSV";
+  if (title?.endsWith(".md")) return "MD";
+  if (title?.endsWith(".txt")) return "TXT";
+  return "File";
+}
+
 export default function Knowledge() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
 
   const fetchDocs = async () => {
     let query = supabase
       .from("knowledge_documents")
       .select("*")
       .order("created_at", { ascending: false });
-
     if (search) query = query.ilike("title", `%${search}%`);
-
     const { data } = await query;
     setDocs(data || []);
     setLoading(false);
@@ -43,168 +66,241 @@ export default function Knowledge() {
   useEffect(() => { fetchDocs(); }, [search]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setUploading(true);
 
-    // Read text content
-    const text = await file.text();
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_FILE_SIZE) {
+        toast({ title: "File too large", description: `${file.name} exceeds 20MB limit`, variant: "destructive" });
+        continue;
+      }
 
-    // Insert document
-    const { data: doc, error } = await supabase
-      .from("knowledge_documents")
-      .insert({
-        title: file.name,
-        content: text,
-        doc_type: "upload",
-        status: "ready",
-        tokens: Math.ceil(text.length / 4),
-      })
-      .select()
-      .single();
+      const fileId = crypto.randomUUID();
+      const filePath = `knowledge/${fileId}/${file.name}`;
 
-    if (error) {
-      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-      setUploading(false);
-      return;
-    }
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(filePath, file);
 
-    // Create chunks (simple splitting by paragraphs)
-    if (doc) {
-      const paragraphs = text.split(/\n\n+/).filter((p) => p.trim().length > 20);
-      const chunks = paragraphs.map((content, idx) => ({
-        document_id: doc.id,
-        content: content.trim(),
-        chunk_index: idx,
-        tokens: Math.ceil(content.length / 4),
-      }));
+      if (uploadError) {
+        toast({ title: "Upload failed", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
+        continue;
+      }
 
-      if (chunks.length > 0) {
-        await supabase.from("knowledge_chunks").insert(chunks);
+      // Call knowledge-ingest edge function
+      const { data, error } = await supabase.functions.invoke("knowledge-ingest", {
+        body: { file_path: filePath, title: file.name, mime_type: file.type },
+      });
+
+      if (error) {
+        toast({ title: "Ingestion failed", description: `${file.name}: ${error.message}`, variant: "destructive" });
+      } else {
+        toast({ title: "Document uploaded", description: `${file.name} added to Knowledge Base` });
       }
     }
 
     setUploading(false);
-    toast({ title: "Document uploaded", description: `${file.name} added to Knowledge Base` });
     fetchDocs();
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const deleteDoc = async (id: string) => {
-    await supabase.from("knowledge_documents").delete().eq("id", id);
-    if (selectedDoc?.id === id) setSelectedDoc(null);
+  const deleteDoc = async (doc: any) => {
+    // Delete chunks first, then document, then storage file
+    await supabase.from("knowledge_chunks").delete().eq("document_id", doc.id);
+    await supabase.from("knowledge_documents").delete().eq("id", doc.id);
+    if (doc.file_path) {
+      await supabase.storage.from("documents").remove([doc.file_path]);
+    }
     fetchDocs();
     toast({ title: "Document deleted" });
   };
 
+  const handleDownload = async (doc: any) => {
+    if (!doc.file_path) return;
+    const { data } = await supabase.storage.from("documents").createSignedUrl(doc.file_path, 60);
+    if (data?.signedUrl) {
+      const a = document.createElement("a");
+      a.href = data.signedUrl;
+      a.download = doc.title;
+      a.click();
+    }
+  };
+
+  const handleOpen = async (doc: any) => {
+    if (!doc.file_path) return;
+    const { data } = await supabase.storage.from("documents").createSignedUrl(doc.file_path, 300);
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, "_blank");
+    }
+  };
+
+  const startRename = (doc: any) => {
+    setEditingId(doc.id);
+    setEditTitle(doc.title);
+  };
+
+  const confirmRename = async () => {
+    if (!editingId || !editTitle.trim()) return;
+    await supabase.from("knowledge_documents").update({ title: editTitle.trim() }).eq("id", editingId);
+    setEditingId(null);
+    fetchDocs();
+  };
+
+  const cancelRename = () => {
+    setEditingId(null);
+    setEditTitle("");
+  };
+
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-7xl">
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-5xl">
       <motion.div variants={item}>
         <h1 className="text-3xl font-bold tracking-tight">Knowledge Base</h1>
-        <p className="text-muted-foreground mt-1">Your organization's intelligence library — agents use this to ground their responses</p>
+        <p className="text-muted-foreground mt-1">Upload documents to ground agent responses with your organization's knowledge</p>
       </motion.div>
 
-      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Document Library */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search documents..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-muted/50 border-border/50"
-            />
-          </div>
-
-          {/* Upload zone */}
-          <Card
-            className="glass-card border-dashed border-2 border-border/50 hover:border-primary/30 transition-colors cursor-pointer"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <CardContent className="p-6 flex flex-col items-center text-center">
-              {uploading ? (
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-              ) : (
-                <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-              )}
-              <p className="text-sm font-medium">{uploading ? "Uploading..." : "Upload Documents"}</p>
-              <p className="text-xs text-muted-foreground mt-1">TXT, MD files — click to browse</p>
-            </CardContent>
-          </Card>
-          <input ref={fileInputRef} type="file" accept=".txt,.md,.csv" className="hidden" onChange={handleUpload} />
-
-          {/* Document list */}
-          <div className="space-y-2">
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : docs.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No documents yet. Upload files or save agent outputs.</p>
-            ) : (
-              docs.map((doc) => (
-                <Card
-                  key={doc.id}
-                  className={`glass-card hover:border-primary/20 transition-colors cursor-pointer ${selectedDoc?.id === doc.id ? "border-primary/40" : ""}`}
-                  onClick={() => setSelectedDoc(doc)}
-                >
-                  <CardContent className="p-3 flex items-center gap-3">
-                    {doc.doc_type === "agent_output" ? (
-                      <Bot className="h-4 w-4 text-primary shrink-0" />
-                    ) : (
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{doc.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {doc.tokens?.toLocaleString() || 0} tokens · {new Date(doc.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className={statusBadge[doc.status] || ""}>
-                      {doc.status}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
+      <motion.div variants={item} className="flex gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search documents..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 bg-muted/50 border-border/50"
+          />
         </div>
+        <Button
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+          {uploading ? "Uploading..." : "Upload Files"}
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_TYPES}
+          multiple
+          className="hidden"
+          onChange={handleUpload}
+        />
+      </motion.div>
 
-        {/* Document Viewer */}
-        <div className="lg:col-span-3">
-          <Card className="glass-card h-full min-h-[400px]">
-            {selectedDoc ? (
-              <>
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <div>
-                    <CardTitle className="text-lg">{selectedDoc.title}</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {selectedDoc.doc_type === "agent_output" ? "Agent Output" : "Upload"} · {selectedDoc.tokens?.toLocaleString()} tokens
-                    </p>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteDoc(selectedDoc.id)}>
-                    <Trash2 className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose dark:prose-invert prose-sm max-w-none max-h-[60vh] overflow-y-auto">
-                    <ReactMarkdown>{selectedDoc.content || "No content"}</ReactMarkdown>
-                  </div>
-                </CardContent>
-              </>
+      {/* Upload drop zone */}
+      <motion.div variants={item}>
+        <Card
+          className="glass-card border-dashed border-2 border-border/50 hover:border-primary/30 transition-colors cursor-pointer"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <CardContent className="p-6 flex flex-col items-center text-center">
+            {uploading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
             ) : (
-              <CardContent className="p-8 flex flex-col items-center justify-center text-center h-full">
-                <BookOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                <p className="text-muted-foreground">Select a document to view its contents</p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Documents are chunked and used to ground agent responses
-                </p>
-              </CardContent>
+              <Upload className="h-8 w-8 text-muted-foreground mb-2" />
             )}
+            <p className="text-sm font-medium">{uploading ? "Processing files..." : "Drop files here or click to upload"}</p>
+            <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, PPTX, TXT, MD, CSV — max 20MB per file</p>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Document list */}
+      <motion.div variants={item}>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : docs.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-12">No documents yet. Upload files to get started.</p>
+        ) : (
+          <Card className="glass-card overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Document</TableHead>
+                  <TableHead className="w-[80px]">Type</TableHead>
+                  <TableHead className="w-[80px]">Tokens</TableHead>
+                  <TableHead className="w-[100px]">Status</TableHead>
+                  <TableHead className="w-[100px]">Date</TableHead>
+                  <TableHead className="w-[140px] text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {docs.map((doc) => (
+                  <TableRow key={doc.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {doc.doc_type === "agent_output" ? (
+                          <Bot className="h-4 w-4 text-primary shrink-0" />
+                        ) : (
+                          fileIcon(doc.mime_type, doc.title)
+                        )}
+                        {editingId === doc.id ? (
+                          <div className="flex items-center gap-1 flex-1">
+                            <Input
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              className="h-7 text-sm"
+                              onKeyDown={(e) => e.key === "Enter" && confirmRename()}
+                              autoFocus
+                            />
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={confirmRename}>
+                              <Check className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={cancelRename}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium truncate max-w-[300px]">{doc.title}</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {doc.doc_type === "agent_output" ? "AI" : typeBadge(doc.mime_type, doc.title)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {doc.tokens?.toLocaleString() || 0}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={statusBadge[doc.status] || ""}>
+                        {doc.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(doc.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        {doc.file_path && (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpen(doc)} title="Open">
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownload(doc)} title="Download">
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startRename(doc)} title="Rename">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteDoc(doc)} title="Delete">
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </Card>
-        </div>
+        )}
       </motion.div>
     </motion.div>
   );
