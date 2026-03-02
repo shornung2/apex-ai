@@ -8,9 +8,9 @@ const helpSections = [
   {
     id: "getting-started",
     title: "Getting Started",
-    content: `**Welcome to Autopilot — your AI Operating System.**
+    content: `**Welcome to Apex AI — your AI-powered business platform by Solutionment.**
 
-Autopilot is a platform that puts AI agents to work across your Sales and Marketing departments. Each agent has specialized skills that produce high-quality outputs — research reports, proposals, strategies, articles, and more.
+Apex AI is a platform that puts AI agents to work across your Sales and Marketing departments. Each agent has specialized skills that produce high-quality outputs — research reports, proposals, strategies, articles, and more.
 
 ### How it works
 1. **Departments** organize skills by business function (Sales, Marketing).
@@ -172,15 +172,15 @@ Create custom skills with the guided wizard:
   {
     id: "telegram-bot",
     title: "Telegram Bot Integration",
-    content: `Run any Autopilot skill directly from Telegram — same agents, same skills, just a chat interface. You can also chat with Alex, your AI assistant, and view your scheduled tasks.
+    content: `Run any Apex AI skill directly from Telegram — same agents, same skills, just a chat interface. You can also chat with Alex, your AI assistant, and view your scheduled tasks.
 
 ### Setup Guide (Step by Step)
 
 1. **Open Telegram** and search for **@BotFather** (the official Telegram bot for creating bots).
 2. Send the command \`/newbot\` to BotFather.
-3. **Choose a name** for your bot (e.g. "My Autopilot Bot") — this is the display name.
-4. **Choose a username** — must end in "bot" (e.g. \`my_autopilot_bot\`). BotFather will confirm creation and give you a **Bot Token** like \`123456789:ABCdefGHI-jklMNOpqrSTUvwxYZ\`.
-5. **Copy the token** and add it to your Autopilot workspace settings as the Telegram Bot Token.
+3. **Choose a name** for your bot (e.g. "My Apex AI Bot") — this is the display name.
+4. **Choose a username** — must end in "bot" (e.g. \`my_apex_ai_bot\`). BotFather will confirm creation and give you a **Bot Token** like \`123456789:ABCdefGHI-jklMNOpqrSTUvwxYZ\`.
+5. **Copy the token** and add it to your Apex AI workspace settings as the Telegram Bot Token.
 6. Once deployed, the webhook is registered automatically — no manual configuration needed.
 7. **Test it** — open your new bot in Telegram and send \`/start\`. You should see a welcome message.
 
@@ -230,7 +230,7 @@ Create custom skills with the guided wizard:
 
 ### Using Alex in the Web App
 
-1. Click the **lightbulb icon** in the bottom-right corner of any page.
+1. Click the **chat icon** in the bottom-right corner of any page.
 2. A chat panel opens — type your question and press Send.
 3. Alex streams responses in real-time with Markdown formatting.
 4. The conversation resets when you reload the page.
@@ -303,7 +303,7 @@ export default function Help() {
       <motion.div variants={item}>
         <h1 className="text-2xl font-bold tracking-tight">Help & User Guides</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Everything you need to know about using Autopilot.
+          Everything you need to know about using Apex AI.
         </p>
       </motion.div>
 

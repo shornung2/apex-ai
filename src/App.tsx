@@ -20,7 +20,7 @@ import Tasks from "./pages/Tasks";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <ThemeProvider attribute="class" defaultTheme="dark" storageKey="autopilot-theme">
+  <ThemeProvider attribute="class" defaultTheme="dark" storageKey="apex-ai-theme">
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />

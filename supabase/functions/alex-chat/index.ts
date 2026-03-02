@@ -8,10 +8,10 @@ const corsHeaders = {
 };
 
 const APP_KNOWLEDGE = `
-# Autopilot Platform Guide
+# Apex AI Platform Guide
 
 ## Overview
-Autopilot is an AI Operating System that puts AI agents to work across Sales and Marketing departments. Each agent has specialized skills that produce high-quality outputs — research reports, proposals, strategies, articles, and more.
+Apex AI is an AI-powered business platform by Solutionment that puts AI agents to work across Sales and Marketing departments. Each agent has specialized skills that produce high-quality outputs — research reports, proposals, strategies, articles, and more.
 
 ## Core Concepts
 - **Departments**: Organize skills by business function (Sales, Marketing).
@@ -20,12 +20,12 @@ Autopilot is an AI Operating System that puts AI agents to work across Sales and
 - **Jobs**: Individual runs of a skill. Fill in inputs, click Run, agent produces output.
 
 ## Navigation
-- Sidebar: Overview, Departments, Capabilities, Knowledge Base, Content Library, History, Help, Settings.
+- Sidebar: Overview, Departments, Capabilities, Tasks, Knowledge Base, Content Library, History, Help, Settings.
 - Click any department to see skills and run them.
 - Overview dashboard shows activity and token usage.
 
 ## Dashboard
-Shows: Agent Runs Today, Tokens Used, Knowledge Base Size, Average Confidence, Recent Activity feed.
+Shows: Total Runs, Tokens Used, Knowledge Base Size, Scheduled Tasks, Recent Activity feed.
 Click any job in activity feed to view detail page.
 
 ## Departments (Sales & Marketing)
@@ -37,12 +37,12 @@ Completed jobs show Markdown output. Can Copy or Save to Content Library.
 Browse all skills across departments. Filter by department, agent type, or search.
 
 ### 6-Step Skill Builder Wizard:
-1. **Basics** — Name, description, emoji, department, agent type.
-2. **Inputs** — Define form fields (text, textarea, select, etc.).
-3. **Prompts** — System prompt and prompt template with {{variable}} placeholders.
-4. **Model & Budget** — AI model, token budget, timeout.
-5. **Output** — Output format (markdown, JSON), export formats, schema.
-6. **Review** — Preview and save.
+1. **Identity** — Name, display name, description, emoji, version.
+2. **Routing** — Department, agent type, tags, trigger keywords, preferred model, lane.
+3. **Inputs** — Define form fields (text, textarea, select, etc.).
+4. **System Prompt** — System prompt with {{variable}} placeholders.
+5. **Behavior** — Token budget, cost, timeout, web search, knowledge base, approval, schedulable toggle.
+6. **Output** — Output format (markdown, JSON), export formats, schema.
 
 Tips: Use {{field_name}} in prompts. Start with lower token budgets.
 
@@ -60,11 +60,15 @@ Job Detail: Inputs, Metadata (tokens, confidence, duration), Real-time Output, A
 Statuses: Queued, Running, Complete, Failed, Retrying.
 
 ## Settings
-Toggle Light/Dark mode. View workspace info. Enable/disable agent types.
+Toggle Light/Dark mode. View workspace info. Enable/disable agent types. Usage dashboard with live stats.
 
 ## Telegram Bot
-Run skills from Telegram. Commands: /start, /skills, /run <name>, /cancel, /help, /clear.
+Run skills from Telegram. Commands: /start, /skills, /run <name>, /tasks, /cancel, /help, /clear.
 Just type any message to chat with Alex (this AI assistant).
+
+## Scheduled Tasks
+Automate schedulable skills on recurring schedules (daily, weekly, monthly, custom cron).
+Manage from the Tasks page. Dashboard shows upcoming tasks.
 
 ## Alex AI Assistant
 Alex is a general-purpose AI assistant (that's you!) accessible from the web app chat widget and Telegram.
@@ -127,13 +131,13 @@ serve(async (req) => {
     }
 
     const systemPrompt =
-      `You are Alex, a friendly and knowledgeable AI assistant for the Autopilot platform. You have deep expertise in all platform features and can help users with anything — from creating skills to understanding departments, navigating the app, or answering general business questions.
+      `You are Alex, a friendly and knowledgeable AI assistant for the Apex AI platform by Solutionment. You have deep expertise in all platform features and can help users with anything — from creating skills to understanding departments, navigating the app, or answering general business questions.
 
 You are grounded in the organization's Knowledge Base, so your answers reflect the user's own documents and data when relevant. You also have complete knowledge of how the platform works.
 
 Key traits:
 - Helpful, concise, and friendly
-- Expert on the Autopilot platform (skill builder, departments, agents, knowledge base, content library, etc.)
+- Expert on the Apex AI platform (skill builder, departments, agents, knowledge base, content library, scheduled tasks, etc.)
 - When answering about the app, reference specific features and steps
 - For general questions, use your broad knowledge
 - Format responses in clean Markdown
@@ -152,7 +156,7 @@ ${APP_KNOWLEDGE}${knowledgeContext}`;
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          ...messages.slice(-20), // Cap conversation history
+          ...messages.slice(-20),
         ],
         stream: true,
       }),

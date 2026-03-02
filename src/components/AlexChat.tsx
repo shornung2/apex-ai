@@ -143,7 +143,7 @@ export function AlexChat() {
                 <img src="/favicon.jpg" alt="Alex" className="w-12 h-12 rounded-full mx-auto mb-3 object-cover" />
                 <p className="text-sm font-medium text-foreground">Hi! I'm Alex 👋</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Ask me anything about Autopilot or your Knowledge Base.
+                  Ask me anything about Apex AI or your Knowledge Base.
                 </p>
               </div>
             )}

@@ -134,7 +134,7 @@ async function handleStart(chatId: number, firstName?: string) {
   await sendMessage(
     chatId,
     `👋 <b>Welcome${name ? `, ${escapeHtml(name)}` : ""}!</b>\n\n` +
-      `I'm your <b>Autopilot Assistant</b>. I can run any skill or agent for you right here in Telegram.\n\n` +
+      `I'm your <b>Apex AI Assistant</b>. I can run any skill or agent for you right here in Telegram.\n\n` +
       `<b>Commands:</b>\n` +
       `/skills — Browse available skills\n` +
       `/tasks — View your scheduled tasks\n` +
@@ -149,7 +149,7 @@ async function handleStart(chatId: number, firstName?: string) {
 async function handleHelp(chatId: number) {
   await sendMessage(
     chatId,
-    `<b>🤖 Autopilot Bot Commands</b>\n\n` +
+    `<b>🤖 Apex AI Bot Commands</b>\n\n` +
       `/start — Welcome message\n` +
       `/skills — List all available skills by department\n` +
       `/tasks — View your active scheduled tasks\n` +
@@ -173,7 +173,7 @@ async function handleSkills(supabase: ReturnType<typeof createClient>, chatId: n
     .order("department");
 
   if (error || !skills || skills.length === 0) {
-    await sendMessage(chatId, "❌ No skills found. Please add skills in the Autopilot dashboard first.");
+    await sendMessage(chatId, "❌ No skills found. Please add skills in the Apex AI dashboard first.");
     return;
   }
 
@@ -537,7 +537,7 @@ serve(async (req) => {
         .limit(10);
 
       if (!tasks || tasks.length === 0) {
-        await sendMessage(chatId, "📅 <b>Scheduled Tasks</b>\n\nNo active scheduled tasks. Create them in the Autopilot web app under Tasks.");
+        await sendMessage(chatId, "📅 <b>Scheduled Tasks</b>\n\nNo active scheduled tasks. Create them in the Apex AI web app under Tasks.");
       } else {
         let msg = "📅 <b>Scheduled Tasks</b>\n\n";
         for (const task of tasks) {
@@ -546,7 +546,7 @@ serve(async (req) => {
           msg += `  ${escapeHtml(task.skill_name)} · ${escapeHtml(task.schedule_type)} · Runs: ${task.run_count}\n`;
           msg += `  Next: ${nextRun}\n\n`;
         }
-        msg += "Manage tasks in the Autopilot web app.";
+        msg += "Manage tasks in the Apex AI web app.";
         await sendMessage(chatId, msg);
       }
       return new Response("ok");
