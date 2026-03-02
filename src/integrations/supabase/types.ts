@@ -190,6 +190,7 @@ export type Database = {
           created_at: string
           doc_type: string
           file_path: string | null
+          folder_id: string | null
           id: string
           mime_type: string | null
           status: string
@@ -201,6 +202,7 @@ export type Database = {
           created_at?: string
           doc_type?: string
           file_path?: string | null
+          folder_id?: string | null
           id?: string
           mime_type?: string | null
           status?: string
@@ -212,13 +214,51 @@ export type Database = {
           created_at?: string
           doc_type?: string
           file_path?: string | null
+          folder_id?: string | null
           id?: string
           mime_type?: string | null
           status?: string
           title?: string
           tokens?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scheduled_tasks: {
         Row: {
