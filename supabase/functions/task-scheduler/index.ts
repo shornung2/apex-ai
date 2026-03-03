@@ -53,7 +53,7 @@ serve(async (req) => {
           continue;
         }
 
-        // Call agent-dispatch (non-streaming, we just need the job created)
+        // Call agent-dispatch and consume the FULL stream so it completes properly
         const dispatchResponse = await fetch(`${supabaseUrl}/functions/v1/agent-dispatch`, {
           method: "POST",
           headers: {
@@ -69,35 +69,37 @@ serve(async (req) => {
             inputs: task.inputs,
             promptTemplate: skill.prompt_template,
             systemPrompt: skill.system_prompt,
+            webSearchEnabled: skill.web_search_enabled ?? false,
           }),
         });
 
-        // Read the stream to get the jobId from the first SSE event
+        // Drain the entire stream so agent-dispatch finishes and sets status="complete"
         let jobId: string | null = null;
         if (dispatchResponse.ok && dispatchResponse.body) {
           const reader = dispatchResponse.body.getReader();
           const decoder = new TextDecoder();
           let buffer = "";
 
-          // Read just enough to get the jobId
-          const { value } = await reader.read();
-          if (value) {
-            buffer = decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                try {
-                  const parsed = JSON.parse(line.slice(6));
-                  if (parsed.jobId) {
-                    jobId = parsed.jobId;
-                    break;
-                  }
-                } catch { /* skip */ }
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!jobId) {
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                  try {
+                    const parsed = JSON.parse(line.slice(6));
+                    if (parsed.jobId) {
+                      jobId = parsed.jobId;
+                      break;
+                    }
+                  } catch { /* skip */ }
+                }
               }
             }
+            // Continue reading even after we have jobId to let stream complete
           }
-          // Cancel the rest of the stream - the job will complete on its own
-          reader.cancel();
         }
 
         // Compute next_run_at
