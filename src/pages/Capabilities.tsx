@@ -52,9 +52,20 @@ interface OpenRouterModel {
   name: string;
 }
 
+// Legacy model aliases from old DB defaults — treat as "unset"
+const LEGACY_MODEL_IDS = new Set(["haiku", "sonnet", "opus", "claude", "simple_haiku", "gpt-4", "gpt-4o"]);
+const isLegacyModel = (modelId: string) => LEGACY_MODEL_IDS.has(modelId.toLowerCase());
+const isKnownModel = (modelId: string) => AI_MODELS.some(m => m.id === modelId);
 const isPremiumModel = (modelId: string) => AI_MODELS.find(m => m.id === modelId)?.tier === "premium";
-const isOpenRouterModel = (modelId: string) => !AI_MODELS.find(m => m.id === modelId);
+const isOpenRouterModel = (modelId: string) => !isKnownModel(modelId) && !isLegacyModel(modelId) && modelId.includes("/");
 const getModelName = (modelId: string) => AI_MODELS.find(m => m.id === modelId)?.name || modelId;
+
+/** Resolve the effective model for a skill, ignoring legacy DB defaults */
+const resolveModelId = (skill: Skill) => {
+  const raw = skill.preferredModel;
+  if (!raw || isLegacyModel(raw)) return AGENT_DEFAULT_MODELS[skill.agentType] || "google/gemini-3-flash-preview";
+  return raw;
+};
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -169,7 +180,7 @@ export default function Capabilities() {
     setBuilderEmoji(skill.emoji);
     setBuilderDept(skill.department);
     setBuilderAgent(skill.agentType);
-    setBuilderPreferredModel(skill.preferredModel || "google/gemini-3-flash-preview");
+    setBuilderPreferredModel(resolveModelId(skill));
     setBuilderInputs(skill.inputs.map(inp => ({ ...inp })));
     setBuilderSystemPrompt(skill.systemPrompt || "");
     setBuilderEstimatedCost(skill.estimatedCost ? String(skill.estimatedCost) : "");
@@ -311,7 +322,7 @@ export default function Capabilities() {
                 {filtered.map((skill) => {
                   const agent = agentDefinitions.find((a) => a.type === skill.agentType);
                   const dept = departmentDefinitions[skill.department];
-                  const modelId = skill.preferredModel || AGENT_DEFAULT_MODELS[skill.agentType] || "google/gemini-3-flash-preview";
+                  const modelId = resolveModelId(skill);
                   const isOR = isOpenRouterModel(modelId);
                   return (
                     <Card
