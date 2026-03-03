@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Key, Bot, BarChart3, Users, Palette, Sun, Moon, Monitor, Activity, BookOpen, Sparkles, CalendarClock, CheckCircle, Plus, X, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Building2, Key, Bot, BarChart3, Users, Palette, Sun, Moon, Monitor, Activity, BookOpen, Sparkles, CalendarClock, CheckCircle, Loader2, Search } from "lucide-react";
 import { agentDefinitions } from "@/data/mock-data";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -52,10 +54,11 @@ export default function SettingsPage() {
 
   // OpenRouter state
   const [openrouterEnabled, setOpenrouterEnabled] = useState(false);
-  const [openrouterModels, setOpenrouterModels] = useState<OpenRouterModel[]>([]);
-  const [newModelId, setNewModelId] = useState("");
-  const [newModelName, setNewModelName] = useState("");
-  
+  const [selectedModels, setSelectedModels] = useState<OpenRouterModel[]>([]);
+  const [catalogModels, setCatalogModels] = useState<OpenRouterModel[]>([]);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [keyValid, setKeyValid] = useState<boolean | null>(null);
   const [savingModels, setSavingModels] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(true);
 
@@ -100,7 +103,7 @@ export default function SettingsPage() {
             setOpenrouterEnabled(row.value === true);
           }
           if (row.key === "openrouter_models" && Array.isArray(row.value)) {
-            setOpenrouterModels(row.value as unknown as OpenRouterModel[]);
+            setSelectedModels(row.value as unknown as OpenRouterModel[]);
           }
         }
       }
@@ -109,45 +112,66 @@ export default function SettingsPage() {
     fetchOpenRouterSettings();
   }, []);
 
+  // Fetch catalog when OpenRouter is enabled
+  const fetchCatalog = async () => {
+    setLoadingCatalog(true);
+    setKeyValid(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("openrouter-models");
+      if (error) throw error;
+      if (data?.valid) {
+        setCatalogModels(data.models || []);
+        setKeyValid(true);
+      } else {
+        setKeyValid(false);
+        setCatalogModels([]);
+      }
+    } catch {
+      setKeyValid(false);
+      setCatalogModels([]);
+    }
+    setLoadingCatalog(false);
+  };
+
+  useEffect(() => {
+    if (openrouterEnabled) {
+      fetchCatalog();
+    }
+  }, [openrouterEnabled]);
+
   const toggleOpenRouter = async (enabled: boolean) => {
     setOpenrouterEnabled(enabled);
     await supabase
       .from("workspace_settings")
-      .update({ value: enabled, updated_at: new Date().toISOString() })
-      .eq("key", "openrouter_enabled");
+      .upsert({ key: "openrouter_enabled", value: enabled, updated_at: new Date().toISOString() }, { onConflict: "key" });
     toast({ title: `OpenRouter ${enabled ? "enabled" : "disabled"}` });
   };
 
-  // API key is stored as a backend secret (OPENROUTER_API_KEY)
-
-  const addModel = async () => {
-    if (!newModelId.trim()) return;
-    const model: OpenRouterModel = {
-      id: newModelId.trim(),
-      name: newModelName.trim() || newModelId.trim().split("/").pop() || newModelId.trim(),
-    };
-    const updated = [...openrouterModels, model];
+  const toggleModelSelection = async (model: OpenRouterModel) => {
+    const isSelected = selectedModels.some((m) => m.id === model.id);
+    let updated: OpenRouterModel[];
+    if (isSelected) {
+      updated = selectedModels.filter((m) => m.id !== model.id);
+    } else {
+      if (selectedModels.length >= 5) {
+        toast({ title: "Maximum 5 models", description: "Remove a model before adding another.", variant: "destructive" });
+        return;
+      }
+      updated = [...selectedModels, model];
+    }
     setSavingModels(true);
     await supabase
       .from("workspace_settings")
-      .update({ value: updated as any, updated_at: new Date().toISOString() })
-      .eq("key", "openrouter_models");
-    setOpenrouterModels(updated);
-    setNewModelId("");
-    setNewModelName("");
+      .upsert({ key: "openrouter_models", value: updated as any, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    setSelectedModels(updated);
     setSavingModels(false);
-    toast({ title: "Model added" });
   };
 
-  const removeModel = async (id: string) => {
-    const updated = openrouterModels.filter((m) => m.id !== id);
-    await supabase
-      .from("workspace_settings")
-      .update({ value: updated as any, updated_at: new Date().toISOString() })
-      .eq("key", "openrouter_models");
-    setOpenrouterModels(updated);
-    toast({ title: "Model removed" });
-  };
+  const filteredCatalog = catalogModels.filter(
+    (m) =>
+      m.id.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+      m.name.toLowerCase().includes(catalogSearch.toLowerCase())
+  );
 
   const tokenPercent = usage ? Math.round((usage.tokensUsed / TOKEN_BUDGET) * 100) : 0;
   const tokenColor =
@@ -253,57 +277,100 @@ export default function SettingsPage() {
 
                   {openrouterEnabled && (
                     <>
-                      {/* API Key */}
+                      {/* API Key Status */}
                       <div className="space-y-2 p-3 rounded-lg bg-muted/30">
                         <Label className="text-sm">API Key</Label>
                         <div className="flex items-center gap-2">
-                          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Key configured</Badge>
+                          {keyValid === null && loadingCatalog ? (
+                            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                          ) : keyValid ? (
+                            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Key configured</Badge>
+                          ) : (
+                            <Badge className="bg-destructive/20 text-destructive border-destructive/30">Key not configured</Badge>
+                          )}
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                          Your OpenRouter API key is securely stored as a backend secret. To update it, contact your administrator.
+                          Your OpenRouter API key is securely stored as a backend secret. Get your key from{" "}
+                          <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai/keys</a>.
                         </p>
                       </div>
 
-                      {/* Model Management */}
-                      <div className="space-y-3">
-                        <Label className="text-sm">Enabled Models</Label>
-                        <p className="text-[10px] text-muted-foreground">
-                          Add OpenRouter model IDs (e.g. <code className="bg-muted px-1 rounded">anthropic/claude-sonnet-4</code>).
-                          Browse models at <a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai/models</a>
-                        </p>
-
-                        {openrouterModels.length > 0 && (
+                      {/* Selected Models */}
+                      {selectedModels.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Selected Models ({selectedModels.length}/5)</Label>
                           <div className="space-y-1.5">
-                            {openrouterModels.map((m) => (
-                              <div key={m.id} className="flex items-center gap-2 text-sm bg-muted/30 rounded-md px-3 py-2">
+                            {selectedModels.map((m) => (
+                              <div key={m.id} className="flex items-center gap-2 text-sm bg-primary/10 border border-primary/20 rounded-md px-3 py-2">
+                                <CheckCircle className="h-3 w-3 text-primary shrink-0" />
                                 <span className="font-mono text-xs flex-1 truncate">{m.id}</span>
                                 <span className="text-xs text-muted-foreground shrink-0">{m.name}</span>
-                                <button onClick={() => removeModel(m.id)} className="text-muted-foreground hover:text-foreground shrink-0">
-                                  <X className="h-3 w-3" />
+                                <button
+                                  onClick={() => toggleModelSelection(m)}
+                                  className="text-muted-foreground hover:text-foreground shrink-0 text-xs"
+                                >
+                                  Remove
                                 </button>
                               </div>
                             ))}
                           </div>
-                        )}
-
-                        <div className="flex gap-2">
-                          <Input
-                            value={newModelId}
-                            onChange={(e) => setNewModelId(e.target.value)}
-                            placeholder="anthropic/claude-sonnet-4"
-                            className="bg-muted/50 border-border/50 flex-1 font-mono text-xs"
-                          />
-                          <Input
-                            value={newModelName}
-                            onChange={(e) => setNewModelName(e.target.value)}
-                            placeholder="Display name (optional)"
-                            className="bg-muted/50 border-border/50 w-40 text-xs"
-                          />
-                          <Button variant="outline" size="sm" onClick={addModel} disabled={!newModelId.trim() || savingModels}>
-                            <Plus className="h-3 w-3 mr-1" /> Add
-                          </Button>
                         </div>
-                      </div>
+                      )}
+
+                      {/* Model Catalog Browser */}
+                      {keyValid && (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Browse Models</Label>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                              value={catalogSearch}
+                              onChange={(e) => setCatalogSearch(e.target.value)}
+                              placeholder="Search models..."
+                              className="pl-9 bg-muted/50 border-border/50 h-8 text-xs"
+                            />
+                          </div>
+                          {loadingCatalog ? (
+                            <div className="flex items-center justify-center py-8">
+                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <ScrollArea className="h-[300px] rounded-md border border-border/50 bg-muted/20">
+                              <div className="p-1">
+                                {filteredCatalog.map((model) => {
+                                  const isSelected = selectedModels.some((m) => m.id === model.id);
+                                  return (
+                                    <button
+                                      key={model.id}
+                                      onClick={() => toggleModelSelection(model)}
+                                      className={cn(
+                                        "w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors text-xs",
+                                        isSelected
+                                          ? "bg-primary/10 border border-primary/20"
+                                          : "hover:bg-muted/50"
+                                      )}
+                                    >
+                                      <Checkbox checked={isSelected} className="pointer-events-none" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-mono truncate">{model.id}</p>
+                                        <p className="text-[10px] text-muted-foreground truncate">{model.name}</p>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                                {filteredCatalog.length === 0 && (
+                                  <p className="text-xs text-muted-foreground text-center py-8">
+                                    {catalogSearch ? "No models match your search" : "No models available"}
+                                  </p>
+                                )}
+                              </div>
+                            </ScrollArea>
+                          )}
+                          <p className="text-[10px] text-muted-foreground">
+                            {catalogModels.length} models available · Select up to 5
+                          </p>
+                        </div>
+                      )}
                     </>
                   )}
                 </CardContent>
@@ -376,15 +443,15 @@ export default function SettingsPage() {
                 ].map((stat) => (
                   <Card key={stat.label} className="glass-card">
                     <CardContent className="pt-5 pb-4 px-4">
-                      {!usage ? (
+                      {stat.value === undefined ? (
                         <Skeleton className="h-8 w-16" />
                       ) : (
                         <>
                           <div className="flex items-center gap-2 text-muted-foreground mb-1">
                             <stat.icon className="h-3.5 w-3.5" />
-                            <span className="text-xs">{stat.label}</span>
+                            <span className="text-[11px]">{stat.label}</span>
                           </div>
-                          <p className="text-2xl font-bold">{stat.value?.toLocaleString?.() ?? stat.value}</p>
+                          <p className="text-2xl font-bold">{typeof stat.value === "number" ? stat.value.toLocaleString() : stat.value}</p>
                         </>
                       )}
                     </CardContent>
@@ -392,16 +459,18 @@ export default function SettingsPage() {
                 ))}
               </div>
 
-              {/* Scheduled Tasks */}
+              {/* Scheduled Tasks Stat */}
               <Card className="glass-card">
                 <CardContent className="pt-5 pb-4 px-4">
-                  {!usage ? (
-                    <Skeleton className="h-6 w-40" />
+                  {usage === null ? (
+                    <Skeleton className="h-8 w-32" />
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Active Scheduled Tasks:</span>
-                      <span className="text-sm font-semibold">{usage.scheduledTasks}</span>
+                    <div className="flex items-center gap-3">
+                      <CalendarClock className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">{usage.scheduledTasks} Active Scheduled Tasks</p>
+                        <p className="text-xs text-muted-foreground">Automated skills running on schedule</p>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -411,10 +480,9 @@ export default function SettingsPage() {
 
           <TabsContent value="members">
             <Card className="glass-card">
-              <CardHeader><CardTitle className="text-lg">Workspace Members</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">Member management will be available after authentication is configured.</p>
-                <Button variant="outline" size="sm" disabled>Invite Member</Button>
+              <CardHeader><CardTitle className="text-lg">Team Members</CardTitle></CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Member management coming soon. Currently single-user workspace.</p>
               </CardContent>
             </Card>
           </TabsContent>

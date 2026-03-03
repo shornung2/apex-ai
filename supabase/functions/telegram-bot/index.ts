@@ -353,16 +353,18 @@ async function executeSkill(
           Authorization: `Bearer ${serviceRoleKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          skillId: skill.id,
-          skillName: skill.name,
-          agentType: skill.agent_type,
-          department: skill.department,
-          title: `Telegram: ${skill.display_name || skill.name}`,
-          inputs,
-          promptTemplate: skill.prompt_template,
-          systemPrompt: skill.system_prompt,
-        }),
+      body: JSON.stringify({
+        skillId: skill.id,
+        skillName: skill.name,
+        agentType: skill.agent_type,
+        department: skill.department,
+        title: `Telegram: ${skill.display_name || skill.name}`,
+        inputs,
+        promptTemplate: skill.prompt_template,
+        systemPrompt: skill.system_prompt,
+        preferredModel: skill.preferred_model,
+        webSearchEnabled: skill.web_search_enabled,
+      }),
       });
 
       if (!deckResponse.ok) {
@@ -402,6 +404,8 @@ async function executeSkill(
         inputs,
         promptTemplate: skill.prompt_template,
         systemPrompt: skill.system_prompt,
+        preferredModel: skill.preferred_model,
+        webSearchEnabled: skill.web_search_enabled,
       }),
     });
 
