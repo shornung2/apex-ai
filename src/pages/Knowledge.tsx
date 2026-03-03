@@ -200,11 +200,34 @@ export default function Knowledge() {
   };
 
   const deleteFolder = async (folder: FolderRow) => {
-    // Move docs in this folder to parent, then delete folder (cascade deletes subfolders)
-    await supabase.from("knowledge_documents").update({ folder_id: folder.parent_id }).eq("folder_id", folder.id);
-    await supabase.from("knowledge_folders").delete().eq("id", folder.id);
+    // Recursively collect all descendant folder IDs
+    const allFolderIds = [folder.id];
+    const collectDescendants = async (parentId: string) => {
+      const { data: children } = await supabase
+        .from("knowledge_folders")
+        .select("id")
+        .eq("parent_id", parentId);
+      if (children) {
+        for (const child of children) {
+          allFolderIds.push(child.id);
+          await collectDescendants(child.id);
+        }
+      }
+    };
+    await collectDescendants(folder.id);
+
+    // Move ALL docs from all descendant folders to parent
+    await supabase.from("knowledge_documents")
+      .update({ folder_id: folder.parent_id })
+      .in("folder_id", allFolderIds);
+
+    // Delete all descendant folders + the folder itself
+    await supabase.from("knowledge_folders")
+      .delete()
+      .in("id", allFolderIds);
+
     fetchData();
-    toast({ title: "Folder deleted" });
+    toast({ title: "Folder and subfolders deleted" });
   };
 
   const handleDownload = async (doc: any) => {

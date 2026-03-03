@@ -188,7 +188,7 @@ export default function ContentLibrary() {
 
   const deleteBulk = async () => {
     const ids = Array.from(selectedIds);
-    for (const id of ids) await supabase.from("content_items").delete().eq("id", id);
+    await supabase.from("content_items").delete().in("id", ids);
     setSelectedIds(new Set());
     setSelectedItem(null);
     fetchData();
@@ -217,13 +217,12 @@ export default function ContentLibrary() {
 
   const moveBulk = async () => {
     const target = bulkMoveTarget === "root" ? null : bulkMoveTarget;
-    for (const id of selectedIds) {
-      await supabase.from("content_items").update({ folder_id: target }).eq("id", id);
-    }
+    const ids = Array.from(selectedIds);
+    await supabase.from("content_items").update({ folder_id: target }).in("id", ids);
     setBulkMoveOpen(false);
     setSelectedIds(new Set());
     fetchData();
-    toast({ title: `${selectedIds.size} item(s) moved` });
+    toast({ title: `${ids.length} item(s) moved` });
   };
 
   const doRenameItem = async () => {

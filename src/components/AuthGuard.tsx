@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -6,24 +6,22 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setAuthenticated(true);
-      } else {
-        setAuthenticated(false);
-        navigate("/auth");
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        // Skip the INITIAL_SESSION event — handled by getSession below
+        if (!initialized.current) return;
+        setAuthenticated(!!session);
+        if (!session) navigate("/auth");
       }
-      setLoading(false);
-    });
+    );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setAuthenticated(true);
-      } else {
-        navigate("/auth");
-      }
+      initialized.current = true;
+      setAuthenticated(!!session);
+      if (!session) navigate("/auth");
       setLoading(false);
     });
 
