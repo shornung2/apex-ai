@@ -32,6 +32,10 @@ serve(async (req) => {
     const models = (data.data || []).map((m: any) => ({
       id: m.id,
       name: m.name || m.id,
+      description: m.description || "",
+      promptPrice: m.pricing?.prompt || null,
+      completionPrice: m.pricing?.completion || null,
+      contextLength: m.context_length || null,
     }));
 
     return new Response(JSON.stringify({ valid: true, models }), {
