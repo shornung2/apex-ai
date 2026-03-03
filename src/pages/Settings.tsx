@@ -55,9 +55,7 @@ export default function SettingsPage() {
   const [openrouterModels, setOpenrouterModels] = useState<OpenRouterModel[]>([]);
   const [newModelId, setNewModelId] = useState("");
   const [newModelName, setNewModelName] = useState("");
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const [apiKeySaved, setApiKeySaved] = useState(false);
-  const [savingApiKey, setSavingApiKey] = useState(false);
+  
   const [savingModels, setSavingModels] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(true);
 
@@ -120,24 +118,7 @@ export default function SettingsPage() {
     toast({ title: `OpenRouter ${enabled ? "enabled" : "disabled"}` });
   };
 
-  const saveApiKey = async () => {
-    if (!apiKeyInput.trim()) return;
-    setSavingApiKey(true);
-    try {
-      // Store via edge function that sets the secret
-      const { error } = await supabase.functions.invoke("agent-dispatch", {
-        body: { _setOpenRouterKey: apiKeyInput.trim() },
-      });
-      // We'll store it as a Supabase secret instead — use the secrets system
-      // For now, we notify the user to set it via the platform
-      setApiKeySaved(true);
-      setApiKeyInput("");
-      toast({ title: "API key saved", description: "Your OpenRouter API key has been stored securely." });
-    } catch {
-      toast({ title: "Failed to save API key", variant: "destructive" });
-    }
-    setSavingApiKey(false);
-  };
+  // API key is stored as a backend secret (OPENROUTER_API_KEY)
 
   const addModel = async () => {
     if (!newModelId.trim()) return;
@@ -275,27 +256,11 @@ export default function SettingsPage() {
                       {/* API Key */}
                       <div className="space-y-2 p-3 rounded-lg bg-muted/30">
                         <Label className="text-sm">API Key</Label>
-                        {apiKeySaved ? (
-                          <div className="flex items-center gap-2">
-                            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Key saved</Badge>
-                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setApiKeySaved(false)}>Change</Button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <Input
-                              type="password"
-                              value={apiKeyInput}
-                              onChange={(e) => setApiKeyInput(e.target.value)}
-                              placeholder="sk-or-v1-..."
-                              className="bg-muted/50 border-border/50 flex-1"
-                            />
-                            <Button size="sm" onClick={saveApiKey} disabled={!apiKeyInput.trim() || savingApiKey}>
-                              {savingApiKey ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save Key"}
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Key configured</Badge>
+                        </div>
                         <p className="text-[10px] text-muted-foreground">
-                          Get your API key from <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai/keys</a>
+                          Your OpenRouter API key is securely stored as a backend secret. To update it, contact your administrator.
                         </p>
                       </div>
 
