@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, Trash2, GripVertical, BookOpen, Wrench, Loader2, ChevronLeft, ChevronRight, Check, Pencil, X, AlertTriangle, Sparkles, Send, Eye } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Search, Plus, Trash2, GripVertical, BookOpen, Wrench, Loader2, Check, Pencil, X, AlertTriangle, Sparkles, Send, Eye, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { agentDefinitions, departmentDefinitions, dbRowToSkill, type Department, type AgentType, type SkillInput, type Skill } from "@/data/mock-data";
 import { useToast } from "@/hooks/use-toast";
@@ -26,8 +27,6 @@ const inputTypes = [
   { value: "radio", label: "Radio Group" },
   { value: "multi-select", label: "Multi-Select" },
 ];
-
-const STEP_LABELS = ["Identity", "Routing", "Inputs", "System Prompt", "Behavior"];
 
 const AI_MODELS = [
   { id: "google/gemini-2.5-flash-lite", name: "Gemini Flash Lite", tier: "standard" as const, desc: "Simple tasks, classification", promptPer1M: 0.075, completionPer1M: 0.30 },
@@ -56,30 +55,16 @@ interface OpenRouterModel {
   contextLength?: number | null;
 }
 
-/** Estimate cost for a single run: (promptTokens × promptRate + completionTokens × completionRate).
- *  Assumes ~60% prompt / ~40% completion split of the token budget. */
 const estimateCostForModel = (modelId: string, tokenBudget: number, orModels: OpenRouterModel[]): number | null => {
   const promptTokens = Math.round(tokenBudget * 0.6);
   const completionTokens = Math.round(tokenBudget * 0.4);
-
-  // Check built-in models first
   const builtIn = AI_MODELS.find(m => m.id === modelId);
-  if (builtIn) {
-    return (promptTokens * builtIn.promptPer1M + completionTokens * builtIn.completionPer1M) / 1_000_000;
-  }
-
-  // Check OpenRouter models
+  if (builtIn) return (promptTokens * builtIn.promptPer1M + completionTokens * builtIn.completionPer1M) / 1_000_000;
   const orModel = orModels.find(m => m.id === modelId);
-  if (orModel?.promptPrice && orModel?.completionPrice) {
-    const pIn = parseFloat(orModel.promptPrice) * promptTokens;
-    const pOut = parseFloat(orModel.completionPrice) * completionTokens;
-    return pIn + pOut;
-  }
-
+  if (orModel?.promptPrice && orModel?.completionPrice) return parseFloat(orModel.promptPrice) * promptTokens + parseFloat(orModel.completionPrice) * completionTokens;
   return null;
 };
 
-// Legacy model aliases from old DB defaults — treat as "unset"
 const LEGACY_MODEL_IDS = new Set(["haiku", "sonnet", "opus", "claude", "simple_haiku", "gpt-4", "gpt-4o"]);
 const isLegacyModel = (modelId: string) => LEGACY_MODEL_IDS.has(modelId.toLowerCase());
 const isKnownModel = (modelId: string) => AI_MODELS.some(m => m.id === modelId);
@@ -87,33 +72,20 @@ const isPremiumModel = (modelId: string) => AI_MODELS.find(m => m.id === modelId
 const isOpenRouterModel = (modelId: string) => !isKnownModel(modelId) && !isLegacyModel(modelId) && modelId.includes("/");
 const getModelName = (modelId: string) => AI_MODELS.find(m => m.id === modelId)?.name || modelId;
 
-/** Resolve the effective model for a skill, ignoring legacy DB defaults */
 const resolveModelId = (skill: Skill) => {
   const raw = skill.preferredModel;
   if (!raw || isLegacyModel(raw)) return AGENT_DEFAULT_MODELS[skill.agentType] || "google/gemini-3-flash-preview";
   return raw;
 };
 
-function StepIndicator({ current, total }: { current: number; total: number }) {
+function SectionHeader({ title, step, isOpen }: { title: string; step: number; isOpen: boolean }) {
   return (
-    <div className="flex items-center gap-1 mb-6">
-      {Array.from({ length: total }, (_, i) => {
-        const step = i + 1;
-        const isActive = step === current;
-        const isDone = step < current;
-        return (
-          <div key={step} className="flex items-center gap-1 flex-1">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 transition-colors ${
-              isActive ? "bg-primary text-primary-foreground" :
-              isDone ? "bg-primary/20 text-primary" :
-              "bg-muted text-muted-foreground"
-            }`}>
-              {isDone ? <Check className="h-3.5 w-3.5" /> : step}
-            </div>
-            {i < total - 1 && <div className={`h-px flex-1 ${isDone ? "bg-primary/30" : "bg-border"}`} />}
-          </div>
-        );
-      })}
+    <div className="flex items-center gap-3 w-full py-1">
+      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 ${isOpen ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+        {step}
+      </div>
+      <span className="text-sm font-semibold flex-1 text-left">{title}</span>
+      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
     </div>
   );
 }
@@ -129,12 +101,10 @@ export default function Capabilities() {
   const [saving, setSaving] = useState(false);
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
 
-  // OpenRouter models from workspace_settings
   const [openrouterEnabled, setOpenrouterEnabled] = useState(false);
   const [openrouterModels, setOpenrouterModels] = useState<OpenRouterModel[]>([]);
 
-  // Six-step builder state
-  const [builderStep, setBuilderStep] = useState(1);
+  // Builder state
   const [builderName, setBuilderName] = useState("");
   const [builderDisplayName, setBuilderDisplayName] = useState("");
   const [builderDesc, setBuilderDesc] = useState("");
@@ -144,9 +114,12 @@ export default function Capabilities() {
   const [builderPreferredModel, setBuilderPreferredModel] = useState("google/gemini-3-flash-preview");
   const [builderInputs, setBuilderInputs] = useState<Partial<SkillInput>[]>([]);
   const [builderSystemPrompt, setBuilderSystemPrompt] = useState("");
-  
   const [builderWebSearch, setBuilderWebSearch] = useState(false);
   const [builderSchedulable, setBuilderSchedulable] = useState(false);
+
+  // Collapsible sections
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ identity: true });
+  const toggleSection = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
   // Build with Alex state
   const [builderMode, setBuilderMode] = useState<"manual" | "alex">("manual");
@@ -179,7 +152,11 @@ export default function Capabilities() {
 
   const applySkillUpdate = (field: string, value: any) => {
     switch (field) {
-      case "systemPrompt": setBuilderSystemPrompt(value); toast({ title: "System prompt applied" }); break;
+      case "systemPrompt":
+        setBuilderSystemPrompt(value);
+        setOpenSections(prev => ({ ...prev, prompt: true }));
+        toast({ title: "System prompt applied" });
+        break;
       case "description": setBuilderDesc(value); toast({ title: "Description applied" }); break;
       case "name": setBuilderName(value); toast({ title: "Name applied" }); break;
       case "displayName": setBuilderDisplayName(value); toast({ title: "Display name applied" }); break;
@@ -194,6 +171,7 @@ export default function Capabilities() {
             required: inp.required ?? false,
             options: inp.options || [],
           })));
+          setOpenSections(prev => ({ ...prev, inputs: true }));
           toast({ title: `${value.length} input fields applied` });
         }
         break;
@@ -211,14 +189,9 @@ export default function Capabilities() {
 
     const allMessages = [...alexMessages, userMsg];
     const builderState = {
-      name: builderName,
-      displayName: builderDisplayName,
-      description: builderDesc,
-      department: builderDept,
-      agentType: builderAgent,
-      inputs: builderInputs,
-      systemPrompt: builderSystemPrompt,
-      preferredModel: builderPreferredModel,
+      name: builderName, displayName: builderDisplayName, description: builderDesc,
+      department: builderDept, agentType: builderAgent, inputs: builderInputs,
+      systemPrompt: builderSystemPrompt, preferredModel: builderPreferredModel,
     };
 
     let assistantSoFar = "";
@@ -275,30 +248,19 @@ export default function Capabilities() {
   const fetchSkills = async () => {
     setLoading(true);
     const { data } = await supabase.from("skills").select("*").order("department").order("agent_type").order("name");
-    if (data) {
-      setAllSkills(data.map(dbRowToSkill));
-    }
+    if (data) setAllSkills(data.map(dbRowToSkill));
     setLoading(false);
   };
 
   useEffect(() => { fetchSkills(); }, []);
 
-  // Fetch OpenRouter settings
   useEffect(() => {
     async function fetchOpenRouterSettings() {
-      const { data } = await supabase
-        .from("workspace_settings")
-        .select("key, value")
-        .in("key", ["openrouter_enabled", "openrouter_models"]);
-
+      const { data } = await supabase.from("workspace_settings").select("key, value").in("key", ["openrouter_enabled", "openrouter_models"]);
       if (data) {
         for (const row of data) {
-          if (row.key === "openrouter_enabled") {
-            setOpenrouterEnabled(row.value === true);
-          }
-          if (row.key === "openrouter_models" && Array.isArray(row.value)) {
-            setOpenrouterModels(row.value as unknown as OpenRouterModel[]);
-          }
+          if (row.key === "openrouter_enabled") setOpenrouterEnabled(row.value === true);
+          if (row.key === "openrouter_models" && Array.isArray(row.value)) setOpenrouterModels(row.value as unknown as OpenRouterModel[]);
         }
       }
     }
@@ -314,17 +276,16 @@ export default function Capabilities() {
 
   const resetBuilder = () => {
     setEditingSkillId(null);
-    setBuilderStep(1);
     setBuilderName(""); setBuilderDisplayName(""); setBuilderDesc(""); setBuilderEmoji("⚡");
     setBuilderDept(""); setBuilderAgent(""); setBuilderPreferredModel("google/gemini-3-flash-preview");
     setBuilderInputs([]);
     setBuilderSystemPrompt("");
     setBuilderWebSearch(false); setBuilderSchedulable(false);
+    setOpenSections({ identity: true });
   };
 
   const loadSkillIntoBuilder = (skill: Skill) => {
     setEditingSkillId(skill.id);
-    setBuilderStep(1);
     setBuilderName(skill.name);
     setBuilderDisplayName(skill.displayName || skill.name);
     setBuilderDesc(skill.description);
@@ -334,9 +295,9 @@ export default function Capabilities() {
     setBuilderPreferredModel(resolveModelId(skill));
     setBuilderInputs(skill.inputs.map(inp => ({ ...inp })));
     setBuilderSystemPrompt(skill.systemPrompt || "");
-    
     setBuilderWebSearch(skill.webSearchEnabled || false);
     setBuilderSchedulable((skill as any).schedulable || false);
+    setOpenSections({ identity: true, routing: true, inputs: true, prompt: true, behavior: true });
     setActiveTab("builder");
   };
 
@@ -352,16 +313,6 @@ export default function Capabilities() {
     const next = [...builderInputs];
     (next[idx] as any)[field] = value;
     setBuilderInputs(next);
-  };
-
-  const canNext = () => {
-    switch (builderStep) {
-      case 1: return !!builderName;
-      case 2: return !!builderDept && !!builderAgent;
-      case 3: return builderInputs.length > 0;
-      case 4: return !!builderSystemPrompt;
-      default: return true;
-    }
   };
 
   const saveSkill = async () => {
@@ -477,11 +428,7 @@ export default function Capabilities() {
                   const isOR = isOpenRouterModel(modelId);
                   const dynamicCost = estimateCostForModel(modelId, skill.tokenBudget || 10000, openrouterModels);
                   return (
-                    <Card
-                      key={skill.id}
-                      className="glass-card hover:border-primary/30 transition-all cursor-pointer group"
-                      onClick={() => loadSkillIntoBuilder(skill)}
-                    >
+                    <Card key={skill.id} className="glass-card hover:border-primary/30 transition-all cursor-pointer group" onClick={() => loadSkillIntoBuilder(skill)}>
                       <CardContent className="p-5 space-y-3">
                         <div className="flex items-start justify-between">
                           <span className="text-2xl">{skill.emoji}</span>
@@ -516,21 +463,16 @@ export default function Capabilities() {
                   );
                 })}
                 {filtered.length === 0 && (
-                  <div className="col-span-full text-center text-muted-foreground py-12">
-                    No skills match your filters
-                  </div>
+                  <div className="col-span-full text-center text-muted-foreground py-12">No skills match your filters</div>
                 )}
               </div>
             )}
           </TabsContent>
 
-          {/* ── Skill Builder (5-Step Wizard) ── */}
+          {/* ── Skill Builder (Collapsible Sections) ── */}
           <TabsContent value="builder" className="space-y-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold">{editingSkillId ? "Edit Skill" : "Create a New Skill"}</h2>
-                <span className="text-xs text-muted-foreground">Step {builderStep} of 5 — {STEP_LABELS[builderStep - 1]}</span>
-              </div>
+              <h2 className="text-lg font-semibold">{editingSkillId ? "Edit Skill" : "Create a New Skill"}</h2>
               <div className="flex gap-2 items-center">
                 <Button
                   variant={builderMode === "alex" ? "default" : "outline"}
@@ -557,281 +499,296 @@ export default function Capabilities() {
               </div>
             </div>
 
-            <StepIndicator current={builderStep} total={5} />
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Builder form */}
-              <Card className="glass-card">
-                <CardContent className="p-6 space-y-4">
+              {/* Left: Scrollable form with collapsible sections */}
+              <div className="space-y-3">
+                {/* Section 1: Identity */}
+                <Collapsible open={openSections.identity} onOpenChange={() => toggleSection("identity")}>
+                  <Card className="glass-card">
+                    <CollapsibleTrigger asChild>
+                      <button className="w-full px-5 py-3 text-left hover:bg-muted/30 transition-colors rounded-t-lg">
+                        <SectionHeader title="Identity" step={1} isOpen={!!openSections.identity} />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="px-5 pb-5 pt-0 space-y-4">
+                        <div className="grid grid-cols-[60px_1fr] gap-3">
+                          <div className="space-y-2">
+                            <Label>Emoji</Label>
+                            <Input value={builderEmoji} onChange={(e) => setBuilderEmoji(e.target.value)} className="bg-muted/50 border-border/50 text-center text-lg" maxLength={2} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Skill Name (ID)</Label>
+                            <Input value={builderName} onChange={(e) => setBuilderName(e.target.value)} placeholder="e.g. company_research" className="bg-muted/50 border-border/50" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Display Name</Label>
+                          <Input value={builderDisplayName} onChange={(e) => setBuilderDisplayName(e.target.value)} placeholder="e.g. Company Research" className="bg-muted/50 border-border/50" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Description</Label>
+                          <Textarea value={builderDesc} onChange={(e) => setBuilderDesc(e.target.value)} placeholder="What does this skill do?" rows={3} className="bg-muted/50 border-border/50 resize-none" />
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
 
-                  {/* Step 1: Identity */}
-                  {builderStep === 1 && (
-                    <>
-                      <div className="grid grid-cols-[60px_1fr] gap-3">
-                        <div className="space-y-2">
-                          <Label>Emoji</Label>
-                          <Input value={builderEmoji} onChange={(e) => setBuilderEmoji(e.target.value)} className="bg-muted/50 border-border/50 text-center text-lg" maxLength={2} />
+                {/* Section 2: Routing */}
+                <Collapsible open={openSections.routing} onOpenChange={() => toggleSection("routing")}>
+                  <Card className="glass-card">
+                    <CollapsibleTrigger asChild>
+                      <button className="w-full px-5 py-3 text-left hover:bg-muted/30 transition-colors rounded-t-lg">
+                        <SectionHeader title="Routing" step={2} isOpen={!!openSections.routing} />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="px-5 pb-5 pt-0 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label>Department</Label>
+                            <Select value={builderDept} onValueChange={(v) => setBuilderDept(v as Department)}>
+                              <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue placeholder="Select..." /></SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(departmentDefinitions).map(([key, d]) => (
+                                  <SelectItem key={key} value={key}>{d.emoji} {d.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Agent</Label>
+                            <Select value={builderAgent} onValueChange={(v) => {
+                              const agent = v as AgentType;
+                              setBuilderAgent(agent);
+                              const defaultModel = AGENT_DEFAULT_MODELS[agent] || "google/gemini-3-flash-preview";
+                              setBuilderPreferredModel(defaultModel);
+                            }}>
+                              <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue placeholder="Select..." /></SelectTrigger>
+                              <SelectContent>
+                                {agentDefinitions.map((a) => (
+                                  <SelectItem key={a.type} value={a.type}>{a.emoji} {a.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                         <div className="space-y-2">
-                          <Label>Skill Name (ID)</Label>
-                          <Input value={builderName} onChange={(e) => setBuilderName(e.target.value)} placeholder="e.g. company_research" className="bg-muted/50 border-border/50" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Display Name</Label>
-                        <Input value={builderDisplayName} onChange={(e) => setBuilderDisplayName(e.target.value)} placeholder="e.g. Company Research" className="bg-muted/50 border-border/50" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Description</Label>
-                        <Textarea value={builderDesc} onChange={(e) => setBuilderDesc(e.target.value)} placeholder="What does this skill do?" rows={3} className="bg-muted/50 border-border/50 resize-none" />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Step 2: Routing */}
-                  {builderStep === 2 && (
-                    <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label>Department</Label>
-                          <Select value={builderDept} onValueChange={(v) => setBuilderDept(v as Department)}>
-                            <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <Label>Preferred Model</Label>
+                          <Select value={builderPreferredModel} onValueChange={setBuilderPreferredModel}>
+                            <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              {Object.entries(departmentDefinitions).map(([key, d]) => (
-                                <SelectItem key={key} value={key}>{d.emoji} {d.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Agent</Label>
-                          <Select value={builderAgent} onValueChange={(v) => {
-                            const agent = v as AgentType;
-                            setBuilderAgent(agent);
-                            const defaultModel = AGENT_DEFAULT_MODELS[agent] || "google/gemini-3-flash-preview";
-                            setBuilderPreferredModel(defaultModel);
-                          }}>
-                            <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent>
-                              {agentDefinitions.map((a) => (
-                                <SelectItem key={a.type} value={a.type}>{a.emoji} {a.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Preferred Model</Label>
-                        <Select value={builderPreferredModel} onValueChange={setBuilderPreferredModel}>
-                          <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Standard</SelectLabel>
-                              {AI_MODELS.filter(m => m.tier === "standard").map(m => {
-                                const c = (6000 * m.promptPer1M + 4000 * m.completionPer1M) / 1_000_000;
-                                return (
-                                  <SelectItem key={m.id} value={m.id}>
-                                    <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— ~${c < 0.01 ? "<0.01" : c.toFixed(3)}/run</span></span>
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectGroup>
-                            <SelectSeparator />
-                            <SelectGroup>
-                              <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Premium</SelectLabel>
-                              {AI_MODELS.filter(m => m.tier === "premium").map(m => {
-                                const c = (6000 * m.promptPer1M + 4000 * m.completionPer1M) / 1_000_000;
-                                return (
-                                  <SelectItem key={m.id} value={m.id}>
-                                    <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— ~${c < 0.01 ? "<0.01" : c.toFixed(3)}/run</span></span>
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectGroup>
-                            {openrouterEnabled && openrouterModels.length > 0 && (
-                              <>
-                                <SelectSeparator />
-                                <SelectGroup>
-                                  <SelectLabel className="text-[10px] uppercase tracking-wider text-blue-400">🔗 OpenRouter</SelectLabel>
-                                  {openrouterModels.map(m => (
+                              <SelectGroup>
+                                <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Standard</SelectLabel>
+                                {AI_MODELS.filter(m => m.tier === "standard").map(m => {
+                                  const c = (6000 * m.promptPer1M + 4000 * m.completionPer1M) / 1_000_000;
+                                  return (
                                     <SelectItem key={m.id} value={m.id}>
-                                      <span className="flex items-center gap-2">
-                                        {m.name}
-                                        <span className="text-[10px] text-blue-400">OpenRouter</span>
-                                      </span>
+                                      <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— ~${c < 0.01 ? "<0.01" : c.toFixed(3)}/run</span></span>
                                     </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        {isPremiumModel(builderPreferredModel) && (
-                          <div className="flex items-center gap-1.5 text-xs text-amber-500">
-                            <AlertTriangle className="h-3 w-3" />
-                            <span>Premium model — significantly higher cost per run</span>
-                          </div>
-                        )}
-                        {isOpenRouterModel(builderPreferredModel) && (
-                          <div className="flex items-center gap-1.5 text-xs text-blue-400">
-                            <span>🔗</span>
-                            <span>OpenRouter model — uses your OpenRouter API key and credits</span>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
+                                  );
+                                })}
+                              </SelectGroup>
+                              <SelectSeparator />
+                              <SelectGroup>
+                                <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Premium</SelectLabel>
+                                {AI_MODELS.filter(m => m.tier === "premium").map(m => {
+                                  const c = (6000 * m.promptPer1M + 4000 * m.completionPer1M) / 1_000_000;
+                                  return (
+                                    <SelectItem key={m.id} value={m.id}>
+                                      <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— ~${c < 0.01 ? "<0.01" : c.toFixed(3)}/run</span></span>
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectGroup>
+                              {openrouterEnabled && openrouterModels.length > 0 && (
+                                <>
+                                  <SelectSeparator />
+                                  <SelectGroup>
+                                    <SelectLabel className="text-[10px] uppercase tracking-wider text-blue-400">🔗 OpenRouter</SelectLabel>
+                                    {openrouterModels.map(m => (
+                                      <SelectItem key={m.id} value={m.id}>
+                                        <span className="flex items-center gap-2">
+                                          {m.name}
+                                          <span className="text-[10px] text-blue-400">OpenRouter</span>
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                </>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {isPremiumModel(builderPreferredModel) && (
+                            <div className="flex items-center gap-1.5 text-xs text-amber-500">
+                              <AlertTriangle className="h-3 w-3" />
+                              <span>Premium model — significantly higher cost per run</span>
+                            </div>
+                          )}
+                          {isOpenRouterModel(builderPreferredModel) && (
+                            <div className="flex items-center gap-1.5 text-xs text-blue-400">
+                              <span>🔗</span>
+                              <span>OpenRouter model — uses your OpenRouter API key and credits</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
 
-                  {/* Step 3: Inputs */}
-                  {builderStep === 3 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label>Input Fields ({builderInputs.length})</Label>
-                        <Button variant="outline" size="sm" onClick={addInput} className="h-7 text-xs gap-1">
-                          <Plus className="h-3 w-3" /> Add Field
-                        </Button>
-                      </div>
-                      {builderInputs.map((inp, idx) => (
-                        <div key={idx} className="flex items-start gap-2 p-3 rounded-lg bg-muted/30">
-                          <GripVertical className="h-4 w-4 text-muted-foreground mt-2 shrink-0" />
-                          <div className="flex-1 space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
-                              <Input placeholder="Field label" value={inp.label || ""} onChange={(e) => updateInput(idx, "label", e.target.value)} className="bg-muted/50 border-border/50 h-8 text-xs" />
-                              <Select value={inp.type || "text"} onValueChange={(v) => updateInput(idx, "type", v)}>
-                                <SelectTrigger className="bg-muted/50 border-border/50 h-8 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {inputTypes.map((t) => (
-                                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Input placeholder="Placeholder text" value={inp.placeholder || ""} onChange={(e) => updateInput(idx, "placeholder", e.target.value)} className="bg-muted/50 border-border/50 h-8 text-xs" />
-                            <Input placeholder="Hint text" value={inp.hint || ""} onChange={(e) => updateInput(idx, "hint", e.target.value)} className="bg-muted/50 border-border/50 h-8 text-xs" />
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-1.5">
-                                <Switch checked={inp.required || false} onCheckedChange={(v) => updateInput(idx, "required", v)} />
-                                <span className="text-[10px] text-muted-foreground">Required</span>
-                              </div>
-                            </div>
-                            {(inp.type === "select" || inp.type === "radio" || inp.type === "multi-select" || inp.type === "multiselect") && (
-                              <Input placeholder="Options (comma-separated)" value={(inp.options || []).join(", ")} onChange={(e) => updateInput(idx, "options", e.target.value.split(",").map((s) => s.trim()))} className="bg-muted/50 border-border/50 h-8 text-xs" />
-                            )}
-                          </div>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeInput(idx)}>
-                            <Trash2 className="h-3 w-3 text-muted-foreground" />
+                {/* Section 3: Inputs */}
+                <Collapsible open={openSections.inputs} onOpenChange={() => toggleSection("inputs")}>
+                  <Card className="glass-card">
+                    <CollapsibleTrigger asChild>
+                      <button className="w-full px-5 py-3 text-left hover:bg-muted/30 transition-colors rounded-t-lg">
+                        <SectionHeader title={`Inputs (${builderInputs.length})`} step={3} isOpen={!!openSections.inputs} />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="px-5 pb-5 pt-0 space-y-3">
+                        <div className="flex items-center justify-end">
+                          <Button variant="outline" size="sm" onClick={addInput} className="h-7 text-xs gap-1">
+                            <Plus className="h-3 w-3" /> Add Field
                           </Button>
                         </div>
-                      ))}
-                      {builderInputs.length === 0 && (
-                        <p className="text-xs text-muted-foreground text-center py-4">No input fields yet. Click "Add Field" to define what data this skill needs.</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Step 4: System Prompt */}
-                  {builderStep === 4 && (
-                    <div className="space-y-2">
-                      <Label>System Prompt</Label>
-                      <p className="text-xs text-muted-foreground">The core instructions that power this skill's AI behavior. Use markdown formatting.</p>
-                      <Textarea
-                        value={builderSystemPrompt}
-                        onChange={(e) => setBuilderSystemPrompt(e.target.value)}
-                        placeholder="You are an expert..."
-                        rows={20}
-                        className="bg-muted/50 border-border/50 resize-none font-mono text-xs"
-                      />
-                      {builderInputs.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-2">
-                          <span className="text-[10px] text-muted-foreground mr-1">Insert variable:</span>
-                          {builderInputs.map((inp, idx) => {
-                            const fieldName = (inp.name || inp.label || "").toLowerCase().replace(/\s+/g, "_");
-                            if (!fieldName) return null;
-                            return (
-                              <Button
-                                key={idx}
-                                variant="outline"
-                                size="sm"
-                                className="h-5 text-[10px] px-1.5"
-                                onClick={() => setBuilderSystemPrompt(prev => prev + `{{${fieldName}}}`)}
-                              >
-                                {`{{${fieldName}}}`}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Step 5: Behavior & Review */}
-                  {builderStep === 5 && (
-                    <>
-                      {(() => {
-                        const autoCost = estimateCostForModel(builderPreferredModel, 10000, openrouterModels);
-                        return (
-                          <div className="space-y-2">
-                            <Label>Est. Cost per Run (USD)</Label>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-mono bg-muted/50 border border-border/50 rounded-md px-3 py-2">
-                                {autoCost !== null ? (autoCost < 0.01 ? "< $0.01" : `~$${autoCost.toFixed(3)}`) : "—"}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground">based on {getModelName(builderPreferredModel)} · 10K token budget</span>
+                        {builderInputs.map((inp, idx) => (
+                          <div key={idx} className="flex items-start gap-2 p-3 rounded-lg bg-muted/30">
+                            <GripVertical className="h-4 w-4 text-muted-foreground mt-2 shrink-0" />
+                            <div className="flex-1 space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                <Input placeholder="Field label" value={inp.label || ""} onChange={(e) => updateInput(idx, "label", e.target.value)} className="bg-muted/50 border-border/50 h-8 text-xs" />
+                                <Select value={inp.type || "text"} onValueChange={(v) => updateInput(idx, "type", v)}>
+                                  <SelectTrigger className="bg-muted/50 border-border/50 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {inputTypes.map((t) => (
+                                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <Input placeholder="Placeholder text" value={inp.placeholder || ""} onChange={(e) => updateInput(idx, "placeholder", e.target.value)} className="bg-muted/50 border-border/50 h-8 text-xs" />
+                              <Input placeholder="Hint text" value={inp.hint || ""} onChange={(e) => updateInput(idx, "hint", e.target.value)} className="bg-muted/50 border-border/50 h-8 text-xs" />
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1.5">
+                                  <Switch checked={inp.required || false} onCheckedChange={(v) => updateInput(idx, "required", v)} />
+                                  <span className="text-[10px] text-muted-foreground">Required</span>
+                                </div>
+                              </div>
+                              {(inp.type === "select" || inp.type === "radio" || inp.type === "multi-select" || inp.type === "multiselect") && (
+                                <Input placeholder="Options (comma-separated)" value={(inp.options || []).join(", ")} onChange={(e) => updateInput(idx, "options", e.target.value.split(",").map((s) => s.trim()))} className="bg-muted/50 border-border/50 h-8 text-xs" />
+                              )}
                             </div>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeInput(idx)}>
+                              <Trash2 className="h-3 w-3 text-muted-foreground" />
+                            </Button>
                           </div>
-                        );
-                      })()}
-                      <div className="space-y-3 pt-2">
-                        <Label>Options</Label>
-                        <div className="flex items-center gap-1.5">
-                          <Switch checked={builderWebSearch} onCheckedChange={setBuilderWebSearch} />
-                          <span className="text-xs text-muted-foreground">Enable Web Search</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Switch checked={builderSchedulable} onCheckedChange={setBuilderSchedulable} />
-                          <span className="text-xs text-muted-foreground">Schedulable (can be automated via Tasks)</span>
-                        </div>
-                      </div>
+                        ))}
+                        {builderInputs.length === 0 && (
+                          <p className="text-xs text-muted-foreground text-center py-4">No input fields yet. Click "Add Field" to define what data this skill needs.</p>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
 
-                      {/* Summary */}
-                      <div className="pt-4 border-t border-border/50 space-y-2">
-                        <h3 className="text-sm font-semibold">Summary</h3>
-                        <div className="text-xs text-muted-foreground space-y-1">
-                          <p><span className="font-medium text-foreground">{builderEmoji} {builderDisplayName || builderName}</span> — {builderDesc || "No description"}</p>
-                          <p>Dept: {builderDept || "—"} · Agent: {builderAgent || "—"} · Model: {getModelName(builderPreferredModel)}{isPremiumModel(builderPreferredModel) ? " ⚡ Premium" : ""}{isOpenRouterModel(builderPreferredModel) ? " 🔗 OpenRouter" : ""}</p>
-                          <p>{builderInputs.length} inputs · Web search: {builderWebSearch ? "Yes" : "No"} · Schedulable: {builderSchedulable ? "Yes" : "No"}</p>
-                          {(() => { const c = estimateCostForModel(builderPreferredModel, 10000, openrouterModels); return c !== null ? <p>Est. cost: ~${c < 0.01 ? "<0.01" : c.toFixed(3)}/run</p> : null; })()}
-                        </div>
-                      </div>
-                    </>
-                  )}
+                {/* Section 4: System Prompt */}
+                <Collapsible open={openSections.prompt} onOpenChange={() => toggleSection("prompt")}>
+                  <Card className="glass-card">
+                    <CollapsibleTrigger asChild>
+                      <button className="w-full px-5 py-3 text-left hover:bg-muted/30 transition-colors rounded-t-lg">
+                        <SectionHeader title={`System Prompt${builderSystemPrompt ? ` (${builderSystemPrompt.length} chars)` : ""}`} step={4} isOpen={!!openSections.prompt} />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="px-5 pb-5 pt-0 space-y-2">
+                        <p className="text-xs text-muted-foreground">The core instructions that power this skill's AI behavior. Use markdown formatting.</p>
+                        <Textarea
+                          value={builderSystemPrompt}
+                          onChange={(e) => setBuilderSystemPrompt(e.target.value)}
+                          placeholder="You are an expert..."
+                          rows={16}
+                          className="bg-muted/50 border-border/50 resize-none font-mono text-xs"
+                        />
+                        {builderInputs.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-2">
+                            <span className="text-[10px] text-muted-foreground mr-1">Insert variable:</span>
+                            {builderInputs.map((inp, idx) => {
+                              const fieldName = (inp.name || inp.label || "").toLowerCase().replace(/\s+/g, "_");
+                              if (!fieldName) return null;
+                              return (
+                                <Button key={idx} variant="outline" size="sm" className="h-5 text-[10px] px-1.5" onClick={() => setBuilderSystemPrompt(prev => prev + `{{${fieldName}}}`)}>{`{{${fieldName}}}`}</Button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
 
-                  {/* Navigation */}
-                  <div className="flex items-center justify-between pt-4 border-t border-border/50">
-                    <Button variant="ghost" size="sm" disabled={builderStep === 1} onClick={() => setBuilderStep(s => s - 1)} className="gap-1">
-                      <ChevronLeft className="h-3 w-3" /> Back
-                    </Button>
-                    {builderStep < 5 ? (
-                      <Button size="sm" disabled={!canNext()} onClick={() => setBuilderStep(s => s + 1)} className="gap-1">
-                        Next <ChevronRight className="h-3 w-3" />
-                      </Button>
-                    ) : (
-                      <Button size="sm" disabled={saving || !builderName || !builderDept || !builderAgent} onClick={saveSkill} className="gap-1">
-                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                        {editingSkillId ? "Update Skill" : "Save Skill"}
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                {/* Section 5: Behavior & Save */}
+                <Collapsible open={openSections.behavior} onOpenChange={() => toggleSection("behavior")}>
+                  <Card className="glass-card">
+                    <CollapsibleTrigger asChild>
+                      <button className="w-full px-5 py-3 text-left hover:bg-muted/30 transition-colors rounded-t-lg">
+                        <SectionHeader title="Behavior & Options" step={5} isOpen={!!openSections.behavior} />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="px-5 pb-5 pt-0 space-y-4">
+                        {(() => {
+                          const autoCost = estimateCostForModel(builderPreferredModel, 10000, openrouterModels);
+                          return (
+                            <div className="space-y-2">
+                              <Label>Est. Cost per Run (USD)</Label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-mono bg-muted/50 border border-border/50 rounded-md px-3 py-2">
+                                  {autoCost !== null ? (autoCost < 0.01 ? "< $0.01" : `~$${autoCost.toFixed(3)}`) : "—"}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">based on {getModelName(builderPreferredModel)} · 10K token budget</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-1.5">
+                            <Switch checked={builderWebSearch} onCheckedChange={setBuilderWebSearch} />
+                            <span className="text-xs text-muted-foreground">Enable Web Search</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Switch checked={builderSchedulable} onCheckedChange={setBuilderSchedulable} />
+                            <span className="text-xs text-muted-foreground">Schedulable (can be automated via Tasks)</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+
+                {/* Save button */}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <Button variant="ghost" size="sm" onClick={() => { resetBuilder(); setActiveTab("library"); }}>Cancel</Button>
+                  <Button size="sm" disabled={saving || !builderName || !builderDept || !builderAgent} onClick={saveSkill} className="gap-1.5">
+                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    {editingSkillId ? "Update Skill" : "Save Skill"}
+                  </Button>
+                </div>
+              </div>
 
               {/* Right Panel: Preview or Alex Chat */}
               {builderMode === "alex" ? (
-                <Card className="glass-card flex flex-col" style={{ minHeight: 480 }}>
+                <Card className="glass-card flex flex-col sticky top-6" style={{ minHeight: 480, maxHeight: "calc(100vh - 200px)" }}>
                   <CardHeader className="shrink-0 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      <CardTitle className="text-lg">Build with Alex</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-lg">Build with Alex</CardTitle>
+                      </div>
+                      {alexMessages.length > 0 && (
+                        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setAlexMessages([])}>Clear</Button>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">Describe your skill idea and Alex will generate prompts and configurations</p>
                   </CardHeader>
@@ -842,7 +799,7 @@ export default function Capabilities() {
                           <Sparkles className="h-8 w-8 mx-auto mb-3 text-primary/50" />
                           <p className="text-sm font-medium text-foreground">Ready to build</p>
                           <p className="text-xs text-muted-foreground mt-1 max-w-[260px] mx-auto">
-                            Describe your skill idea and I will generate a complete system prompt and configuration for you.
+                            Describe your skill idea and I'll generate a complete system prompt and configuration for you.
                           </p>
                         </div>
                       )}
@@ -909,7 +866,7 @@ export default function Capabilities() {
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="glass-card">
+                <Card className="glass-card sticky top-6">
                   <CardHeader>
                     <CardTitle className="text-lg">Preview</CardTitle>
                   </CardHeader>
