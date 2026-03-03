@@ -1,44 +1,71 @@
 
 
-# Fix Scheduled Task "Failed" Status + Improve Research Quality
+# Model Selection for Skills
 
-## Two Root Causes
+## Current State
 
-### 1. Jobs marked "failed" despite having output
-In `task-scheduler/index.ts` (line 100), after extracting the `jobId` from the first SSE chunk, `reader.cancel()` is called. This aborts the HTTP connection to `agent-dispatch`, which catches the abort at line 222 and sets `status: "failed"` on the job. The AI had already started generating, so partial output exists, but the status is wrong.
+- The skill builder has a "Preferred Model" dropdown with outdated placeholder values (`haiku`, `sonnet`) that map to nothing real
+- `agent-dispatch` hardcodes `google/gemini-3-flash-preview` for all jobs, ignoring the `preferred_model` field entirely
+- `agent-client.ts` does not pass `preferredModel` or `webSearchEnabled` to dispatch
+- The "Lane" dropdown is vestigial and serves no purpose
 
-**Fix:** Consume the entire stream instead of canceling it. The task-scheduler runs server-side with no user waiting, so reading to completion is fine. After the stream ends, `agent-dispatch` will properly set `status: "complete"`.
+## Available Models (Lovable AI Gateway)
 
-### 2. Poor research quality / outdated information
-The `web_search_enabled` flag exists on skills but is never used by `agent-dispatch`. The Lovable AI Gateway is OpenAI-compatible and does not support Gemini-native Google Search grounding (`tools: [{ google_search: {} }]`). Real-time web search is not available through this gateway.
+| Model ID | Display Name | Tier | Best For |
+|---|---|---|---|
+| `google/gemini-2.5-flash-lite` | Gemini Flash Lite | Standard | Simple tasks, classification |
+| `google/gemini-2.5-flash` | Gemini Flash | Standard | Balanced speed/quality |
+| `google/gemini-3-flash-preview` | Gemini 3 Flash | Standard | Current default, good all-rounder |
+| `google/gemini-2.5-pro` | Gemini Pro | Premium | Deep reasoning, complex analysis |
+| `google/gemini-3-pro-preview` | Gemini 3 Pro | Premium | Next-gen deep reasoning |
+| `openai/gpt-5-nano` | GPT-5 Nano | Standard | Fast, cost-efficient |
+| `openai/gpt-5-mini` | GPT-5 Mini | Standard | Strong balance |
+| `openai/gpt-5` | GPT-5 | Premium | Maximum accuracy |
+| `openai/gpt-5.2` | GPT-5.2 | Premium | Latest, complex problem-solving |
 
-**Fix:** Since we cannot add live web search, the fix is to significantly improve the agent persona prompts for all four agent types. The current prompts are terse one-liners. Expanding them with detailed instructions on quality, depth, structure, and honest uncertainty will dramatically improve output across the board.
+## Default Model per Agent Type
+
+- **Researcher**: `google/gemini-2.5-pro` (needs deep reasoning for quality research)
+- **Strategist**: `google/gemini-3-flash-preview` (good balance for frameworks)
+- **Content**: `google/gemini-3-flash-preview` (fast, good prose)
+- **Meeting Prep**: `google/gemini-3-flash-preview` (speed matters for prep)
 
 ## Changes
 
-### File 1: `supabase/functions/task-scheduler/index.ts`
-- Remove `reader.cancel()` (line 100)
-- Replace with a loop that drains the entire stream to completion
-- Still extract `jobId` from the first event for linking
-- This ensures `agent-dispatch` reaches its finalization code and sets `status: "complete"`
+### 1. `src/pages/Capabilities.tsx` -- Replace Model Selector
 
-### File 2: `supabase/functions/agent-dispatch/index.ts`
-- Expand all four `AGENT_PERSONAS` with detailed, high-quality instructions:
-  - **Researcher**: Emphasize depth, multiple perspectives, confidence ratings, date-stamping claims, acknowledging when data may be outdated, structured analysis with executive summary
-  - **Strategist**: Emphasize frameworks, risk matrices, prioritized recommendations, implementation timelines, measurable KPIs
-  - **Content**: Emphasize audience awareness, tone adaptation, compelling structure, CTAs, brand voice consistency
-  - **Meeting Prep**: Emphasize prospect-specific discovery questions, objection handling with responses, competitive positioning, meeting flow structure
-- Accept optional `webSearchEnabled` parameter from the request body (future-proofing for when search becomes available)
-- When `webSearchEnabled` is true, append a prompt section instructing the model to clearly caveat any potentially outdated information and provide the most recent data it has access to
-- Pass `webSearchEnabled` through from `task-scheduler` when dispatching
+- Remove the "Lane" dropdown (unused, confusing)
+- Replace "Preferred Model" dropdown with the real model list above
+- Group models by tier: "Standard" and "Premium"
+- Show a warning badge/text when a Premium model is selected: "Premium models cost significantly more per run"
+- Default the model based on agent type selection (auto-set when agent type changes in step 2)
+- Default state changes from `"haiku"` to `"google/gemini-3-flash-preview"`
 
-### File 3: `supabase/functions/task-scheduler/index.ts` (additional)
-- Read `skill.web_search_enabled` (already fetched) and pass it as `webSearchEnabled` in the dispatch payload
+### 2. `src/lib/agent-client.ts` -- Pass Model to Dispatch
+
+- Add `preferredModel: skill.preferredModel` and `webSearchEnabled: skill.webSearchEnabled` to the dispatch payload
+
+### 3. `supabase/functions/agent-dispatch/index.ts` -- Use Skill's Model
+
+- Accept `preferredModel` from request body
+- Use it in the AI gateway call instead of hardcoding `google/gemini-3-flash-preview`
+- Fall back to `google/gemini-3-flash-preview` if not provided
+- Validate the model is in the allowed list
+
+### 4. `src/data/mock-data.ts` -- No changes needed
+
+The `Skill` type already has `preferredModel?: string`.
+
+### 5. Cleanup
+
+- Remove `preferred_lane` from the save payload (keep the DB column for now, just stop writing to it)
+- Update the summary line in step 6 to show the actual model name
 
 ## Files Modified
 
 | File | Change |
-|------|--------|
-| `supabase/functions/task-scheduler/index.ts` | Drain full stream; pass `webSearchEnabled` |
-| `supabase/functions/agent-dispatch/index.ts` | Expand all 4 agent personas; accept `webSearchEnabled` flag |
+|---|---|
+| `src/pages/Capabilities.tsx` | Replace model/lane dropdowns with real models, premium warning, agent-type defaults |
+| `src/lib/agent-client.ts` | Pass `preferredModel` and `webSearchEnabled` in dispatch payload |
+| `supabase/functions/agent-dispatch/index.ts` | Use `preferredModel` from request instead of hardcoding |
 
