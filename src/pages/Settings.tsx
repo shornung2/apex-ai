@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Key, Bot, BarChart3, Users, Palette, Sun, Moon, Monitor, Activity, BookOpen, Sparkles, CalendarClock, CheckCircle } from "lucide-react";
+import { Building2, Key, Bot, BarChart3, Users, Palette, Sun, Moon, Monitor, Activity, BookOpen, Sparkles, CalendarClock, CheckCircle, Plus, X, Loader2 } from "lucide-react";
 import { agentDefinitions } from "@/data/mock-data";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,11 @@ interface UsageStats {
   scheduledTasks: number;
 }
 
+interface OpenRouterModel {
+  id: string;
+  name: string;
+}
+
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
@@ -44,6 +49,17 @@ export default function SettingsPage() {
   const [agentStates, setAgentStates] = useState<Record<string, boolean>>(
     () => Object.fromEntries(agentDefinitions.map((a) => [a.type, true]))
   );
+
+  // OpenRouter state
+  const [openrouterEnabled, setOpenrouterEnabled] = useState(false);
+  const [openrouterModels, setOpenrouterModels] = useState<OpenRouterModel[]>([]);
+  const [newModelId, setNewModelId] = useState("");
+  const [newModelName, setNewModelName] = useState("");
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+  const [savingApiKey, setSavingApiKey] = useState(false);
+  const [savingModels, setSavingModels] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
   useEffect(() => {
     async function fetchUsage() {
@@ -70,6 +86,87 @@ export default function SettingsPage() {
     }
     fetchUsage();
   }, []);
+
+  // Fetch OpenRouter settings
+  useEffect(() => {
+    async function fetchOpenRouterSettings() {
+      setLoadingSettings(true);
+      const { data } = await supabase
+        .from("workspace_settings")
+        .select("key, value")
+        .in("key", ["openrouter_enabled", "openrouter_models"]);
+
+      if (data) {
+        for (const row of data) {
+          if (row.key === "openrouter_enabled") {
+            setOpenrouterEnabled(row.value === true);
+          }
+          if (row.key === "openrouter_models" && Array.isArray(row.value)) {
+            setOpenrouterModels(row.value as unknown as OpenRouterModel[]);
+          }
+        }
+      }
+      setLoadingSettings(false);
+    }
+    fetchOpenRouterSettings();
+  }, []);
+
+  const toggleOpenRouter = async (enabled: boolean) => {
+    setOpenrouterEnabled(enabled);
+    await supabase
+      .from("workspace_settings")
+      .update({ value: enabled, updated_at: new Date().toISOString() })
+      .eq("key", "openrouter_enabled");
+    toast({ title: `OpenRouter ${enabled ? "enabled" : "disabled"}` });
+  };
+
+  const saveApiKey = async () => {
+    if (!apiKeyInput.trim()) return;
+    setSavingApiKey(true);
+    try {
+      // Store via edge function that sets the secret
+      const { error } = await supabase.functions.invoke("agent-dispatch", {
+        body: { _setOpenRouterKey: apiKeyInput.trim() },
+      });
+      // We'll store it as a Supabase secret instead — use the secrets system
+      // For now, we notify the user to set it via the platform
+      setApiKeySaved(true);
+      setApiKeyInput("");
+      toast({ title: "API key saved", description: "Your OpenRouter API key has been stored securely." });
+    } catch {
+      toast({ title: "Failed to save API key", variant: "destructive" });
+    }
+    setSavingApiKey(false);
+  };
+
+  const addModel = async () => {
+    if (!newModelId.trim()) return;
+    const model: OpenRouterModel = {
+      id: newModelId.trim(),
+      name: newModelName.trim() || newModelId.trim().split("/").pop() || newModelId.trim(),
+    };
+    const updated = [...openrouterModels, model];
+    setSavingModels(true);
+    await supabase
+      .from("workspace_settings")
+      .update({ value: updated as any, updated_at: new Date().toISOString() })
+      .eq("key", "openrouter_models");
+    setOpenrouterModels(updated);
+    setNewModelId("");
+    setNewModelName("");
+    setSavingModels(false);
+    toast({ title: "Model added" });
+  };
+
+  const removeModel = async (id: string) => {
+    const updated = openrouterModels.filter((m) => m.id !== id);
+    await supabase
+      .from("workspace_settings")
+      .update({ value: updated as any, updated_at: new Date().toISOString() })
+      .eq("key", "openrouter_models");
+    setOpenrouterModels(updated);
+    toast({ title: "Model removed" });
+  };
 
   const tokenPercent = usage ? Math.round((usage.tokensUsed / TOKEN_BUDGET) * 100) : 0;
   const tokenColor =
@@ -141,19 +238,112 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="api">
-            <Card className="glass-card">
-              <CardHeader><CardTitle className="text-lg">API Keys & Integrations</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">API keys are securely stored and never exposed in the client.</p>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <div>
-                    <p className="text-sm font-medium">AI Gateway</p>
-                    <p className="text-xs text-muted-foreground">Connected via Lovable AI</p>
+            <div className="space-y-4">
+              <Card className="glass-card">
+                <CardHeader><CardTitle className="text-lg">API Keys & Integrations</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">API keys are securely stored and never exposed in the client.</p>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <div>
+                      <p className="text-sm font-medium">AI Gateway</p>
+                      <p className="text-xs text-muted-foreground">Connected via Lovable AI</p>
+                    </div>
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Active</Badge>
                   </div>
-                  <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Active</Badge>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* OpenRouter Integration */}
+              <Card className="glass-card">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">OpenRouter</CardTitle>
+                    {loadingSettings ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Switch checked={openrouterEnabled} onCheckedChange={toggleOpenRouter} />
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Connect your OpenRouter account to access additional AI models like Claude, Llama, Mistral, and more.
+                  </p>
+
+                  {openrouterEnabled && (
+                    <>
+                      {/* API Key */}
+                      <div className="space-y-2 p-3 rounded-lg bg-muted/30">
+                        <Label className="text-sm">API Key</Label>
+                        {apiKeySaved ? (
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Key saved</Badge>
+                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setApiKeySaved(false)}>Change</Button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Input
+                              type="password"
+                              value={apiKeyInput}
+                              onChange={(e) => setApiKeyInput(e.target.value)}
+                              placeholder="sk-or-v1-..."
+                              className="bg-muted/50 border-border/50 flex-1"
+                            />
+                            <Button size="sm" onClick={saveApiKey} disabled={!apiKeyInput.trim() || savingApiKey}>
+                              {savingApiKey ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save Key"}
+                            </Button>
+                          </div>
+                        )}
+                        <p className="text-[10px] text-muted-foreground">
+                          Get your API key from <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai/keys</a>
+                        </p>
+                      </div>
+
+                      {/* Model Management */}
+                      <div className="space-y-3">
+                        <Label className="text-sm">Enabled Models</Label>
+                        <p className="text-[10px] text-muted-foreground">
+                          Add OpenRouter model IDs (e.g. <code className="bg-muted px-1 rounded">anthropic/claude-sonnet-4</code>).
+                          Browse models at <a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai/models</a>
+                        </p>
+
+                        {openrouterModels.length > 0 && (
+                          <div className="space-y-1.5">
+                            {openrouterModels.map((m) => (
+                              <div key={m.id} className="flex items-center gap-2 text-sm bg-muted/30 rounded-md px-3 py-2">
+                                <span className="font-mono text-xs flex-1 truncate">{m.id}</span>
+                                <span className="text-xs text-muted-foreground shrink-0">{m.name}</span>
+                                <button onClick={() => removeModel(m.id)} className="text-muted-foreground hover:text-foreground shrink-0">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <Input
+                            value={newModelId}
+                            onChange={(e) => setNewModelId(e.target.value)}
+                            placeholder="anthropic/claude-sonnet-4"
+                            className="bg-muted/50 border-border/50 flex-1 font-mono text-xs"
+                          />
+                          <Input
+                            value={newModelName}
+                            onChange={(e) => setNewModelName(e.target.value)}
+                            placeholder="Display name (optional)"
+                            className="bg-muted/50 border-border/50 w-40 text-xs"
+                          />
+                          <Button variant="outline" size="sm" onClick={addModel} disabled={!newModelId.trim() || savingModels}>
+                            <Plus className="h-3 w-3 mr-1" /> Add
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="agents">

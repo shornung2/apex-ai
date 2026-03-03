@@ -14,12 +14,20 @@ import type { Skill } from "@/data/mock-data";
 
 const ACCEPTED = ".pdf,.docx,.pptx,.txt,.md,.csv";
 const CONTEXT_ACCEPTED = ".pdf,.docx,.pptx,.txt,.md,.csv,.xlsx";
-const MAX_SIZE = 20 * 1024 * 1024;
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // per-file for skill file inputs
+const MAX_TOTAL_CONTEXT_SIZE = 10 * 1024 * 1024; // 10MB total budget for context files
 const MAX_CONTEXT_FILES = 10;
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface ContextFile {
   id: string;
   name: string;
+  size: number;
   uploading: boolean;
   content?: string;
   error?: boolean;
@@ -38,8 +46,10 @@ export function SkillForm({ skill, onSubmit, isRunning = false }: SkillFormProps
   const [contextFiles, setContextFiles] = useState<ContextFile[]>([]);
   const contextInputRef = useRef<HTMLInputElement>(null);
 
+  const totalContextSize = contextFiles.reduce((sum, cf) => sum + cf.size, 0);
+
   const handleFileUpload = async (fieldName: string, file: File) => {
-    if (file.size > MAX_SIZE) {
+    if (file.size > MAX_FILE_SIZE) {
       toast({ title: "File too large", description: "Max 20MB", variant: "destructive" });
       return;
     }
@@ -73,17 +83,23 @@ export function SkillForm({ skill, onSubmit, isRunning = false }: SkillFormProps
       return;
     }
     const toAdd = Array.from(files).slice(0, remaining);
-    const oversized = toAdd.filter(f => f.size > MAX_SIZE);
-    if (oversized.length) {
-      toast({ title: "Some files too large", description: "Max 20MB per file", variant: "destructive" });
-    }
-    const valid = toAdd.filter(f => f.size <= MAX_SIZE);
-    if (!valid.length) return;
 
-    const newEntries: ContextFile[] = valid.map(f => ({ id: crypto.randomUUID(), name: f.name, uploading: true }));
+    // Check total size budget
+    const newTotalSize = toAdd.reduce((sum, f) => sum + f.size, 0);
+    if (totalContextSize + newTotalSize > MAX_TOTAL_CONTEXT_SIZE) {
+      const budgetLeft = MAX_TOTAL_CONTEXT_SIZE - totalContextSize;
+      toast({
+        title: "Total size limit exceeded",
+        description: `Only ${formatBytes(budgetLeft)} remaining of the 10 MB budget`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newEntries: ContextFile[] = toAdd.map(f => ({ id: crypto.randomUUID(), name: f.name, size: f.size, uploading: true }));
     setContextFiles(prev => [...prev, ...newEntries]);
 
-    await Promise.all(valid.map(async (file, i) => {
+    await Promise.all(toAdd.map(async (file, i) => {
       const entry = newEntries[i];
       try {
         const filePath = `skill-uploads/${entry.id}/${file.name}`;
@@ -107,7 +123,6 @@ export function SkillForm({ skill, onSubmit, isRunning = false }: SkillFormProps
   const anyFieldUploading = Object.values(fileStates).some(f => f.uploading);
 
   const handleFormSubmit = (data: Record<string, string>) => {
-    // Concatenate all context file contents into _attached_context
     const contextTexts = contextFiles
       .filter(cf => cf.content && !cf.error)
       .map(cf => `### ${cf.name}\n${cf.content}`)
@@ -209,10 +224,25 @@ export function SkillForm({ skill, onSubmit, isRunning = false }: SkillFormProps
 
       {/* Additional Context Files */}
       <div className="space-y-2 pt-2 border-t border-border/30">
-        <Label className="text-sm">Additional Context <span className="text-muted-foreground font-normal">(optional)</span></Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-sm">Additional Context <span className="text-muted-foreground font-normal">(optional)</span></Label>
+          <span className="text-[10px] text-muted-foreground font-mono">
+            {formatBytes(totalContextSize)} / {formatBytes(MAX_TOTAL_CONTEXT_SIZE)}
+          </span>
+        </div>
         <p className="text-[10px] text-muted-foreground">
-          Upload up to {MAX_CONTEXT_FILES} files for extra grounding. PDF, Word, PowerPoint, Excel, Text, Markdown.
+          Upload up to {MAX_CONTEXT_FILES} files (10 MB total). PDF, Word, PowerPoint, Excel, Text, Markdown.
         </p>
+
+        {/* Size bar */}
+        {contextFiles.length > 0 && (
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${totalContextSize / MAX_TOTAL_CONTEXT_SIZE > 0.8 ? "bg-destructive" : "bg-emerald-500"}`}
+              style={{ width: `${Math.min((totalContextSize / MAX_TOTAL_CONTEXT_SIZE) * 100, 100)}%` }}
+            />
+          </div>
+        )}
 
         {contextFiles.length > 0 && (
           <div className="space-y-1.5">
@@ -228,6 +258,7 @@ export function SkillForm({ skill, onSubmit, isRunning = false }: SkillFormProps
                 <span className="truncate flex-1">
                   {cf.uploading ? `Uploading ${cf.name}...` : cf.error ? `Failed: ${cf.name}` : cf.name}
                 </span>
+                <span className="text-[10px] text-muted-foreground shrink-0">{formatBytes(cf.size)}</span>
                 {!cf.uploading && (
                   <button type="button" onClick={() => removeContextFile(cf.id)} className="text-muted-foreground hover:text-foreground">
                     <X className="h-3 w-3" />
