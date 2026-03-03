@@ -313,6 +313,10 @@ export default function Capabilities() {
                               <span>~${skill.estimatedCost.toFixed(2)}</span>
                             </>
                           )}
+                          <span>·</span>
+                          <span className={isPremiumModel(skill.preferredModel || "") ? "text-primary" : ""}>
+                            {getModelName(skill.preferredModel || AGENT_DEFAULT_MODELS[skill.agentType] || "google/gemini-3-flash-preview")}
+                          </span>
                           {skill.isSystem && <Badge variant="outline" className="text-[10px] ml-auto">System</Badge>}
                         </div>
                       </CardContent>
