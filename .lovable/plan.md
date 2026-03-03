@@ -1,73 +1,64 @@
 
 
-# Two Features: Upload Limit Fix + OpenRouter Integration
+# Rework OpenRouter Integration + Help Updates + Telegram Fix
 
-## 1. Upload Size Limit: 10MB Total
+## Summary
 
-**Current**: 20MB per file, no total limit.
-**New**: 10MB total across all context files, max 10 files.
+The current OpenRouter setup uses manual model ID text entry. The user wants a proper flow: toggle on → enter API key → browse the full OpenRouter model catalog → select up to 5 models. Plus, the Telegram bot doesn't pass `preferredModel` to agent-dispatch, and Help content is outdated.
 
-### Changes
+## Changes
 
-**`src/components/SkillForm.tsx`**:
-- Change `MAX_SIZE` from `20 * 1024 * 1024` to `10 * 1024 * 1024` (10MB total budget)
-- Track cumulative size of all context files
-- Before adding files, check if cumulative size + new files would exceed 10MB total
-- Show running total in the UI (e.g., "3.2 / 10 MB used")
+### 1. Settings: OpenRouter Flow (`src/pages/Settings.tsx`)
 
-**`supabase/functions/agent-dispatch/index.ts`**:
-- Add context length guard: if `_attached_context` exceeds ~100K characters (~25K tokens), truncate it with a note to the model that context was trimmed
-- This prevents blowing through the model's context window or running up excessive token costs
+**Current**: Toggle + hardcoded "Key configured" badge + manual model ID text inputs.
+**New**:
+- Toggle on → show API key input field (masked, `sk-or-v1-...`) with a "Save Key" button
+- Saving the key: call an edge function that stores it as a backend secret (or use the existing `add_secret` mechanism). For now, store via a small edge function `openrouter-config` that sets the Deno env secret and validates the key by fetching models.
+- **Simpler approach**: Since `OPENROUTER_API_KEY` is already stored as a secret, show the key input. On save, call a new edge function `openrouter-config` that: (a) validates the key by hitting `https://openrouter.ai/api/v1/models`, (b) returns the full model list, (c) stores the key as a secret (actually we can't programmatically set secrets from edge functions — so we keep using the `add_secret` tool for initial setup, but let the user update it from Settings by prompting through the platform).
+- **Practical approach**: Since we can't set secrets from code, the API key entry will use the existing `add_secret` mechanism (prompt user). BUT for model browsing:
+  - Create a new edge function `openrouter-models` that reads `OPENROUTER_API_KEY` from env, calls `https://openrouter.ai/api/v1/models`, and returns the list.
+  - Settings page calls this function to fetch available models when OpenRouter is enabled.
+  - Display a searchable, scrollable list of models with checkboxes. Max 5 selected.
+  - Selected models saved to `workspace_settings` table (as before).
+- Remove the manual model ID + display name text inputs entirely.
+- Show "Key configured" badge if the fetch succeeds, "Key not configured" if it fails.
 
----
+### 2. New Edge Function: `openrouter-models`
 
-## 2. OpenRouter Integration
+Simple function:
+- Reads `OPENROUTER_API_KEY` from env
+- Fetches `https://openrouter.ai/api/v1/models`
+- Returns `{ models: [{ id, name }], valid: true }` or `{ valid: false }` if key is missing/invalid
+- Frontend uses this to populate the model browser and validate key status
 
-This is absolutely feasible. OpenRouter's API is OpenAI-compatible (`/api/v1/chat/completions`), so the agent-dispatch function only needs a conditional URL/key swap.
+### 3. Capabilities: Model Dropdown (`src/pages/Capabilities.tsx`)
 
-### How It Works
+Already mostly correct — just ensure it pulls the models from `workspace_settings` and shows them under the "OpenRouter" section. No changes needed beyond what's already there, since the model list will now be populated from the real OpenRouter catalog.
 
-1. User goes to **Settings > API Keys**, toggles "Enable OpenRouter"
-2. User enters their OpenRouter API key (stored securely as a backend secret)
-3. User selects which OpenRouter models to make available (free-text or from a fetched list)
-4. Those models appear in the Skill Builder's model dropdown under an "OpenRouter" section
-5. When a skill runs with an OpenRouter model, agent-dispatch routes to OpenRouter's API instead of the Lovable AI gateway
+### 4. Telegram Bot Fix (`supabase/functions/telegram-bot/index.ts`)
 
-### Changes
+Two places where `agent-dispatch` is called (standard dispatch and deck generation) — add `preferredModel: skill.preferred_model` and `webSearchEnabled: skill.web_search_enabled` to both payloads.
 
-**Database** (1 new table):
-- `workspace_settings` table with key-value pairs for:
-  - `openrouter_enabled` (boolean)
-  - `openrouter_models` (JSON array of model IDs + display names)
+### 5. Help Content Updates (`src/pages/Help.tsx`)
 
-**Backend secret**:
-- `OPENROUTER_API_KEY` stored via the secrets system (encrypted, never exposed to client)
-
-**`src/pages/Settings.tsx`** (API Keys tab):
-- Add OpenRouter section with enable toggle
-- When enabled, show API key input field (masked) with a save button that stores the key via `add_secret`
-- Add a model selector: text input for model IDs (e.g., `anthropic/claude-sonnet-4`) with an "Add Model" button
-- Show list of enabled OpenRouter models with remove buttons
-- Save model list to `workspace_settings` table
-
-**`src/pages/Capabilities.tsx`** (Skill Builder, Step 2):
-- Fetch `workspace_settings` to check if OpenRouter is enabled and get model list
-- In the model dropdown, add a third section "OpenRouter" below Standard/Premium, listing the user's configured models
-- OpenRouter models get a distinctive badge/color
-
-**`supabase/functions/agent-dispatch/index.ts`**:
-- Check if `preferredModel` starts with a known OpenRouter prefix or is not in the built-in `ALLOWED_MODELS` list
-- If OpenRouter model: fetch `OPENROUTER_API_KEY` from env, call `https://openrouter.ai/api/v1/chat/completions` with the same message payload
-- If built-in model: use existing Lovable AI gateway as-is
-- Same SSE streaming logic works for both (OpenRouter is OpenAI-compatible)
+Update the following sections:
+- **Departments**: Update file size limit from 20MB to 10MB total, mention the "Additional Context" upload zone
+- **Capabilities & Skill Builder**: Update to 5-step wizard (not 6), remove references to unused fields, mention OpenRouter model selection, update file size references
+- **Settings**: Add OpenRouter configuration documentation (enable, API key, model browser, 5-model limit)
+- **Agent Grounding & Context**: Add "Additional Context files" as a source, update size limits
+- **Telegram Bot**: Mention that skills use their configured preferred model (including OpenRouter models)
+- **Alex Assistant**: Update file size reference from 20MB to match current limits
 
 ### Files Modified
 
 | File | Change |
 |---|---|
-| `src/components/SkillForm.tsx` | 10MB total limit with running size display |
-| `supabase/functions/agent-dispatch/index.ts` | Context truncation guard + OpenRouter routing |
-| `src/pages/Settings.tsx` | OpenRouter config UI in API Keys tab |
-| `src/pages/Capabilities.tsx` | OpenRouter models in skill builder dropdown |
-| New migration | `workspace_settings` table |
+| `supabase/functions/openrouter-models/index.ts` | **New** — fetch models from OpenRouter API |
+| `src/pages/Settings.tsx` | Replace manual model entry with searchable model browser (max 5), validate API key status via edge function |
+| `supabase/functions/telegram-bot/index.ts` | Pass `preferredModel` and `webSearchEnabled` in dispatch payloads |
+| `src/pages/Help.tsx` | Update all outdated sections (context upload limits, OpenRouter, 5-step wizard, Telegram model support) |
+
+### No changes needed
+- `src/pages/Capabilities.tsx` — already correctly shows OpenRouter models from workspace_settings
+- `supabase/functions/agent-dispatch/index.ts` — already handles OpenRouter routing correctly
 
