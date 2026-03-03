@@ -29,15 +29,15 @@ const inputTypes = [
 const STEP_LABELS = ["Identity", "Routing", "Inputs", "System Prompt", "Behavior"];
 
 const AI_MODELS = [
-  { id: "google/gemini-2.5-flash-lite", name: "Gemini Flash Lite", tier: "standard" as const, desc: "Simple tasks, classification" },
-  { id: "google/gemini-2.5-flash", name: "Gemini Flash", tier: "standard" as const, desc: "Balanced speed/quality" },
-  { id: "google/gemini-3-flash-preview", name: "Gemini 3 Flash", tier: "standard" as const, desc: "Good all-rounder (default)" },
-  { id: "openai/gpt-5-nano", name: "GPT-5 Nano", tier: "standard" as const, desc: "Fast, cost-efficient" },
-  { id: "openai/gpt-5-mini", name: "GPT-5 Mini", tier: "standard" as const, desc: "Strong balance" },
-  { id: "google/gemini-2.5-pro", name: "Gemini Pro", tier: "premium" as const, desc: "Deep reasoning, complex analysis" },
-  { id: "google/gemini-3-pro-preview", name: "Gemini 3 Pro", tier: "premium" as const, desc: "Next-gen deep reasoning" },
-  { id: "openai/gpt-5", name: "GPT-5", tier: "premium" as const, desc: "Maximum accuracy" },
-  { id: "openai/gpt-5.2", name: "GPT-5.2", tier: "premium" as const, desc: "Latest, complex problem-solving" },
+  { id: "google/gemini-2.5-flash-lite", name: "Gemini Flash Lite", tier: "standard" as const, desc: "Simple tasks, classification", promptPer1M: 0.075, completionPer1M: 0.30 },
+  { id: "google/gemini-2.5-flash", name: "Gemini Flash", tier: "standard" as const, desc: "Balanced speed/quality", promptPer1M: 0.15, completionPer1M: 0.60 },
+  { id: "google/gemini-3-flash-preview", name: "Gemini 3 Flash", tier: "standard" as const, desc: "Good all-rounder (default)", promptPer1M: 0.15, completionPer1M: 0.60 },
+  { id: "openai/gpt-5-nano", name: "GPT-5 Nano", tier: "standard" as const, desc: "Fast, cost-efficient", promptPer1M: 0.10, completionPer1M: 0.40 },
+  { id: "openai/gpt-5-mini", name: "GPT-5 Mini", tier: "standard" as const, desc: "Strong balance", promptPer1M: 0.40, completionPer1M: 1.60 },
+  { id: "google/gemini-2.5-pro", name: "Gemini Pro", tier: "premium" as const, desc: "Deep reasoning, complex analysis", promptPer1M: 1.25, completionPer1M: 10.00 },
+  { id: "google/gemini-3-pro-preview", name: "Gemini 3 Pro", tier: "premium" as const, desc: "Next-gen deep reasoning", promptPer1M: 1.25, completionPer1M: 10.00 },
+  { id: "openai/gpt-5", name: "GPT-5", tier: "premium" as const, desc: "Maximum accuracy", promptPer1M: 2.00, completionPer1M: 8.00 },
+  { id: "openai/gpt-5.2", name: "GPT-5.2", tier: "premium" as const, desc: "Latest, complex problem-solving", promptPer1M: 2.50, completionPer1M: 10.00 },
 ];
 
 const AGENT_DEFAULT_MODELS: Record<string, string> = {
@@ -50,7 +50,33 @@ const AGENT_DEFAULT_MODELS: Record<string, string> = {
 interface OpenRouterModel {
   id: string;
   name: string;
+  promptPrice?: string | null;
+  completionPrice?: string | null;
+  contextLength?: number | null;
 }
+
+/** Estimate cost for a single run: (promptTokens × promptRate + completionTokens × completionRate).
+ *  Assumes ~60% prompt / ~40% completion split of the token budget. */
+const estimateCostForModel = (modelId: string, tokenBudget: number, orModels: OpenRouterModel[]): number | null => {
+  const promptTokens = Math.round(tokenBudget * 0.6);
+  const completionTokens = Math.round(tokenBudget * 0.4);
+
+  // Check built-in models first
+  const builtIn = AI_MODELS.find(m => m.id === modelId);
+  if (builtIn) {
+    return (promptTokens * builtIn.promptPer1M + completionTokens * builtIn.completionPer1M) / 1_000_000;
+  }
+
+  // Check OpenRouter models
+  const orModel = orModels.find(m => m.id === modelId);
+  if (orModel?.promptPrice && orModel?.completionPrice) {
+    const pIn = parseFloat(orModel.promptPrice) * promptTokens;
+    const pOut = parseFloat(orModel.completionPrice) * completionTokens;
+    return pIn + pOut;
+  }
+
+  return null;
+};
 
 // Legacy model aliases from old DB defaults — treat as "unset"
 const LEGACY_MODEL_IDS = new Set(["haiku", "sonnet", "opus", "claude", "simple_haiku", "gpt-4", "gpt-4o"]);
@@ -117,7 +143,7 @@ export default function Capabilities() {
   const [builderPreferredModel, setBuilderPreferredModel] = useState("google/gemini-3-flash-preview");
   const [builderInputs, setBuilderInputs] = useState<Partial<SkillInput>[]>([]);
   const [builderSystemPrompt, setBuilderSystemPrompt] = useState("");
-  const [builderEstimatedCost, setBuilderEstimatedCost] = useState("");
+  
   const [builderWebSearch, setBuilderWebSearch] = useState(false);
   const [builderSchedulable, setBuilderSchedulable] = useState(false);
 
@@ -168,7 +194,7 @@ export default function Capabilities() {
     setBuilderDept(""); setBuilderAgent(""); setBuilderPreferredModel("google/gemini-3-flash-preview");
     setBuilderInputs([]);
     setBuilderSystemPrompt("");
-    setBuilderEstimatedCost(""); setBuilderWebSearch(false); setBuilderSchedulable(false);
+    setBuilderWebSearch(false); setBuilderSchedulable(false);
   };
 
   const loadSkillIntoBuilder = (skill: Skill) => {
@@ -183,7 +209,7 @@ export default function Capabilities() {
     setBuilderPreferredModel(resolveModelId(skill));
     setBuilderInputs(skill.inputs.map(inp => ({ ...inp })));
     setBuilderSystemPrompt(skill.systemPrompt || "");
-    setBuilderEstimatedCost(skill.estimatedCost ? String(skill.estimatedCost) : "");
+    
     setBuilderWebSearch(skill.webSearchEnabled || false);
     setBuilderSchedulable((skill as any).schedulable || false);
     setActiveTab("builder");
@@ -239,7 +265,7 @@ export default function Capabilities() {
       prompt_template: "",
       inputs,
       preferred_model: builderPreferredModel,
-      estimated_cost_usd: builderEstimatedCost ? parseFloat(builderEstimatedCost) : null,
+      estimated_cost_usd: estimateCostForModel(builderPreferredModel, 10000, openrouterModels),
       web_search_enabled: builderWebSearch,
       is_system: false,
       schedulable: builderSchedulable,
@@ -324,6 +350,7 @@ export default function Capabilities() {
                   const dept = departmentDefinitions[skill.department];
                   const modelId = resolveModelId(skill);
                   const isOR = isOpenRouterModel(modelId);
+                  const dynamicCost = estimateCostForModel(modelId, skill.tokenBudget || 10000, openrouterModels);
                   return (
                     <Card
                       key={skill.id}
@@ -347,10 +374,10 @@ export default function Capabilities() {
                           <span>{skill.inputs.length} inputs</span>
                           <span>·</span>
                           <span>{skill.inputs.filter((i) => i.required).length} required</span>
-                          {skill.estimatedCost && (
+                          {dynamicCost !== null && (
                             <>
                               <span>·</span>
-                              <span>~${skill.estimatedCost.toFixed(2)}</span>
+                              <span>~${dynamicCost < 0.01 ? "<0.01" : dynamicCost.toFixed(2)}</span>
                             </>
                           )}
                           <span>·</span>
@@ -461,20 +488,26 @@ export default function Capabilities() {
                           <SelectContent>
                             <SelectGroup>
                               <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Standard</SelectLabel>
-                              {AI_MODELS.filter(m => m.tier === "standard").map(m => (
-                                <SelectItem key={m.id} value={m.id}>
-                                  <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— {m.desc}</span></span>
-                                </SelectItem>
-                              ))}
+                              {AI_MODELS.filter(m => m.tier === "standard").map(m => {
+                                const c = (6000 * m.promptPer1M + 4000 * m.completionPer1M) / 1_000_000;
+                                return (
+                                  <SelectItem key={m.id} value={m.id}>
+                                    <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— ~${c < 0.01 ? "<0.01" : c.toFixed(3)}/run</span></span>
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectGroup>
                             <SelectSeparator />
                             <SelectGroup>
                               <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Premium</SelectLabel>
-                              {AI_MODELS.filter(m => m.tier === "premium").map(m => (
-                                <SelectItem key={m.id} value={m.id}>
-                                  <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— {m.desc}</span></span>
-                                </SelectItem>
-                              ))}
+                              {AI_MODELS.filter(m => m.tier === "premium").map(m => {
+                                const c = (6000 * m.promptPer1M + 4000 * m.completionPer1M) / 1_000_000;
+                                return (
+                                  <SelectItem key={m.id} value={m.id}>
+                                    <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— ~${c < 0.01 ? "<0.01" : c.toFixed(3)}/run</span></span>
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectGroup>
                             {openrouterEnabled && openrouterModels.length > 0 && (
                               <>
@@ -595,11 +628,20 @@ export default function Capabilities() {
                   {/* Step 5: Behavior & Review */}
                   {builderStep === 5 && (
                     <>
-                      <div className="space-y-2">
-                        <Label>Est. Cost (USD)</Label>
-                        <Input value={builderEstimatedCost} onChange={(e) => setBuilderEstimatedCost(e.target.value)} placeholder="e.g. 0.25" className="bg-muted/50 border-border/50 w-32" />
-                        <p className="text-[10px] text-muted-foreground">Display only — shown on skill cards</p>
-                      </div>
+                      {(() => {
+                        const autoCost = estimateCostForModel(builderPreferredModel, 10000, openrouterModels);
+                        return (
+                          <div className="space-y-2">
+                            <Label>Est. Cost per Run (USD)</Label>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-mono bg-muted/50 border border-border/50 rounded-md px-3 py-2">
+                                {autoCost !== null ? (autoCost < 0.01 ? "< $0.01" : `~$${autoCost.toFixed(3)}`) : "—"}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">based on {getModelName(builderPreferredModel)} · 10K token budget</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <div className="space-y-3 pt-2">
                         <Label>Options</Label>
                         <div className="flex items-center gap-1.5">
@@ -619,7 +661,7 @@ export default function Capabilities() {
                           <p><span className="font-medium text-foreground">{builderEmoji} {builderDisplayName || builderName}</span> — {builderDesc || "No description"}</p>
                           <p>Dept: {builderDept || "—"} · Agent: {builderAgent || "—"} · Model: {getModelName(builderPreferredModel)}{isPremiumModel(builderPreferredModel) ? " ⚡ Premium" : ""}{isOpenRouterModel(builderPreferredModel) ? " 🔗 OpenRouter" : ""}</p>
                           <p>{builderInputs.length} inputs · Web search: {builderWebSearch ? "Yes" : "No"} · Schedulable: {builderSchedulable ? "Yes" : "No"}</p>
-                          {builderEstimatedCost && <p>Est. cost: ~${parseFloat(builderEstimatedCost).toFixed(2)}</p>}
+                          {(() => { const c = estimateCostForModel(builderPreferredModel, 10000, openrouterModels); return c !== null ? <p>Est. cost: ~${c < 0.01 ? "<0.01" : c.toFixed(3)}/run</p> : null; })()}
                         </div>
                       </div>
                     </>
