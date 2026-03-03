@@ -150,6 +150,13 @@ serve(async (req) => {
   try {
     const { skillId, skillName, agentType, department, title, inputs, promptTemplate, systemPrompt, webSearchEnabled, preferredModel } = await req.json();
 
+    // 0. Extract attached context files (if any) before processing inputs
+    let attachedContext = "";
+    if (inputs._attached_context) {
+      attachedContext = inputs._attached_context;
+      delete inputs._attached_context;
+    }
+
     // 1. Insert job as queued
     const { data: job, error: insertError } = await supabase
       .from("agent_jobs")
@@ -212,7 +219,10 @@ serve(async (req) => {
 
     const systemPromptText = systemPrompt || (AGENT_PERSONAS[agentType] || AGENT_PERSONAS.researcher);
     const webSearchSuffix = webSearchEnabled ? WEB_SEARCH_CAVEAT : "";
-    const finalSystemPrompt = systemPromptText + knowledgeContext + webSearchSuffix;
+    const attachedDocsSuffix = attachedContext
+      ? "\n\n## ATTACHED DOCUMENTS\nThe user uploaded the following documents as additional context. Use this information to ground your response.\n\n" + attachedContext
+      : "";
+    const finalSystemPrompt = systemPromptText + knowledgeContext + attachedDocsSuffix + webSearchSuffix;
 
     // 4. Update status to running
     await supabase.from("agent_jobs").update({ status: "running" }).eq("id", jobId);
