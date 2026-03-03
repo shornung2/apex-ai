@@ -40,6 +40,10 @@ interface UsageStats {
 interface OpenRouterModel {
   id: string;
   name: string;
+  description?: string;
+  promptPrice?: string | null;
+  completionPrice?: string | null;
+  contextLength?: number | null;
 }
 
 export default function SettingsPage() {
@@ -170,8 +174,24 @@ export default function SettingsPage() {
   const filteredCatalog = catalogModels.filter(
     (m) =>
       m.id.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-      m.name.toLowerCase().includes(catalogSearch.toLowerCase())
+      m.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+      (m.description || "").toLowerCase().includes(catalogSearch.toLowerCase())
   );
+
+  const formatCost = (perToken: string | null | undefined) => {
+    if (!perToken) return "–";
+    const num = parseFloat(perToken) * 1_000_000;
+    if (num === 0) return "Free";
+    if (num < 0.01) return "<$0.01";
+    return `$${num.toFixed(2)}`;
+  };
+
+  const formatContext = (ctx: number | null | undefined) => {
+    if (!ctx) return null;
+    if (ctx >= 1_000_000) return `${(ctx / 1_000_000).toFixed(1)}M`;
+    if (ctx >= 1_000) return `${Math.round(ctx / 1_000)}K`;
+    return `${ctx}`;
+  };
 
   const tokenPercent = usage ? Math.round((usage.tokensUsed / TOKEN_BUDGET) * 100) : 0;
   const tokenColor =
@@ -344,16 +364,29 @@ export default function SettingsPage() {
                                       key={model.id}
                                       onClick={() => toggleModelSelection(model)}
                                       className={cn(
-                                        "w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors text-xs",
+                                        "w-full flex items-start gap-3 px-3 py-2.5 rounded-md text-left transition-colors text-xs",
                                         isSelected
                                           ? "bg-primary/10 border border-primary/20"
                                           : "hover:bg-muted/50"
                                       )}
                                     >
-                                      <Checkbox checked={isSelected} className="pointer-events-none" />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="font-mono truncate">{model.id}</p>
-                                        <p className="text-[10px] text-muted-foreground truncate">{model.name}</p>
+                                      <Checkbox checked={isSelected} className="pointer-events-none mt-0.5" />
+                                      <div className="flex-1 min-w-0 space-y-1">
+                                        <div className="flex items-center gap-2">
+                                          <p className="font-mono truncate flex-1">{model.id}</p>
+                                          {model.contextLength && (
+                                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 shrink-0">
+                                              {formatContext(model.contextLength)} ctx
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        {model.description && (
+                                          <p className="text-[10px] text-muted-foreground line-clamp-1">{model.description}</p>
+                                        )}
+                                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                          <span>In: {formatCost(model.promptPrice)}/1M</span>
+                                          <span>Out: {formatCost(model.completionPrice)}/1M</span>
+                                        </div>
                                       </div>
                                     </button>
                                   );
