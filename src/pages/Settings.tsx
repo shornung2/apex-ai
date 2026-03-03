@@ -13,6 +13,7 @@ import { agentDefinitions } from "@/data/mock-data";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -36,7 +37,13 @@ interface UsageStats {
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
   const [usage, setUsage] = useState<UsageStats | null>(null);
+  const [workspaceName, setWorkspaceName] = useState("Solutionment");
+  const [industry, setIndustry] = useState("Technology Consulting");
+  const [agentStates, setAgentStates] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(agentDefinitions.map((a) => [a.type, true]))
+  );
 
   useEffect(() => {
     async function fetchUsage() {
@@ -93,13 +100,13 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Workspace Name</Label>
-                  <Input defaultValue="Solutionment" className="bg-muted/50 border-border/50 max-w-sm" />
+                  <Input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" />
                 </div>
                 <div className="space-y-2">
                   <Label>Industry</Label>
-                  <Input defaultValue="Technology Consulting" className="bg-muted/50 border-border/50 max-w-sm" />
+                  <Input value={industry} onChange={(e) => setIndustry(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" />
                 </div>
-                <Button size="sm">Save</Button>
+                <Button size="sm" onClick={() => toast({ title: "Settings saved", description: "Workspace settings updated successfully." })}>Save</Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -162,7 +169,13 @@ export default function SettingsPage() {
                         <p className="text-xs text-muted-foreground">{agent.type}</p>
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch
+                      checked={agentStates[agent.type] ?? true}
+                      onCheckedChange={(checked) => {
+                        setAgentStates((prev) => ({ ...prev, [agent.type]: checked }));
+                        toast({ title: `${agent.name} ${checked ? "enabled" : "disabled"}` });
+                      }}
+                    />
                   </div>
                 ))}
               </CardContent>

@@ -29,6 +29,7 @@ export default function JobDetail() {
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deckUrl, setDeckUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!jobId) return;
@@ -40,7 +41,18 @@ export default function JobDetail() {
         .eq("id", jobId)
         .single();
 
-      if (data) setJob(data);
+      if (data) {
+        setJob(data);
+        // Generate signed URL for deck files
+        if (data.file_url) {
+          // Extract path from full URL or use as-is
+          const path = data.file_url.includes("/storage/v1/object/public/decks/")
+            ? data.file_url.split("/storage/v1/object/public/decks/")[1]
+            : data.file_url;
+          const { data: signed } = await supabase.storage.from("decks").createSignedUrl(path, 3600);
+          if (signed?.signedUrl) setDeckUrl(signed.signedUrl);
+        }
+      }
       setLoading(false);
     };
 
@@ -173,7 +185,7 @@ export default function JobDetail() {
       </motion.div>
 
       {/* Download button for deck jobs */}
-      {job.file_url && (
+      {deckUrl && (
         <motion.div variants={item}>
           <Card className="glass-card border-primary/20">
             <CardContent className="p-5 flex items-center justify-between">
@@ -185,7 +197,7 @@ export default function JobDetail() {
                 </div>
               </div>
               <Button asChild>
-                <a href={job.file_url} download target="_blank" rel="noopener noreferrer">
+                <a href={deckUrl} download target="_blank" rel="noopener noreferrer">
                   <FileDown className="h-4 w-4 mr-2" /> Download .pptx
                 </a>
               </Button>
