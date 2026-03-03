@@ -494,6 +494,66 @@ Agents can receive context from multiple sources simultaneously:
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
+function renderInline(text: string) {
+  // Parse **bold**, `code`, and {{variables}} into JSX
+  const parts: React.ReactNode[] = [];
+  const regex = /(\*\*(.+?)\*\*)|(`(.+?)`)|(\{\{(.+?)\}\})/g;
+  let lastIndex = 0;
+  let match;
+  let key = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    if (match[2]) {
+      parts.push(<span key={key++} className="font-semibold text-foreground">{match[2]}</span>);
+    } else if (match[4]) {
+      parts.push(<code key={key++} className="px-1.5 py-0.5 rounded bg-muted text-primary text-xs font-mono">{match[4]}</code>);
+    } else if (match[6]) {
+      parts.push(<code key={key++} className="px-1.5 py-0.5 rounded bg-muted text-primary text-xs font-mono">{`{{${match[6]}}}`}</code>);
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts.length > 0 ? parts : text;
+}
+
+function renderContent(content: string) {
+  return content.split("\n").map((line, i) => {
+    const trimmed = line.trim();
+    if (trimmed === "") return null;
+    if (trimmed.startsWith("### ")) {
+      return (
+        <h3 key={i} className="text-sm font-semibold text-foreground mt-5 mb-2 tracking-tight">
+          {trimmed.replace("### ", "")}
+        </h3>
+      );
+    }
+    if (trimmed.startsWith("- ")) {
+      return (
+        <li key={i} className="ml-5 list-disc text-sm text-foreground/80 leading-relaxed">
+          {renderInline(trimmed.replace("- ", ""))}
+        </li>
+      );
+    }
+    if (/^\d+\.\s/.test(trimmed)) {
+      return (
+        <li key={i} className="ml-5 list-decimal text-sm text-foreground/80 leading-relaxed">
+          {renderInline(trimmed.replace(/^\d+\.\s/, ""))}
+        </li>
+      );
+    }
+    return (
+      <p key={i} className="text-sm text-foreground/80 leading-relaxed">
+        {renderInline(trimmed)}
+      </p>
+    );
+  });
+}
+
 export default function Help() {
   const [search, setSearch] = useState("");
 
@@ -530,20 +590,13 @@ export default function Help() {
         ) : (
           <Accordion type="multiple" className="space-y-2">
             {filtered.map((section) => (
-              <AccordionItem key={section.id} value={section.id} className="glass-card rounded-lg border px-4">
-                <AccordionTrigger className="text-sm font-medium hover:no-underline">
+              <AccordionItem key={section.id} value={section.id} className="glass-card rounded-lg border px-5 py-1">
+                <AccordionTrigger className="text-sm font-semibold text-foreground hover:no-underline">
                   {section.title}
                 </AccordionTrigger>
                 <AccordionContent>
-                  <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-line">
-                    {section.content.split("\n").map((line, i) => {
-                      if (line.startsWith("### ")) return <h3 key={i} className="text-sm font-semibold mt-4 mb-1">{line.replace("### ", "")}</h3>;
-                      if (line.startsWith("**") && line.endsWith("**")) return <p key={i} className="font-semibold mt-2">{line.replace(/\*\*/g, "")}</p>;
-                      if (line.startsWith("- ")) return <li key={i} className="ml-4 list-disc text-sm text-muted-foreground">{line.replace("- ", "")}</li>;
-                      if (/^\d+\.\s/.test(line)) return <li key={i} className="ml-4 list-decimal text-sm text-muted-foreground">{line.replace(/^\d+\.\s/, "")}</li>;
-                      if (line.trim() === "") return <br key={i} />;
-                      return <p key={i} className="text-sm text-muted-foreground">{line}</p>;
-                    })}
+                  <div className="space-y-1 pb-2">
+                    {renderContent(section.content)}
                   </div>
                 </AccordionContent>
               </AccordionItem>
