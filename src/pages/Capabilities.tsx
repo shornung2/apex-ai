@@ -26,7 +26,7 @@ const inputTypes = [
   { value: "multi-select", label: "Multi-Select" },
 ];
 
-const STEP_LABELS = ["Identity", "Routing", "Inputs", "System Prompt", "Behavior", "Output"];
+const STEP_LABELS = ["Identity", "Routing", "Inputs", "System Prompt", "Behavior"];
 
 const AI_MODELS = [
   { id: "google/gemini-2.5-flash-lite", name: "Gemini Flash Lite", tier: "standard" as const, desc: "Simple tasks, classification" },
@@ -92,30 +92,18 @@ export default function Capabilities() {
   const [builderDisplayName, setBuilderDisplayName] = useState("");
   const [builderDesc, setBuilderDesc] = useState("");
   const [builderEmoji, setBuilderEmoji] = useState("⚡");
-  const [builderVersion, setBuilderVersion] = useState("1.0.0");
   // Step 2: Routing
   const [builderDept, setBuilderDept] = useState<Department | "">("");
   const [builderAgent, setBuilderAgent] = useState<AgentType | "">("");
-  const [builderTags, setBuilderTags] = useState("");
-  const [builderTriggerKeywords, setBuilderTriggerKeywords] = useState("");
   const [builderPreferredModel, setBuilderPreferredModel] = useState("google/gemini-3-flash-preview");
   // Step 3: Inputs
   const [builderInputs, setBuilderInputs] = useState<Partial<SkillInput>[]>([]);
   // Step 4: System Prompt
   const [builderSystemPrompt, setBuilderSystemPrompt] = useState("");
   // Step 5: Behavior
-  const [builderTokenBudget, setBuilderTokenBudget] = useState(10000);
   const [builderEstimatedCost, setBuilderEstimatedCost] = useState("");
-  const [builderTimeout, setBuilderTimeout] = useState(120);
   const [builderWebSearch, setBuilderWebSearch] = useState(false);
-  const [builderApprovalRequired, setBuilderApprovalRequired] = useState(false);
-  const [builderCapabilities, setBuilderCapabilities] = useState<string[]>([]);
   const [builderSchedulable, setBuilderSchedulable] = useState(false);
-  // Step 6: Output
-  const [builderOutputFormat, setBuilderOutputFormat] = useState("markdown");
-  const [builderExportFormats, setBuilderExportFormats] = useState("");
-  const [builderOutputTitle, setBuilderOutputTitle] = useState("");
-  const [builderOutputSections, setBuilderOutputSections] = useState("");
 
   const fetchSkills = async () => {
     setLoading(true);
@@ -138,12 +126,11 @@ export default function Capabilities() {
   const resetBuilder = () => {
     setEditingSkillId(null);
     setBuilderStep(1);
-    setBuilderName(""); setBuilderDisplayName(""); setBuilderDesc(""); setBuilderEmoji("⚡"); setBuilderVersion("1.0.0");
-    setBuilderDept(""); setBuilderAgent(""); setBuilderTags(""); setBuilderTriggerKeywords(""); setBuilderPreferredModel("google/gemini-3-flash-preview");
+    setBuilderName(""); setBuilderDisplayName(""); setBuilderDesc(""); setBuilderEmoji("⚡");
+    setBuilderDept(""); setBuilderAgent(""); setBuilderPreferredModel("google/gemini-3-flash-preview");
     setBuilderInputs([]);
     setBuilderSystemPrompt("");
-    setBuilderTokenBudget(10000); setBuilderEstimatedCost(""); setBuilderTimeout(120); setBuilderWebSearch(false); setBuilderApprovalRequired(false); setBuilderCapabilities([]); setBuilderSchedulable(false);
-    setBuilderOutputFormat("markdown"); setBuilderExportFormats(""); setBuilderOutputTitle(""); setBuilderOutputSections("");
+    setBuilderEstimatedCost(""); setBuilderWebSearch(false); setBuilderSchedulable(false);
   };
 
   const loadSkillIntoBuilder = (skill: Skill) => {
@@ -153,25 +140,14 @@ export default function Capabilities() {
     setBuilderDisplayName(skill.displayName || skill.name);
     setBuilderDesc(skill.description);
     setBuilderEmoji(skill.emoji);
-    setBuilderVersion(skill.version || "1.0.0");
     setBuilderDept(skill.department);
     setBuilderAgent(skill.agentType);
-    setBuilderTags((skill.tags || []).join(", "));
-    setBuilderTriggerKeywords((skill.triggerKeywords || []).join(", "));
     setBuilderPreferredModel(skill.preferredModel || "google/gemini-3-flash-preview");
     setBuilderInputs(skill.inputs.map(inp => ({ ...inp })));
     setBuilderSystemPrompt(skill.systemPrompt || "");
-    setBuilderTokenBudget(skill.tokenBudget || 10000);
     setBuilderEstimatedCost(skill.estimatedCost ? String(skill.estimatedCost) : "");
-    setBuilderTimeout(skill.timeoutSeconds || 120);
     setBuilderWebSearch(skill.webSearchEnabled || false);
-    setBuilderApprovalRequired(skill.approvalRequired || false);
-    setBuilderCapabilities(skill.requiredCapabilities || []);
     setBuilderSchedulable((skill as any).schedulable || false);
-    setBuilderOutputFormat(skill.outputFormat || "markdown");
-    setBuilderExportFormats((skill.exportFormats || []).join(", "));
-    setBuilderOutputTitle(skill.outputSchema?.title || "");
-    setBuilderOutputSections((skill.outputSchema?.sections || []).join(", "));
     setActiveTab("builder");
   };
 
@@ -214,11 +190,6 @@ export default function Capabilities() {
       default: inp.default || undefined,
     }));
 
-    const tags = builderTags.split(",").map(s => s.trim()).filter(Boolean);
-    const triggerKeywords = builderTriggerKeywords.split(",").map(s => s.trim()).filter(Boolean);
-    const exportFormats = builderExportFormats.split(",").map(s => s.trim()).filter(Boolean);
-    const sections = builderOutputSections.split(",").map(s => s.trim()).filter(Boolean);
-
     const skillData = {
       name: builderName,
       display_name: builderDisplayName || builderName,
@@ -226,22 +197,12 @@ export default function Capabilities() {
       department: builderDept,
       agent_type: builderAgent,
       emoji: builderEmoji,
-      version: builderVersion,
       system_prompt: builderSystemPrompt,
-      prompt_template: builderSystemPrompt ? "" : "",
+      prompt_template: "",
       inputs,
-      tags,
-      trigger_keywords: triggerKeywords,
       preferred_model: builderPreferredModel,
-      token_budget: builderTokenBudget,
       estimated_cost_usd: builderEstimatedCost ? parseFloat(builderEstimatedCost) : null,
-      required_capabilities: builderCapabilities,
       web_search_enabled: builderWebSearch,
-      approval_required: builderApprovalRequired,
-      timeout_seconds: builderTimeout,
-      output_format: builderOutputFormat,
-      output_schema: { title: builderOutputTitle, sections },
-      export_formats: exportFormats,
       is_system: false,
       schedulable: builderSchedulable,
     };
@@ -372,7 +333,7 @@ export default function Capabilities() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold">{editingSkillId ? "Edit Skill" : "Create a New Skill"}</h2>
-                <span className="text-xs text-muted-foreground">Step {builderStep} of 6 — {STEP_LABELS[builderStep - 1]}</span>
+                <span className="text-xs text-muted-foreground">Step {builderStep} of 5 — {STEP_LABELS[builderStep - 1]}</span>
               </div>
               {editingSkillId && (
                 <div className="flex gap-2">
@@ -386,7 +347,7 @@ export default function Capabilities() {
               )}
             </div>
 
-            <StepIndicator current={builderStep} total={6} />
+            <StepIndicator current={builderStep} total={5} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Builder form */}
@@ -413,10 +374,6 @@ export default function Capabilities() {
                       <div className="space-y-2">
                         <Label>Description</Label>
                         <Textarea value={builderDesc} onChange={(e) => setBuilderDesc(e.target.value)} placeholder="What does this skill do?" rows={3} className="bg-muted/50 border-border/50 resize-none" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Version</Label>
-                        <Input value={builderVersion} onChange={(e) => setBuilderVersion(e.target.value)} placeholder="1.0.0" className="bg-muted/50 border-border/50 w-32" />
                       </div>
                     </>
                   )}
@@ -452,14 +409,6 @@ export default function Capabilities() {
                             </SelectContent>
                           </Select>
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Tags (comma-separated)</Label>
-                        <Input value={builderTags} onChange={(e) => setBuilderTags(e.target.value)} placeholder="e.g. research, company, firmographics" className="bg-muted/50 border-border/50" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Trigger Keywords (comma-separated)</Label>
-                        <Input value={builderTriggerKeywords} onChange={(e) => setBuilderTriggerKeywords(e.target.value)} placeholder="e.g. research company, company profile" className="bg-muted/50 border-border/50" />
                       </div>
                       <div className="space-y-2">
                         <Label>Preferred Model</Label>
@@ -577,72 +526,24 @@ export default function Capabilities() {
                     </div>
                   )}
 
-                  {/* Step 5: Behavior */}
+                  {/* Step 5: Behavior & Review */}
                   {builderStep === 5 && (
                     <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label>Token Budget</Label>
-                          <Input type="number" value={builderTokenBudget} onChange={(e) => setBuilderTokenBudget(Number(e.target.value))} className="bg-muted/50 border-border/50" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Est. Cost (USD)</Label>
-                          <Input value={builderEstimatedCost} onChange={(e) => setBuilderEstimatedCost(e.target.value)} placeholder="e.g. 0.25" className="bg-muted/50 border-border/50" />
-                        </div>
-                      </div>
                       <div className="space-y-2">
-                        <Label>Timeout (seconds)</Label>
-                        <Input type="number" value={builderTimeout} onChange={(e) => setBuilderTimeout(Number(e.target.value))} className="bg-muted/50 border-border/50 w-32" />
+                        <Label>Est. Cost (USD)</Label>
+                        <Input value={builderEstimatedCost} onChange={(e) => setBuilderEstimatedCost(e.target.value)} placeholder="e.g. 0.25" className="bg-muted/50 border-border/50 w-32" />
+                        <p className="text-[10px] text-muted-foreground">Display only — shown on skill cards</p>
                       </div>
                       <div className="space-y-3 pt-2">
-                        <Label>Capabilities</Label>
-                        <div className="flex items-center gap-6">
-                          <div className="flex items-center gap-1.5">
-                            <Switch checked={builderWebSearch} onCheckedChange={setBuilderWebSearch} />
-                            <span className="text-xs text-muted-foreground">Web Search</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Switch checked={builderCapabilities.includes("knowledge_search")} onCheckedChange={(v) => setBuilderCapabilities(prev => v ? [...prev, "knowledge_search"] : prev.filter(c => c !== "knowledge_search"))} />
-                            <span className="text-xs text-muted-foreground">Knowledge Base</span>
-                          </div>
+                        <Label>Options</Label>
+                        <div className="flex items-center gap-1.5">
+                          <Switch checked={builderWebSearch} onCheckedChange={setBuilderWebSearch} />
+                          <span className="text-xs text-muted-foreground">Enable Web Search</span>
                         </div>
-                        <div className="flex items-center gap-1.5 pt-2">
-                          <Switch checked={builderApprovalRequired} onCheckedChange={setBuilderApprovalRequired} />
-                          <span className="text-xs text-muted-foreground">Require Approval Before Delivery</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 pt-2">
+                        <div className="flex items-center gap-1.5">
                           <Switch checked={builderSchedulable} onCheckedChange={setBuilderSchedulable} />
                           <span className="text-xs text-muted-foreground">Schedulable (can be automated via Tasks)</span>
                         </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Step 6: Output */}
-                  {builderStep === 6 && (
-                    <>
-                      <div className="space-y-2">
-                        <Label>Output Format</Label>
-                        <Select value={builderOutputFormat} onValueChange={setBuilderOutputFormat}>
-                          <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="markdown">Markdown</SelectItem>
-                            <SelectItem value="json">JSON</SelectItem>
-                            <SelectItem value="html">HTML</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Output Title Template</Label>
-                        <Input value={builderOutputTitle} onChange={(e) => setBuilderOutputTitle(e.target.value)} placeholder="e.g. Company Research: {company_name}" className="bg-muted/50 border-border/50" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Output Sections (comma-separated)</Label>
-                        <Input value={builderOutputSections} onChange={(e) => setBuilderOutputSections(e.target.value)} placeholder="e.g. overview, financials, products" className="bg-muted/50 border-border/50" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Export Formats (comma-separated)</Label>
-                        <Input value={builderExportFormats} onChange={(e) => setBuilderExportFormats(e.target.value)} placeholder="e.g. markdown, pdf, docx" className="bg-muted/50 border-border/50" />
                       </div>
 
                       {/* Summary */}
@@ -651,8 +552,8 @@ export default function Capabilities() {
                         <div className="text-xs text-muted-foreground space-y-1">
                           <p><span className="font-medium text-foreground">{builderEmoji} {builderDisplayName || builderName}</span> — {builderDesc || "No description"}</p>
                           <p>Dept: {builderDept || "—"} · Agent: {builderAgent || "—"} · Model: {getModelName(builderPreferredModel)}{isPremiumModel(builderPreferredModel) ? " ⚡ Premium" : ""}</p>
-                          <p>{builderInputs.length} inputs · Token budget: {builderTokenBudget.toLocaleString()} · Timeout: {builderTimeout}s</p>
-                          <p>Web search: {builderWebSearch ? "Yes" : "No"} · Approval: {builderApprovalRequired ? "Required" : "No"}</p>
+                          <p>{builderInputs.length} inputs · Web search: {builderWebSearch ? "Yes" : "No"} · Schedulable: {builderSchedulable ? "Yes" : "No"}</p>
+                          {builderEstimatedCost && <p>Est. cost: ~${parseFloat(builderEstimatedCost).toFixed(2)}</p>}
                         </div>
                       </div>
                     </>
@@ -663,7 +564,7 @@ export default function Capabilities() {
                     <Button variant="ghost" size="sm" disabled={builderStep === 1} onClick={() => setBuilderStep(s => s - 1)} className="gap-1">
                       <ChevronLeft className="h-3 w-3" /> Back
                     </Button>
-                    {builderStep < 6 ? (
+                    {builderStep < 5 ? (
                       <Button size="sm" disabled={!canNext()} onClick={() => setBuilderStep(s => s + 1)} className="gap-1">
                         Next <ChevronRight className="h-3 w-3" />
                       </Button>
@@ -695,9 +596,6 @@ export default function Capabilities() {
                       <div className="flex gap-1.5 flex-wrap">
                         {builderDept && <Badge variant="outline" className="text-[10px]">{departmentDefinitions[builderDept as Department]?.name}</Badge>}
                         {builderAgent && <Badge variant="outline" className="text-[10px]">{agentDefinitions.find((a) => a.type === builderAgent)?.name}</Badge>}
-                        {builderTags && builderTags.split(",").filter(t => t.trim()).slice(0, 4).map(t => (
-                          <Badge key={t.trim()} variant="secondary" className="text-[10px]">{t.trim()}</Badge>
-                        ))}
                       </div>
                       {builderInputs.length > 0 && (
                         <div className="space-y-3 pt-2 border-t border-border/50">
