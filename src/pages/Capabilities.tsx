@@ -282,6 +282,9 @@ export default function Capabilities() {
     setBuilderSystemPrompt("");
     setBuilderWebSearch(false); setBuilderSchedulable(false);
     setOpenSections({ identity: true });
+    setBuilderMode("manual");
+    setAlexMessages([]);
+    setAlexInput("");
   };
 
   const loadSkillIntoBuilder = (skill: Skill) => {
