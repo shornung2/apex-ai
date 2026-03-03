@@ -112,14 +112,16 @@ Apex AI is a platform that puts AI agents to work across your Sales and Marketin
 - Filter by department, agent type, or search by name.
 - Click any skill to view its details or run it.
 
-### Skill Builder (5-Step Wizard)
-Create custom skills with the guided wizard:
+### Skill Builder
+Create custom skills using a streamlined single-page form with collapsible sections:
 
-1. **Identity** — Name, display name, description, emoji.
-2. **Routing** — Department, agent type, and preferred model. The model dropdown includes Standard models, Premium models, and any **OpenRouter models** you've enabled in Settings.
-3. **Inputs** — Define the form fields users fill in (text, textarea, select, radio, multi-select, and **file** for document uploads).
-4. **System Prompt** — Write the system prompt with variable placeholders like \`{{field_name}}\`. Use the "Insert variable" buttons to quickly add references.
-5. **Behavior & Review** — Estimated cost, web search toggle, schedulable toggle, and a summary of the skill configuration.
+- **Identity** — Name, display name, description, emoji.
+- **Routing** — Department, agent type, and preferred model. The model dropdown includes Standard models, Premium models, and any **OpenRouter models** you've enabled in Settings.
+- **Inputs** — Define the form fields users fill in (text, textarea, select, radio, multi-select, and **file** for document uploads).
+- **System Prompt** — Write the system prompt with variable placeholders like \`{{field_name}}\`. Use the "Insert variable" buttons to quickly add references.
+- **Behavior & Options** — Estimated cost, web search toggle, and schedulable toggle.
+
+All sections are collapsible — expand or collapse any section to focus on what you're working on. No need to step through a wizard; jump directly to any section.
 
 ### Build with Alex
 The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assistant specifically tuned for skill creation and prompt engineering.
@@ -147,7 +149,7 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 - OpenRouter models are displayed with a 🔗 badge in the Skill Library.
 
 ### File Input Type
-- When adding inputs in Step 3, you can select **"file"** as the input type.
+- When adding inputs in the **Inputs** section, you can select **"file"** as the input type.
 - This renders a file attachment button in the skill form.
 - Users can upload PDF, DOCX, PPTX, TXT, MD, or CSV files.
 - The uploaded file's extracted text is injected as the input value, flowing into your \`{{field_name}}\` template variable.
@@ -424,7 +426,7 @@ This mode uses a specialized prompt engineering AI that understands skill archit
 
 ### Which Skills Can Be Scheduled?
 
-Skills that produce useful output when re-run with the same inputs are marked as "schedulable." Examples include Company Research, Market Trends, Social Media Posts, and Blog Articles. You can also mark custom skills as schedulable in the Skill Builder (Step 5: Behavior).
+Skills that produce useful output when re-run with the same inputs are marked as "schedulable." Examples include Company Research, Market Trends, Social Media Posts, and Blog Articles. You can also mark custom skills as schedulable in the Skill Builder's **Behavior & Options** section.
 
 ### Creating a Scheduled Task
 
