@@ -148,7 +148,7 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    const { skillId, skillName, agentType, department, title, inputs, promptTemplate, systemPrompt, webSearchEnabled } = await req.json();
+    const { skillId, skillName, agentType, department, title, inputs, promptTemplate, systemPrompt, webSearchEnabled, preferredModel } = await req.json();
 
     // 1. Insert job as queued
     const { data: job, error: insertError } = await supabase
@@ -217,7 +217,16 @@ serve(async (req) => {
     // 4. Update status to running
     await supabase.from("agent_jobs").update({ status: "running" }).eq("id", jobId);
 
-    // 5. Call AI gateway with streaming
+    // 5. Determine model and call AI gateway with streaming
+    const ALLOWED_MODELS = [
+      "google/gemini-2.5-flash-lite", "google/gemini-2.5-flash", "google/gemini-3-flash-preview",
+      "google/gemini-2.5-pro", "google/gemini-3-pro-preview",
+      "openai/gpt-5-nano", "openai/gpt-5-mini", "openai/gpt-5", "openai/gpt-5.2",
+    ];
+    const selectedModel = preferredModel && ALLOWED_MODELS.includes(preferredModel)
+      ? preferredModel
+      : "google/gemini-3-flash-preview";
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -225,7 +234,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: selectedModel,
         messages: [
           { role: "system", content: finalSystemPrompt },
           { role: "user", content: filledTemplate },
