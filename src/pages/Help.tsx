@@ -57,10 +57,17 @@ Apex AI is a platform that puts AI agents to work across your Sales and Marketin
 4. Click **Run Agent** to dispatch the job.
 5. You'll be taken to the Job Detail page where you can watch the output stream in real-time.
 
+### Additional Context Files
+- When running a skill, you can attach **Additional Context** files via the upload zone below the main inputs.
+- Multiple files can be attached (max 10 files, **10 MB total** cumulative limit).
+- A progress bar shows how much of the 10 MB budget is used.
+- Supported formats: PDF, DOCX, PPTX, TXT, MD, CSV.
+- The extracted content flows through the same grounding pipeline as Knowledge Base documents.
+
 ### File Attachments in Skills
 - Skills like **Meeting Prep Coach** include a file upload field for prior meeting transcripts or notes.
 - Uploaded files are processed server-side — text is extracted and used as additional context for the agent.
-- Supported formats: PDF, DOCX, PPTX, TXT, MD, CSV (max 20MB).
+- Supported formats: PDF, DOCX, PPTX, TXT, MD, CSV (max 10 MB total across all context files).
 - The extracted content flows through the same grounding pipeline as Knowledge Base documents.
 
 ### Viewing Results
@@ -105,27 +112,31 @@ Apex AI is a platform that puts AI agents to work across your Sales and Marketin
 - Filter by department, agent type, or search by name.
 - Click any skill to view its details or run it.
 
-### Skill Builder (6-Step Wizard)
+### Skill Builder (5-Step Wizard)
 Create custom skills with the guided wizard:
 
-1. **Identity** — Name, display name, description, emoji, and version.
-2. **Routing** — Department, agent type, tags, trigger keywords, preferred model, and lane.
+1. **Identity** — Name, display name, description, emoji.
+2. **Routing** — Department, agent type, and preferred model. The model dropdown includes Standard models, Premium models, and any **OpenRouter models** you've enabled in Settings.
 3. **Inputs** — Define the form fields users fill in (text, textarea, select, radio, multi-select, and **file** for document uploads).
-4. **System Prompt** — Write the system prompt with variable placeholders like \`{{field_name}}\`.
-5. **Behavior** — Token budget, estimated cost, timeout, web search toggle, knowledge base toggle, approval required toggle, and **Schedulable** toggle (mark a skill as eligible for scheduled automation via Tasks).
-6. **Output** — Set the output format (markdown, JSON, HTML, **pptx**), output title template, sections, and export formats.
+4. **System Prompt** — Write the system prompt with variable placeholders like \`{{field_name}}\`. Use the "Insert variable" buttons to quickly add references.
+5. **Behavior & Review** — Estimated cost, web search toggle, schedulable toggle, and a summary of the skill configuration.
+
+### OpenRouter Models in Skills
+- If OpenRouter is enabled in **Settings > API Keys**, your selected OpenRouter models appear in the Preferred Model dropdown under a dedicated "🔗 OpenRouter" section.
+- Skills using OpenRouter models are routed through your OpenRouter API key and credits.
+- OpenRouter models are displayed with a 🔗 badge in the Skill Library.
 
 ### File Input Type
-- When adding inputs in Step 3, you can now select **"file"** as the input type.
+- When adding inputs in Step 3, you can select **"file"** as the input type.
 - This renders a file attachment button in the skill form.
 - Users can upload PDF, DOCX, PPTX, TXT, MD, or CSV files.
 - The uploaded file's extracted text is injected as the input value, flowing into your \`{{field_name}}\` template variable.
 
 ### Tips
 - Use \`{{field_name}}\` in your system prompt to reference input fields.
-- Start with a lower token budget and increase if outputs are getting cut off.
 - Tags and trigger keywords help organize and search skills.
-- Enable "Schedulable" on skills that produce useful output when re-run with the same inputs (e.g. market research, social media content).`,
+- Enable "Schedulable" on skills that produce useful output when re-run with the same inputs (e.g. market research, social media content).
+- You can select up to 5 OpenRouter models in Settings for use across all skills.`,
   },
   {
     id: "knowledge-base",
@@ -135,7 +146,7 @@ Create custom skills with the guided wizard:
 ### Uploading Documents
 1. Go to **Knowledge Base** in the sidebar.
 2. Click **Upload Files** or drag files directly onto the page.
-3. Supported formats: **PDF, DOCX, PPTX, TXT, MD, CSV** (max 20MB per file).
+3. Supported formats: **PDF, DOCX, PPTX, TXT, MD, CSV** (max 10 MB per file).
 4. Files are uploaded to storage, processed server-side, and automatically chunked and indexed.
 5. For PDFs, Word docs, and PowerPoint files, text is extracted on the server — no browser plugins needed.
 
@@ -246,20 +257,35 @@ Create custom skills with the guided wizard:
     title: "Settings",
     content: `The Settings page lets you configure your workspace.
 
+### General
+- Set your workspace name and industry.
+
 ### Appearance
-- Toggle between **Light** and **Dark** mode.
+- Toggle between **Light**, **Dark**, and **System** mode.
 - Your preference is saved and persists across sessions.
 
-### Workspace Configuration
-- View your workspace name and current plan.
-- Manage API keys and integrations (if applicable).
+### API Keys & Integrations
+
+**AI Gateway** — Connected via Lovable AI. Always active.
+
+**OpenRouter Integration:**
+1. Go to **Settings > API Keys**.
+2. Toggle **OpenRouter** on.
+3. If your API key is already stored, you'll see "Key configured" and the full OpenRouter model catalog will load.
+4. **Browse models** — scroll through the searchable list of all available OpenRouter models.
+5. **Select up to 5 models** — click any model to enable it. Selected models appear at the top with a checkmark.
+6. Selected models immediately become available in the Skill Builder's Preferred Model dropdown.
+7. To change your API key, contact your administrator to update the backend secret.
 
 ### Agent Toggles
 - Enable or disable specific agent types across departments.
 - Useful for controlling which capabilities are available to your team.
 
+### Usage
+- View token usage, total runs, success rate, knowledge docs count, active skills, and scheduled tasks.
+
 ### Tips
-- If you're approaching your token budget, consider adjusting token budgets on individual skills in the Skill Builder.`,
+- If you're approaching your token budget, consider adjusting estimated costs on individual skills in the Skill Builder.`,
   },
   {
     id: "telegram-bot",
@@ -313,7 +339,8 @@ Create custom skills with the guided wizard:
 - **Getting errors?** Make sure the skill name matches exactly when using \`/run\`.
 - **Results too long?** They're automatically split — no action needed on your part.
 - **Want to start over?** Send \`/cancel\` to reset, then try again.
-- **Multiple skills?** You can run skills back-to-back — just start a new \`/run\` after receiving results.`,
+- **Multiple skills?** You can run skills back-to-back — just start a new \`/run\` after receiving results.
+- **OpenRouter models:** Skills configured with an OpenRouter model will use that model when executed via Telegram. The bot passes the skill's preferred model and web search settings to the agent.`,
   },
   {
     id: "alex-assistant",
@@ -338,7 +365,7 @@ Create custom skills with the guided wizard:
 ### File Attachments in Alex Chat
 
 1. Click the **paperclip icon** (📎) next to the text input.
-2. Select a file — supported formats: PDF, DOCX, PPTX, TXT, MD, CSV (max 20MB).
+2. Select a file — supported formats: PDF, DOCX, PPTX, TXT, MD, CSV (max 10 MB).
 3. The file is uploaded, processed server-side, and its extracted text appears as a chip above the input.
 4. Type your question and send — Alex receives the document content as additional context alongside Knowledge Base grounding.
 5. This is ideal for asking questions about a specific document, summarizing content, or extracting insights.
@@ -413,6 +440,7 @@ The Overview dashboard shows up to 3 upcoming scheduled tasks with their next ru
 Agents can receive context from multiple sources simultaneously:
 
 - **Knowledge Base (RAG)** — Automatic. All uploaded documents (PDF, DOCX, PPTX, TXT, etc.) are chunked and searchable. Folder structure does not affect grounding.
+- **Additional Context files** — When running a skill, users can attach extra files via the "Additional Context" upload zone (max 10 files, 10 MB total). These are extracted and injected into the agent's prompt.
 - **File attachments in skills** — When a user uploads a file to a skill form (e.g. meeting transcripts), the extracted text is passed directly as an input value in the prompt template.
 - **File attachments in Alex Chat** — When a user attaches a file while chatting with Alex, the content is injected into the system prompt alongside RAG results.
 - **Built-in platform knowledge** — Alex has embedded knowledge about all Apex AI features and navigation.
