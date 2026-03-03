@@ -568,9 +568,16 @@ serve(async (req) => {
     if (text === "/clear") {
       await supabase
         .from("telegram_sessions")
-        .update({ conversation_history: [], updated_at: new Date().toISOString() })
+        .update({
+          state: "idle",
+          selected_skill_id: null,
+          collected_inputs: {},
+          current_input_index: 0,
+          conversation_history: [],
+          updated_at: new Date().toISOString(),
+        })
         .eq("chat_id", chatId);
-      await sendMessage(chatId, "🧹 Conversation history cleared. Start fresh!");
+      await sendMessage(chatId, "🧹 Session fully reset — history, inputs, and state cleared. Start fresh!");
       return new Response("ok");
     }
 
