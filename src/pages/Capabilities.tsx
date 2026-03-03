@@ -466,19 +466,23 @@ export default function Capabilities() {
                         <Select value={builderPreferredModel} onValueChange={setBuilderPreferredModel}>
                           <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Standard</SelectLabel>
-                            {AI_MODELS.filter(m => m.tier === "standard").map(m => (
-                              <SelectItem key={m.id} value={m.id}>
-                                <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— {m.desc}</span></span>
-                              </SelectItem>
-                            ))}
+                            <SelectGroup>
+                              <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Standard</SelectLabel>
+                              {AI_MODELS.filter(m => m.tier === "standard").map(m => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— {m.desc}</span></span>
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
                             <SelectSeparator />
-                            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Premium</SelectLabel>
-                            {AI_MODELS.filter(m => m.tier === "premium").map(m => (
-                              <SelectItem key={m.id} value={m.id}>
-                                <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— {m.desc}</span></span>
-                              </SelectItem>
-                            ))}
+                            <SelectGroup>
+                              <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Premium</SelectLabel>
+                              {AI_MODELS.filter(m => m.tier === "premium").map(m => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— {m.desc}</span></span>
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
                           </SelectContent>
                         </Select>
                         {isPremiumModel(builderPreferredModel) && (
