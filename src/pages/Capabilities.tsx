@@ -47,7 +47,13 @@ const AGENT_DEFAULT_MODELS: Record<string, string> = {
   "meeting-prep": "google/gemini-3-flash-preview",
 };
 
+interface OpenRouterModel {
+  id: string;
+  name: string;
+}
+
 const isPremiumModel = (modelId: string) => AI_MODELS.find(m => m.id === modelId)?.tier === "premium";
+const isOpenRouterModel = (modelId: string) => !AI_MODELS.find(m => m.id === modelId);
 const getModelName = (modelId: string) => AI_MODELS.find(m => m.id === modelId)?.name || modelId;
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
@@ -85,22 +91,21 @@ export default function Capabilities() {
   const [saving, setSaving] = useState(false);
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
 
+  // OpenRouter models from workspace_settings
+  const [openrouterEnabled, setOpenrouterEnabled] = useState(false);
+  const [openrouterModels, setOpenrouterModels] = useState<OpenRouterModel[]>([]);
+
   // Six-step builder state
   const [builderStep, setBuilderStep] = useState(1);
-  // Step 1: Identity
   const [builderName, setBuilderName] = useState("");
   const [builderDisplayName, setBuilderDisplayName] = useState("");
   const [builderDesc, setBuilderDesc] = useState("");
   const [builderEmoji, setBuilderEmoji] = useState("⚡");
-  // Step 2: Routing
   const [builderDept, setBuilderDept] = useState<Department | "">("");
   const [builderAgent, setBuilderAgent] = useState<AgentType | "">("");
   const [builderPreferredModel, setBuilderPreferredModel] = useState("google/gemini-3-flash-preview");
-  // Step 3: Inputs
   const [builderInputs, setBuilderInputs] = useState<Partial<SkillInput>[]>([]);
-  // Step 4: System Prompt
   const [builderSystemPrompt, setBuilderSystemPrompt] = useState("");
-  // Step 5: Behavior
   const [builderEstimatedCost, setBuilderEstimatedCost] = useState("");
   const [builderWebSearch, setBuilderWebSearch] = useState(false);
   const [builderSchedulable, setBuilderSchedulable] = useState(false);
@@ -115,6 +120,28 @@ export default function Capabilities() {
   };
 
   useEffect(() => { fetchSkills(); }, []);
+
+  // Fetch OpenRouter settings
+  useEffect(() => {
+    async function fetchOpenRouterSettings() {
+      const { data } = await supabase
+        .from("workspace_settings")
+        .select("key, value")
+        .in("key", ["openrouter_enabled", "openrouter_models"]);
+
+      if (data) {
+        for (const row of data) {
+          if (row.key === "openrouter_enabled") {
+            setOpenrouterEnabled(row.value === true);
+          }
+          if (row.key === "openrouter_models" && Array.isArray(row.value)) {
+            setOpenrouterModels(row.value as unknown as OpenRouterModel[]);
+          }
+        }
+      }
+    }
+    fetchOpenRouterSettings();
+  }, []);
 
   const filtered = allSkills.filter((s) => {
     if (deptFilter !== "all" && s.department !== deptFilter) return false;
@@ -284,6 +311,8 @@ export default function Capabilities() {
                 {filtered.map((skill) => {
                   const agent = agentDefinitions.find((a) => a.type === skill.agentType);
                   const dept = departmentDefinitions[skill.department];
+                  const modelId = skill.preferredModel || AGENT_DEFAULT_MODELS[skill.agentType] || "google/gemini-3-flash-preview";
+                  const isOR = isOpenRouterModel(modelId);
                   return (
                     <Card
                       key={skill.id}
@@ -314,8 +343,8 @@ export default function Capabilities() {
                             </>
                           )}
                           <span>·</span>
-                          <span className={isPremiumModel(skill.preferredModel || "") ? "text-primary" : ""}>
-                            {getModelName(skill.preferredModel || AGENT_DEFAULT_MODELS[skill.agentType] || "google/gemini-3-flash-preview")}
+                          <span className={isOR ? "text-blue-400" : isPremiumModel(modelId) ? "text-primary" : ""}>
+                            {isOR ? `🔗 ${modelId}` : getModelName(modelId)}
                           </span>
                           {skill.isSystem && <Badge variant="outline" className="text-[10px] ml-auto">System</Badge>}
                         </div>
@@ -332,7 +361,7 @@ export default function Capabilities() {
             )}
           </TabsContent>
 
-          {/* ── Skill Builder (6-Step Wizard) ── */}
+          {/* ── Skill Builder (5-Step Wizard) ── */}
           <TabsContent value="builder" className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -436,12 +465,34 @@ export default function Capabilities() {
                                 </SelectItem>
                               ))}
                             </SelectGroup>
+                            {openrouterEnabled && openrouterModels.length > 0 && (
+                              <>
+                                <SelectSeparator />
+                                <SelectGroup>
+                                  <SelectLabel className="text-[10px] uppercase tracking-wider text-blue-400">🔗 OpenRouter</SelectLabel>
+                                  {openrouterModels.map(m => (
+                                    <SelectItem key={m.id} value={m.id}>
+                                      <span className="flex items-center gap-2">
+                                        {m.name}
+                                        <span className="text-[10px] text-blue-400">OpenRouter</span>
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         {isPremiumModel(builderPreferredModel) && (
                           <div className="flex items-center gap-1.5 text-xs text-amber-500">
                             <AlertTriangle className="h-3 w-3" />
                             <span>Premium model — significantly higher cost per run</span>
+                          </div>
+                        )}
+                        {isOpenRouterModel(builderPreferredModel) && (
+                          <div className="flex items-center gap-1.5 text-xs text-blue-400">
+                            <span>🔗</span>
+                            <span>OpenRouter model — uses your OpenRouter API key and credits</span>
                           </div>
                         )}
                       </div>
@@ -555,7 +606,7 @@ export default function Capabilities() {
                         <h3 className="text-sm font-semibold">Summary</h3>
                         <div className="text-xs text-muted-foreground space-y-1">
                           <p><span className="font-medium text-foreground">{builderEmoji} {builderDisplayName || builderName}</span> — {builderDesc || "No description"}</p>
-                          <p>Dept: {builderDept || "—"} · Agent: {builderAgent || "—"} · Model: {getModelName(builderPreferredModel)}{isPremiumModel(builderPreferredModel) ? " ⚡ Premium" : ""}</p>
+                          <p>Dept: {builderDept || "—"} · Agent: {builderAgent || "—"} · Model: {getModelName(builderPreferredModel)}{isPremiumModel(builderPreferredModel) ? " ⚡ Premium" : ""}{isOpenRouterModel(builderPreferredModel) ? " 🔗 OpenRouter" : ""}</p>
                           <p>{builderInputs.length} inputs · Web search: {builderWebSearch ? "Yes" : "No"} · Schedulable: {builderSchedulable ? "Yes" : "No"}</p>
                           {builderEstimatedCost && <p>Est. cost: ~${parseFloat(builderEstimatedCost).toFixed(2)}</p>}
                         </div>

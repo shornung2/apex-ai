@@ -129,6 +129,14 @@ You do not have access to live web search. Your knowledge has a training cutoff 
 - When you are uncertain whether information is still current, flag it clearly.
 - Suggest specific searches or sources the user should check for the latest data.`;
 
+const ALLOWED_MODELS = [
+  "google/gemini-2.5-flash-lite", "google/gemini-2.5-flash", "google/gemini-3-flash-preview",
+  "google/gemini-2.5-pro", "google/gemini-3-pro-preview",
+  "openai/gpt-5-nano", "openai/gpt-5-mini", "openai/gpt-5", "openai/gpt-5.2",
+];
+
+const MAX_CONTEXT_CHARS = 100_000; // ~25K tokens
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -155,6 +163,12 @@ serve(async (req) => {
     if (inputs._attached_context) {
       attachedContext = inputs._attached_context;
       delete inputs._attached_context;
+    }
+
+    // Context length guard: truncate if too large
+    if (attachedContext.length > MAX_CONTEXT_CHARS) {
+      attachedContext = attachedContext.substring(0, MAX_CONTEXT_CHARS) +
+        "\n\n[... CONTEXT TRUNCATED — the uploaded documents exceeded the processing limit. The above represents the first ~25,000 tokens of context. Please focus your analysis on the information provided above.]";
     }
 
     // 1. Insert job as queued
@@ -227,22 +241,45 @@ serve(async (req) => {
     // 4. Update status to running
     await supabase.from("agent_jobs").update({ status: "running" }).eq("id", jobId);
 
-    // 5. Determine model and call AI gateway with streaming
-    const ALLOWED_MODELS = [
-      "google/gemini-2.5-flash-lite", "google/gemini-2.5-flash", "google/gemini-3-flash-preview",
-      "google/gemini-2.5-pro", "google/gemini-3-pro-preview",
-      "openai/gpt-5-nano", "openai/gpt-5-mini", "openai/gpt-5", "openai/gpt-5.2",
-    ];
-    const selectedModel = preferredModel && ALLOWED_MODELS.includes(preferredModel)
-      ? preferredModel
-      : "google/gemini-3-flash-preview";
+    // 5. Determine model — check for OpenRouter models
+    const isOpenRouterModel = preferredModel && !ALLOWED_MODELS.includes(preferredModel);
+    let aiEndpoint: string;
+    let aiHeaders: Record<string, string>;
+    let selectedModel: string;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
+    if (isOpenRouterModel) {
+      // Route to OpenRouter
+      const openrouterKey = Deno.env.get("OPENROUTER_API_KEY");
+      if (!openrouterKey) {
+        await supabase.from("agent_jobs").update({ status: "failed" }).eq("id", jobId);
+        return new Response(JSON.stringify({ error: "OpenRouter API key not configured", jobId }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      aiEndpoint = "https://openrouter.ai/api/v1/chat/completions";
+      aiHeaders = {
+        Authorization: `Bearer ${openrouterKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": supabaseUrl,
+        "X-Title": "Apex AI",
+      };
+      selectedModel = preferredModel;
+    } else {
+      // Built-in Lovable AI gateway
+      aiEndpoint = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      aiHeaders = {
         Authorization: `Bearer ${lovableApiKey}`,
         "Content-Type": "application/json",
-      },
+      };
+      selectedModel = preferredModel && ALLOWED_MODELS.includes(preferredModel)
+        ? preferredModel
+        : "google/gemini-3-flash-preview";
+    }
+
+    const aiResponse = await fetch(aiEndpoint, {
+      method: "POST",
+      headers: aiHeaders,
       body: JSON.stringify({
         model: selectedModel,
         messages: [
@@ -271,7 +308,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ error: "AI gateway error", jobId }), {
+      return new Response(JSON.stringify({ error: `AI error: ${isOpenRouterModel ? "OpenRouter" : "gateway"} returned ${aiResponse.status}`, jobId }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -285,7 +322,6 @@ serve(async (req) => {
 
     const stream = new ReadableStream({
       async start(controller) {
-        // Send jobId as first event
         controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ jobId })}\n\n`));
 
         let buffer = "";
