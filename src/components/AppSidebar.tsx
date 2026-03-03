@@ -44,10 +44,10 @@ const departmentItems = [
 ];
 
 const toolItems = [
-  { title: "Capabilities", url: "/capabilities", icon: Sparkles },
   { title: "Tasks", url: "/tasks", icon: CalendarClock },
-  { title: "Knowledge Base", url: "/knowledge", icon: BookOpen },
+  { title: "Capabilities", url: "/capabilities", icon: Sparkles },
   { title: "Content Library", url: "/content-library", icon: FolderOpen },
+  { title: "Knowledge Base", url: "/knowledge", icon: BookOpen },
   { title: "History", url: "/history", icon: Clock },
 ];
 
