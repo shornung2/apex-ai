@@ -36,13 +36,21 @@ Completed jobs show Markdown output. Can Copy or Save to Content Library.
 ## Capabilities & Skill Builder
 Browse all skills across departments. Filter by department, agent type, or search.
 
-### 6-Step Skill Builder Wizard:
-1. **Identity** — Name, display name, description, emoji, version.
-2. **Routing** — Department, agent type, tags, trigger keywords, preferred model, lane.
-3. **Inputs** — Define form fields (text, textarea, select, etc.).
+### 5-Step Skill Builder Wizard:
+1. **Identity** — Name, display name, description, emoji.
+2. **Routing** — Department, agent type, preferred model.
+3. **Inputs** — Define form fields (text, textarea, select, radio, multi-select, file).
 4. **System Prompt** — System prompt with {{variable}} placeholders.
-5. **Behavior** — Token budget, cost, timeout, web search, knowledge base, approval, schedulable toggle.
-6. **Output** — Output format (markdown, JSON), export formats, schema.
+5. **Behavior & Review** — Cost preview, web search, schedulable toggle, summary.
+
+### Build with Alex
+The Skill Builder includes a "Build with Alex" mode — an inline AI assistant specifically tuned for skill creation and prompt engineering. When activated, the right-side Preview panel transforms into an Alex chat panel. Alex can:
+- Generate full, production-ready system prompts from a natural language description
+- Suggest input fields, descriptions, and configurations
+- Refine and improve existing prompts
+- Apply suggestions directly to the builder form via "Apply" buttons
+
+To use: Click the "Build with Alex" toggle in the Skill Builder header. Describe what you want and Alex will generate the complete skill configuration.
 
 Tips: Use {{field_name}} in prompts. Start with lower token budgets.
 
@@ -71,9 +79,90 @@ Automate schedulable skills on recurring schedules (daily, weekly, monthly, cust
 Manage from the Tasks page. Dashboard shows upcoming tasks.
 
 ## Alex AI Assistant
-Alex is a general-purpose AI assistant (that's you!) accessible from the web app chat widget and Telegram.
+Alex is a general-purpose AI assistant (that's you!) accessible from the web app chat widget, the Skill Builder (via "Build with Alex" mode), and Telegram.
 You are grounded in the Knowledge Base and know everything about the platform.
-You can answer questions about the app, help create skills, and provide general assistance.
+You can answer questions about the app, help create skills, generate system prompts, and provide general assistance.
+`;
+
+const SKILL_BUILDER_SYSTEM_PROMPT = `ROLE
+
+You are Alex, operating in Skill Builder mode. You are an expert prompt engineer and skill architect for the Apex AI platform. Your purpose is to help users create exceptional, production-ready skills by generating comprehensive system prompts and suggesting optimal configurations.
+
+CRITICAL RULES
+
+1. ALWAYS write FULL, COMPLETE prompts. Never abbreviate, summarize, or use placeholders like "..." or "[continue here]". Every prompt you generate must be immediately usable in production without any editing.
+2. When suggesting changes to skill fields, ALWAYS wrap them in a \`\`\`skill-update code block with valid JSON.
+3. Be proactive — if you see issues or improvements, suggest them.
+
+SKILL ARCHITECTURE REFERENCE
+
+The Apex AI Skill Builder has 5 steps:
+1. **Identity** — name (snake_case ID), display_name, description, emoji
+2. **Routing** — department (sales/marketing), agent_type (researcher/strategist/content/meeting-prep), preferred_model
+3. **Inputs** — Array of input fields with: label, type (text/textarea/url/select/radio/multi-select/file), placeholder, hint, required, options (for select/radio/multi-select)
+4. **System Prompt** — The core instructions. Use {{field_name}} for variable injection from inputs.
+5. **Behavior** — web_search_enabled, schedulable
+
+PROMPT ENGINEERING FRAMEWORK
+
+When writing system prompts, apply ALL of these elements:
+
+### 1. Role & Persona Definition
+- Define WHO the AI is: expertise, years of experience, specialization
+- Set the professional context and authority level
+- Example: "You are a senior competitive intelligence analyst with 15 years of experience in B2B technology markets."
+
+### 2. Task Decomposition
+- Break the task into clear, sequential steps
+- Number each step explicitly
+- Describe what each step produces
+- Example: "Step 1: Analyze the company profile. Step 2: Identify key competitors. Step 3: Evaluate competitive positioning..."
+
+### 3. Output Format Specification
+- Define EXACT structure: headers, sections, subsections
+- Specify Markdown formatting requirements
+- Include example output structures where helpful
+- Define length expectations per section
+
+### 4. Variable Injection
+- Reference user inputs with {{field_name}} syntax
+- Explain how each variable should influence the output
+- Handle cases where optional variables are empty
+
+### 5. Quality Constraints
+- Set minimum depth and detail requirements
+- Require specific evidence types (data points, examples, sources)
+- Define what "comprehensive" means for this specific task
+- Include word count or detail level minimums per section
+
+### 6. Edge Case Handling
+- What to do when information is limited
+- How to handle ambiguous inputs
+- Fallback behaviors for optional fields
+- How to signal low confidence
+
+AVAILABLE DEPARTMENTS: sales, marketing
+AVAILABLE AGENTS: researcher, strategist, content, meeting-prep
+AVAILABLE INPUT TYPES: text, textarea, url, select, radio, multi-select, file
+
+SUGGESTION FORMAT
+
+When you want to suggest a change to the skill being built, wrap it in a skill-update code block:
+
+\`\`\`skill-update
+{ "field": "systemPrompt", "value": "Your full prompt here..." }
+\`\`\`
+
+Supported fields: systemPrompt, description, name, displayName, inputs, emoji
+- For "inputs", value should be an array of input objects: [{ "label": "...", "type": "text", "placeholder": "...", "hint": "...", "required": true }]
+- For "systemPrompt", ALWAYS provide the COMPLETE prompt text — never abbreviated
+
+TONE & STYLE
+- Professional and direct
+- No emojis in your responses (the skill itself can have an emoji)
+- Limit em dashes
+- Use clear section headers
+- When generating prompts, write them as if you are the world's best prompt engineer — thorough, precise, and production-ready
 `;
 
 serve(async (req) => {
@@ -95,7 +184,7 @@ serve(async (req) => {
   );
 
   try {
-    const { messages, attachments } = await req.json();
+    const { messages, attachments, mode, builderState } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: "messages array is required" }), {
@@ -113,11 +202,25 @@ serve(async (req) => {
         ).join("\n\n");
     }
 
+    // Build skill-builder context
+    let builderContext = "";
+    if (mode === "skill-builder" && builderState) {
+      builderContext = "\n\n## CURRENT SKILL BUILDER STATE\n" +
+        `Name: ${builderState.name || "(not set)"}\n` +
+        `Display Name: ${builderState.displayName || "(not set)"}\n` +
+        `Description: ${builderState.description || "(not set)"}\n` +
+        `Department: ${builderState.department || "(not set)"}\n` +
+        `Agent Type: ${builderState.agentType || "(not set)"}\n` +
+        `Preferred Model: ${builderState.preferredModel || "(not set)"}\n` +
+        `Inputs: ${builderState.inputs && builderState.inputs.length > 0 ? JSON.stringify(builderState.inputs) : "(none defined)"}\n` +
+        `System Prompt: ${builderState.systemPrompt ? `(${builderState.systemPrompt.length} chars) ${builderState.systemPrompt.slice(0, 500)}${builderState.systemPrompt.length > 500 ? "..." : ""}` : "(empty)"}`;
+    }
+
     // RAG: extract search terms from the latest user message
     const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
     let knowledgeContext = "";
 
-    if (lastUserMsg) {
+    if (lastUserMsg && mode !== "skill-builder") {
       const searchTerms = lastUserMsg.content
         .split(/\s+/)
         .filter((t: string) => t.length > 3)
@@ -139,8 +242,13 @@ serve(async (req) => {
       }
     }
 
-    const systemPrompt =
-      `ROLE
+    let systemPrompt: string;
+
+    if (mode === "skill-builder") {
+      systemPrompt = SKILL_BUILDER_SYSTEM_PROMPT + builderContext;
+    } else {
+      systemPrompt =
+        `ROLE
 
 You are Alex, the digital colleague and concierge for Solutionment. You are the definitive expert on the Solutionment ecosystem -- our mission, our services, our products, and our unique approach to presales excellence.
 
@@ -186,6 +294,7 @@ TONE & STYLE
 * If you don't know something specific to the organization, say so honestly.
 
 ${APP_KNOWLEDGE}${knowledgeContext}${attachmentContext}`;
+    }
 
     // Call AI gateway with streaming
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -195,7 +304,7 @@ ${APP_KNOWLEDGE}${knowledgeContext}${attachmentContext}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: mode === "skill-builder" ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.slice(-20),

@@ -150,7 +150,7 @@ async function handleStart(chatId: number, firstName?: string) {
 async function handleHelp(chatId: number) {
   await sendMessage(
     chatId,
-    `<b>🤖 Apex AI Bot Commands</b>\n\n` +
+    `<b>Apex AI Bot Commands</b>\n\n` +
       `/start — Welcome message\n` +
       `/skills — List all available skills by department\n` +
       `/tasks — View your active scheduled tasks\n` +
@@ -162,9 +162,11 @@ async function handleHelp(chatId: number) {
       `2. Tap a skill to select it\n` +
       `3. I'll ask for each input one at a time\n` +
       `4. Once complete, I'll run the agent and send you the result\n\n` +
-      `📊 <b>Deck generation:</b> Skills with PowerPoint output automatically generate .pptx files and send you a download link.\n` +
-      `📅 Use /tasks to see your automated scheduled tasks\n` +
-      `💡 Or just <b>type any message</b> to chat with Alex, your AI assistant!`
+      `Deck generation: Skills with PowerPoint output automatically generate .pptx files and send you a download link.\n` +
+      `Use /tasks to see your automated scheduled tasks.\n\n` +
+      `<b>Build with Alex (Web App):</b>\n` +
+      `In the web app's Skill Builder, click "Build with Alex" to get AI-assisted help creating skills and writing system prompts. Alex will generate complete, production-ready prompts and suggest configurations you can apply with one click.\n\n` +
+      `Or just <b>type any message</b> to chat with Alex, your AI assistant!`
   );
 }
 

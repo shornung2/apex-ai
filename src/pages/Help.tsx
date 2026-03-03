@@ -121,6 +121,26 @@ Create custom skills with the guided wizard:
 4. **System Prompt** — Write the system prompt with variable placeholders like \`{{field_name}}\`. Use the "Insert variable" buttons to quickly add references.
 5. **Behavior & Review** — Estimated cost, web search toggle, schedulable toggle, and a summary of the skill configuration.
 
+### Build with Alex
+The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assistant specifically tuned for skill creation and prompt engineering.
+
+**How to activate:**
+1. Open the Skill Builder (click "New Skill" or edit an existing skill).
+2. Click the **"Build with Alex"** button in the builder header.
+3. The right-side Preview panel transforms into an Alex chat panel.
+
+**What Alex can do:**
+- **Generate complete system prompts** — describe your skill idea in plain language and Alex writes a full, production-ready system prompt with role definitions, step-by-step instructions, output format specifications, and edge case handling.
+- **Suggest input fields** — Alex can recommend the right input fields (types, labels, placeholders, hints) based on your skill's purpose.
+- **Refine existing prompts** — paste or load an existing prompt and ask Alex to improve it.
+- **Suggest descriptions and names** — Alex can help with skill identity and metadata.
+
+**How to apply suggestions:**
+- Alex wraps actionable suggestions in special blocks with **"Apply"** buttons.
+- Click "Apply" to instantly populate the corresponding builder field (system prompt, inputs, description, etc.).
+- You can review and further edit the applied content in the builder form.
+- Toggle back to "Preview" mode anytime to see the skill preview.
+
 ### OpenRouter Models in Skills
 - If OpenRouter is enabled in **Settings > API Keys**, your selected OpenRouter models appear in the Preferred Model dropdown under a dedicated "🔗 OpenRouter" section.
 - Skills using OpenRouter models are routed through your OpenRouter API key and credits.
@@ -136,7 +156,8 @@ Create custom skills with the guided wizard:
 - Use \`{{field_name}}\` in your system prompt to reference input fields.
 - Tags and trigger keywords help organize and search skills.
 - Enable "Schedulable" on skills that produce useful output when re-run with the same inputs (e.g. market research, social media content).
-- You can select up to 5 OpenRouter models in Settings for use across all skills.`,
+- You can select up to 5 OpenRouter models in Settings for use across all skills.
+- **Try "Build with Alex"** for your first skill — it dramatically reduces the effort of writing a strong system prompt.`,
   },
   {
     id: "knowledge-base",
@@ -345,12 +366,12 @@ Create custom skills with the guided wizard:
   {
     id: "alex-assistant",
     title: "Alex AI Assistant",
-    content: `Alex is your general-purpose AI assistant, available in the web app and on Telegram.
+    content: `Alex is your general-purpose AI assistant, available in the web app, the Skill Builder, and on Telegram.
 
 ### What Alex Can Do
 
 - **Answer questions about the platform** — how to create skills, navigate departments, use the Knowledge Base, etc.
-- **Help with the Skill Builder** — guide you through creating custom skills step by step.
+- **Build skills with you** — in the Skill Builder's "Build with Alex" mode, Alex generates complete system prompts, suggests inputs, and helps refine configurations. See the "Build with Alex" section under Capabilities & Skill Builder.
 - **Provide grounded answers** — Alex searches your Knowledge Base so responses reflect your organization's own documents.
 - **Process file attachments** — upload a document directly in chat and Alex will use its content to answer your questions.
 - **General assistance** — answer business questions, brainstorm ideas, draft content, and more.
@@ -362,9 +383,19 @@ Create custom skills with the guided wizard:
 3. Alex streams responses in real-time with Markdown formatting.
 4. The conversation resets when you reload the page.
 
+### Build with Alex (Skill Builder)
+
+1. Open the **Skill Builder** (Capabilities > New Skill or edit an existing skill).
+2. Click **"Build with Alex"** in the builder header.
+3. Describe your skill idea in the chat — Alex will generate a complete system prompt and suggest configurations.
+4. Click the **"Apply"** buttons on Alex's suggestions to populate the builder form.
+5. Toggle back to **"Preview"** to review the skill configuration.
+
+This mode uses a specialized prompt engineering AI that understands skill architecture, variable injection ({{field_name}}), output formatting, and best practices for writing comprehensive AI prompts.
+
 ### File Attachments in Alex Chat
 
-1. Click the **paperclip icon** (📎) next to the text input.
+1. Click the **paperclip icon** next to the text input.
 2. Select a file — supported formats: PDF, DOCX, PPTX, TXT, MD, CSV (max 10 MB).
 3. The file is uploaded, processed server-side, and its extracted text appears as a chip above the input.
 4. Type your question and send — Alex receives the document content as additional context alongside Knowledge Base grounding.
@@ -383,6 +414,7 @@ Create custom skills with the guided wizard:
 - Ask Alex "How do I create a custom skill?" for a step-by-step walkthrough.
 - Upload documents to the Knowledge Base first — Alex will use them to give more relevant answers.
 - Use the paperclip button to attach a document and ask specific questions about it.
+- In the Skill Builder, try asking Alex: "Create a skill that researches competitors and produces a SWOT analysis."
 - On Telegram, use \`/clear\` if Alex's responses seem off-track.`,
   },
   {

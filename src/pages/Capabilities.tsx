@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, Trash2, GripVertical, BookOpen, Wrench, Loader2, ChevronLeft, ChevronRight, Check, Pencil, X, AlertTriangle } from "lucide-react";
+import { Search, Plus, Trash2, GripVertical, BookOpen, Wrench, Loader2, ChevronLeft, ChevronRight, Check, Pencil, X, AlertTriangle, Sparkles, Send, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { agentDefinitions, departmentDefinitions, dbRowToSkill, type Department, type AgentType, type SkillInput, type Skill } from "@/data/mock-data";
 import { useToast } from "@/hooks/use-toast";
+import ReactMarkdown from "react-markdown";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -146,6 +147,130 @@ export default function Capabilities() {
   
   const [builderWebSearch, setBuilderWebSearch] = useState(false);
   const [builderSchedulable, setBuilderSchedulable] = useState(false);
+
+  // Build with Alex state
+  const [builderMode, setBuilderMode] = useState<"manual" | "alex">("manual");
+  const [alexMessages, setAlexMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [alexInput, setAlexInput] = useState("");
+  const [alexLoading, setAlexLoading] = useState(false);
+  const alexScrollRef = useRef<HTMLDivElement>(null);
+  const alexInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (alexScrollRef.current) alexScrollRef.current.scrollTop = alexScrollRef.current.scrollHeight;
+  }, [alexMessages]);
+
+  const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/alex-chat`;
+
+  const parseSkillUpdates = (content: string) => {
+    const updates: { field: string; value: any; raw: string }[] = [];
+    const regex = /```skill-update\s*\n([\s\S]*?)```/g;
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      try {
+        const parsed = JSON.parse(match[1].trim());
+        if (parsed.field && parsed.value !== undefined) {
+          updates.push({ field: parsed.field, value: parsed.value, raw: match[0] });
+        }
+      } catch { /* skip invalid JSON */ }
+    }
+    return updates;
+  };
+
+  const applySkillUpdate = (field: string, value: any) => {
+    switch (field) {
+      case "systemPrompt": setBuilderSystemPrompt(value); toast({ title: "System prompt applied" }); break;
+      case "description": setBuilderDesc(value); toast({ title: "Description applied" }); break;
+      case "name": setBuilderName(value); toast({ title: "Name applied" }); break;
+      case "displayName": setBuilderDisplayName(value); toast({ title: "Display name applied" }); break;
+      case "emoji": setBuilderEmoji(value); toast({ title: "Emoji applied" }); break;
+      case "inputs":
+        if (Array.isArray(value)) {
+          setBuilderInputs(value.map((inp: any) => ({
+            label: inp.label || "",
+            type: inp.type || "text",
+            placeholder: inp.placeholder || "",
+            hint: inp.hint || "",
+            required: inp.required ?? false,
+            options: inp.options || [],
+          })));
+          toast({ title: `${value.length} input fields applied` });
+        }
+        break;
+      default: toast({ title: `Unknown field: ${field}`, variant: "destructive" });
+    }
+  };
+
+  const sendAlexMessage = async () => {
+    const text = alexInput.trim();
+    if (!text || alexLoading) return;
+    const userMsg = { role: "user" as const, content: text };
+    setAlexInput("");
+    setAlexMessages(prev => [...prev, userMsg]);
+    setAlexLoading(true);
+
+    const allMessages = [...alexMessages, userMsg];
+    const builderState = {
+      name: builderName,
+      displayName: builderDisplayName,
+      description: builderDesc,
+      department: builderDept,
+      agentType: builderAgent,
+      inputs: builderInputs,
+      systemPrompt: builderSystemPrompt,
+      preferredModel: builderPreferredModel,
+    };
+
+    let assistantSoFar = "";
+    try {
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        body: JSON.stringify({ messages: allMessages, mode: "skill-builder", builderState }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Request failed" }));
+        setAlexMessages(prev => [...prev, { role: "assistant", content: `Error: ${err.error || "Something went wrong."}` }]);
+        setAlexLoading(false);
+        return;
+      }
+
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let newlineIdx: number;
+        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIdx);
+          buffer = buffer.slice(newlineIdx + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.content) {
+              assistantSoFar += parsed.content;
+              setAlexMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === "assistant") return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+                return [...prev, { role: "assistant", content: assistantSoFar }];
+              });
+            }
+          } catch { buffer = line + "\n" + buffer; break; }
+        }
+      }
+    } catch {
+      setAlexMessages(prev => [...prev, { role: "assistant", content: "Connection error. Please try again." }]);
+    }
+    setAlexLoading(false);
+  };
 
   const fetchSkills = async () => {
     setLoading(true);
@@ -406,16 +531,30 @@ export default function Capabilities() {
                 <h2 className="text-lg font-semibold">{editingSkillId ? "Edit Skill" : "Create a New Skill"}</h2>
                 <span className="text-xs text-muted-foreground">Step {builderStep} of 5 — {STEP_LABELS[builderStep - 1]}</span>
               </div>
-              {editingSkillId && (
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={resetBuilder}>
-                    <X className="h-3 w-3" /> Cancel
-                  </Button>
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-destructive" onClick={() => { deleteSkill(editingSkillId); resetBuilder(); }}>
-                    <Trash2 className="h-3 w-3" /> Delete
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-2 items-center">
+                <Button
+                  variant={builderMode === "alex" ? "default" : "outline"}
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => {
+                    setBuilderMode(m => m === "alex" ? "manual" : "alex");
+                    if (builderMode === "manual") setTimeout(() => alexInputRef.current?.focus(), 100);
+                  }}
+                >
+                  {builderMode === "alex" ? <Eye className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {builderMode === "alex" ? "Preview" : "Build with Alex"}
+                </Button>
+                {editingSkillId && (
+                  <>
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={resetBuilder}>
+                      <X className="h-3 w-3" /> Cancel
+                    </Button>
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-destructive" onClick={() => { deleteSkill(editingSkillId); resetBuilder(); }}>
+                      <Trash2 className="h-3 w-3" /> Delete
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             <StepIndicator current={builderStep} total={5} />
@@ -686,62 +825,146 @@ export default function Capabilities() {
                 </CardContent>
               </Card>
 
-              {/* Preview */}
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle className="text-lg">Preview</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {builderName ? (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{builderEmoji}</span>
-                        <div>
-                          <h3 className="font-semibold">{builderDisplayName || builderName}</h3>
-                          {builderDesc && <p className="text-sm text-muted-foreground mt-0.5">{builderDesc}</p>}
+              {/* Right Panel: Preview or Alex Chat */}
+              {builderMode === "alex" ? (
+                <Card className="glass-card flex flex-col" style={{ minHeight: 480 }}>
+                  <CardHeader className="shrink-0 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-lg">Build with Alex</CardTitle>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Describe your skill idea and Alex will generate prompts and configurations</p>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+                    <div ref={alexScrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                      {alexMessages.length === 0 && (
+                        <div className="text-center py-8">
+                          <Sparkles className="h-8 w-8 mx-auto mb-3 text-primary/50" />
+                          <p className="text-sm font-medium text-foreground">Ready to build</p>
+                          <p className="text-xs text-muted-foreground mt-1 max-w-[260px] mx-auto">
+                            Describe your skill idea and I will generate a complete system prompt and configuration for you.
+                          </p>
                         </div>
-                      </div>
-                      <div className="flex gap-1.5 flex-wrap">
-                        {builderDept && <Badge variant="outline" className="text-[10px]">{departmentDefinitions[builderDept as Department]?.name}</Badge>}
-                        {builderAgent && <Badge variant="outline" className="text-[10px]">{agentDefinitions.find((a) => a.type === builderAgent)?.name}</Badge>}
-                      </div>
-                      {builderInputs.length > 0 && (
-                        <div className="space-y-3 pt-2 border-t border-border/50">
-                          <p className="text-xs text-muted-foreground font-medium">Form Preview ({builderInputs.length} fields)</p>
-                          {builderInputs.map((inp, idx) => (
-                            <div key={idx} className="space-y-1">
-                              <Label className="text-xs">
-                                {inp.label || `Field ${idx + 1}`}
-                                {inp.required && <span className="text-destructive ml-1">*</span>}
-                              </Label>
-                              {inp.hint && <p className="text-[10px] text-muted-foreground">{inp.hint}</p>}
-                              {inp.type === "textarea" ? (
-                                <Textarea disabled placeholder={inp.placeholder} rows={2} className="bg-muted/50 border-border/50 resize-none text-xs" />
-                              ) : inp.type === "select" || inp.type === "multi-select" ? (
-                                <Select disabled>
-                                  <SelectTrigger className="bg-muted/50 border-border/50 text-xs"><SelectValue placeholder={`Select ${inp.label?.toLowerCase()}...`} /></SelectTrigger>
-                                </Select>
-                              ) : (
-                                <Input disabled placeholder={inp.placeholder} className="bg-muted/50 border-border/50 text-xs" />
-                              )}
+                      )}
+                      {alexMessages.map((msg, i) => {
+                        const updates = msg.role === "assistant" ? parseSkillUpdates(msg.content) : [];
+                        const cleanContent = msg.role === "assistant"
+                          ? msg.content.replace(/```skill-update\s*\n[\s\S]*?```/g, "").trim()
+                          : msg.content;
+                        return (
+                          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                            <div className={`max-w-[90%] rounded-lg px-3 py-2 text-sm ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+                              {msg.role === "assistant" ? (
+                                <div className="space-y-2">
+                                  <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&>p]:my-1.5 [&>ul]:my-1.5 [&>ol]:my-1.5">
+                                    <ReactMarkdown>{cleanContent}</ReactMarkdown>
+                                  </div>
+                                  {updates.length > 0 && (
+                                    <div className="space-y-1.5 pt-2 border-t border-border/50">
+                                      {updates.map((u, ui) => (
+                                        <Button
+                                          key={ui}
+                                          variant="outline"
+                                          size="sm"
+                                          className="w-full justify-start gap-2 text-xs h-8"
+                                          onClick={() => applySkillUpdate(u.field, u.value)}
+                                        >
+                                          <Check className="h-3 w-3 text-primary" />
+                                          Apply {u.field === "systemPrompt" ? "System Prompt" : u.field === "displayName" ? "Display Name" : u.field}
+                                          {u.field === "systemPrompt" && <span className="text-muted-foreground ml-auto">{String(u.value).length} chars</span>}
+                                          {u.field === "inputs" && Array.isArray(u.value) && <span className="text-muted-foreground ml-auto">{u.value.length} fields</span>}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : cleanContent}
                             </div>
-                          ))}
+                          </div>
+                        );
+                      })}
+                      {alexLoading && alexMessages[alexMessages.length - 1]?.role !== "assistant" && (
+                        <div className="flex justify-start">
+                          <div className="bg-muted rounded-lg px-3 py-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          </div>
                         </div>
                       )}
-                      {builderSystemPrompt && (
-                        <div className="pt-2 border-t border-border/50">
-                          <p className="text-xs text-muted-foreground font-medium mb-2">System Prompt ({builderSystemPrompt.length} chars)</p>
-                          <pre className="text-[10px] bg-muted/50 p-3 rounded-lg overflow-y-auto max-h-40 whitespace-pre-wrap">{builderSystemPrompt.slice(0, 500)}{builderSystemPrompt.length > 500 ? "..." : ""}</pre>
+                    </div>
+                    <div className="border-t border-border p-3 shrink-0">
+                      <form onSubmit={(e) => { e.preventDefault(); sendAlexMessage(); }} className="flex gap-2">
+                        <input
+                          ref={alexInputRef}
+                          value={alexInput}
+                          onChange={(e) => setAlexInput(e.target.value)}
+                          placeholder="Describe your skill idea..."
+                          className="flex-1 text-sm bg-muted rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
+                          disabled={alexLoading}
+                        />
+                        <Button type="submit" size="icon" className="h-9 w-9 shrink-0" disabled={alexLoading || !alexInput.trim()}>
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </form>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Preview</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {builderName ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{builderEmoji}</span>
+                          <div>
+                            <h3 className="font-semibold">{builderDisplayName || builderName}</h3>
+                            {builderDesc && <p className="text-sm text-muted-foreground mt-0.5">{builderDesc}</p>}
+                          </div>
                         </div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      Start filling in the skill details to see a preview here
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {builderDept && <Badge variant="outline" className="text-[10px]">{departmentDefinitions[builderDept as Department]?.name}</Badge>}
+                          {builderAgent && <Badge variant="outline" className="text-[10px]">{agentDefinitions.find((a) => a.type === builderAgent)?.name}</Badge>}
+                        </div>
+                        {builderInputs.length > 0 && (
+                          <div className="space-y-3 pt-2 border-t border-border/50">
+                            <p className="text-xs text-muted-foreground font-medium">Form Preview ({builderInputs.length} fields)</p>
+                            {builderInputs.map((inp, idx) => (
+                              <div key={idx} className="space-y-1">
+                                <Label className="text-xs">
+                                  {inp.label || `Field ${idx + 1}`}
+                                  {inp.required && <span className="text-destructive ml-1">*</span>}
+                                </Label>
+                                {inp.hint && <p className="text-[10px] text-muted-foreground">{inp.hint}</p>}
+                                {inp.type === "textarea" ? (
+                                  <Textarea disabled placeholder={inp.placeholder} rows={2} className="bg-muted/50 border-border/50 resize-none text-xs" />
+                                ) : inp.type === "select" || inp.type === "multi-select" ? (
+                                  <Select disabled>
+                                    <SelectTrigger className="bg-muted/50 border-border/50 text-xs"><SelectValue placeholder={`Select ${inp.label?.toLowerCase()}...`} /></SelectTrigger>
+                                  </Select>
+                                ) : (
+                                  <Input disabled placeholder={inp.placeholder} className="bg-muted/50 border-border/50 text-xs" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {builderSystemPrompt && (
+                          <div className="pt-2 border-t border-border/50">
+                            <p className="text-xs text-muted-foreground font-medium mb-2">System Prompt ({builderSystemPrompt.length} chars)</p>
+                            <pre className="text-[10px] bg-muted/50 p-3 rounded-lg overflow-y-auto max-h-40 whitespace-pre-wrap">{builderSystemPrompt.slice(0, 500)}{builderSystemPrompt.length > 500 ? "..." : ""}</pre>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        Start filling in the skill details to see a preview here
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
         </Tabs>
