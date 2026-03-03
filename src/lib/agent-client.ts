@@ -30,6 +30,8 @@ export async function runSkill({ skill, inputs, onDelta, onJobId, onDone, onErro
         inputs,
         promptTemplate: skill.promptTemplate,
         systemPrompt: skill.systemPrompt || "",
+        preferredModel: skill.preferredModel,
+        webSearchEnabled: skill.webSearchEnabled,
       }),
       signal,
     });

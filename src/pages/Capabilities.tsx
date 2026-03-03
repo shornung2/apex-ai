@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, Trash2, GripVertical, BookOpen, Wrench, Loader2, ChevronLeft, ChevronRight, Check, Pencil, X } from "lucide-react";
+import { Search, Plus, Trash2, GripVertical, BookOpen, Wrench, Loader2, ChevronLeft, ChevronRight, Check, Pencil, X, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { agentDefinitions, departmentDefinitions, dbRowToSkill, type Department, type AgentType, type SkillInput, type Skill } from "@/data/mock-data";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,28 @@ const inputTypes = [
 ];
 
 const STEP_LABELS = ["Identity", "Routing", "Inputs", "System Prompt", "Behavior", "Output"];
+
+const AI_MODELS = [
+  { id: "google/gemini-2.5-flash-lite", name: "Gemini Flash Lite", tier: "standard" as const, desc: "Simple tasks, classification" },
+  { id: "google/gemini-2.5-flash", name: "Gemini Flash", tier: "standard" as const, desc: "Balanced speed/quality" },
+  { id: "google/gemini-3-flash-preview", name: "Gemini 3 Flash", tier: "standard" as const, desc: "Good all-rounder (default)" },
+  { id: "openai/gpt-5-nano", name: "GPT-5 Nano", tier: "standard" as const, desc: "Fast, cost-efficient" },
+  { id: "openai/gpt-5-mini", name: "GPT-5 Mini", tier: "standard" as const, desc: "Strong balance" },
+  { id: "google/gemini-2.5-pro", name: "Gemini Pro", tier: "premium" as const, desc: "Deep reasoning, complex analysis" },
+  { id: "google/gemini-3-pro-preview", name: "Gemini 3 Pro", tier: "premium" as const, desc: "Next-gen deep reasoning" },
+  { id: "openai/gpt-5", name: "GPT-5", tier: "premium" as const, desc: "Maximum accuracy" },
+  { id: "openai/gpt-5.2", name: "GPT-5.2", tier: "premium" as const, desc: "Latest, complex problem-solving" },
+];
+
+const AGENT_DEFAULT_MODELS: Record<string, string> = {
+  researcher: "google/gemini-2.5-pro",
+  strategist: "google/gemini-3-flash-preview",
+  content: "google/gemini-3-flash-preview",
+  "meeting-prep": "google/gemini-3-flash-preview",
+};
+
+const isPremiumModel = (modelId: string) => AI_MODELS.find(m => m.id === modelId)?.tier === "premium";
+const getModelName = (modelId: string) => AI_MODELS.find(m => m.id === modelId)?.name || modelId;
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -76,8 +98,7 @@ export default function Capabilities() {
   const [builderAgent, setBuilderAgent] = useState<AgentType | "">("");
   const [builderTags, setBuilderTags] = useState("");
   const [builderTriggerKeywords, setBuilderTriggerKeywords] = useState("");
-  const [builderPreferredModel, setBuilderPreferredModel] = useState("haiku");
-  const [builderPreferredLane, setBuilderPreferredLane] = useState("simple_haiku");
+  const [builderPreferredModel, setBuilderPreferredModel] = useState("google/gemini-3-flash-preview");
   // Step 3: Inputs
   const [builderInputs, setBuilderInputs] = useState<Partial<SkillInput>[]>([]);
   // Step 4: System Prompt
@@ -118,7 +139,7 @@ export default function Capabilities() {
     setEditingSkillId(null);
     setBuilderStep(1);
     setBuilderName(""); setBuilderDisplayName(""); setBuilderDesc(""); setBuilderEmoji("⚡"); setBuilderVersion("1.0.0");
-    setBuilderDept(""); setBuilderAgent(""); setBuilderTags(""); setBuilderTriggerKeywords(""); setBuilderPreferredModel("haiku"); setBuilderPreferredLane("simple_haiku");
+    setBuilderDept(""); setBuilderAgent(""); setBuilderTags(""); setBuilderTriggerKeywords(""); setBuilderPreferredModel("google/gemini-3-flash-preview");
     setBuilderInputs([]);
     setBuilderSystemPrompt("");
     setBuilderTokenBudget(10000); setBuilderEstimatedCost(""); setBuilderTimeout(120); setBuilderWebSearch(false); setBuilderApprovalRequired(false); setBuilderCapabilities([]); setBuilderSchedulable(false);
@@ -137,8 +158,7 @@ export default function Capabilities() {
     setBuilderAgent(skill.agentType);
     setBuilderTags((skill.tags || []).join(", "));
     setBuilderTriggerKeywords((skill.triggerKeywords || []).join(", "));
-    setBuilderPreferredModel(skill.preferredModel || "haiku");
-    setBuilderPreferredLane(skill.preferredLane || "simple_haiku");
+    setBuilderPreferredModel(skill.preferredModel || "google/gemini-3-flash-preview");
     setBuilderInputs(skill.inputs.map(inp => ({ ...inp })));
     setBuilderSystemPrompt(skill.systemPrompt || "");
     setBuilderTokenBudget(skill.tokenBudget || 10000);
@@ -213,7 +233,6 @@ export default function Capabilities() {
       tags,
       trigger_keywords: triggerKeywords,
       preferred_model: builderPreferredModel,
-      preferred_lane: builderPreferredLane,
       token_budget: builderTokenBudget,
       estimated_cost_usd: builderEstimatedCost ? parseFloat(builderEstimatedCost) : null,
       required_capabilities: builderCapabilities,
@@ -419,7 +438,12 @@ export default function Capabilities() {
                         </div>
                         <div className="space-y-2">
                           <Label>Agent</Label>
-                          <Select value={builderAgent} onValueChange={(v) => setBuilderAgent(v as AgentType)}>
+                          <Select value={builderAgent} onValueChange={(v) => {
+                            const agent = v as AgentType;
+                            setBuilderAgent(agent);
+                            const defaultModel = AGENT_DEFAULT_MODELS[agent] || "google/gemini-3-flash-preview";
+                            setBuilderPreferredModel(defaultModel);
+                          }}>
                             <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue placeholder="Select..." /></SelectTrigger>
                             <SelectContent>
                               {agentDefinitions.map((a) => (
@@ -437,28 +461,32 @@ export default function Capabilities() {
                         <Label>Trigger Keywords (comma-separated)</Label>
                         <Input value={builderTriggerKeywords} onChange={(e) => setBuilderTriggerKeywords(e.target.value)} placeholder="e.g. research company, company profile" className="bg-muted/50 border-border/50" />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label>Preferred Model</Label>
-                          <Select value={builderPreferredModel} onValueChange={setBuilderPreferredModel}>
-                            <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="haiku">Haiku (Fast)</SelectItem>
-                              <SelectItem value="sonnet">Sonnet (Balanced)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Lane</Label>
-                          <Select value={builderPreferredLane} onValueChange={setBuilderPreferredLane}>
-                            <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="simple_haiku">Simple Haiku</SelectItem>
-                              <SelectItem value="research_sonnet">Research Sonnet</SelectItem>
-                              <SelectItem value="agentic_sonnet">Agentic Sonnet</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                      <div className="space-y-2">
+                        <Label>Preferred Model</Label>
+                        <Select value={builderPreferredModel} onValueChange={setBuilderPreferredModel}>
+                          <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Standard</SelectLabel>
+                            {AI_MODELS.filter(m => m.tier === "standard").map(m => (
+                              <SelectItem key={m.id} value={m.id}>
+                                <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— {m.desc}</span></span>
+                              </SelectItem>
+                            ))}
+                            <SelectSeparator />
+                            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Premium</SelectLabel>
+                            {AI_MODELS.filter(m => m.tier === "premium").map(m => (
+                              <SelectItem key={m.id} value={m.id}>
+                                <span className="flex items-center gap-2">{m.name} <span className="text-[10px] text-muted-foreground">— {m.desc}</span></span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {isPremiumModel(builderPreferredModel) && (
+                          <div className="flex items-center gap-1.5 text-xs text-amber-500">
+                            <AlertTriangle className="h-3 w-3" />
+                            <span>Premium model — significantly higher cost per run</span>
+                          </div>
+                        )}
                       </div>
                     </>
                   )}
@@ -618,7 +646,7 @@ export default function Capabilities() {
                         <h3 className="text-sm font-semibold">Summary</h3>
                         <div className="text-xs text-muted-foreground space-y-1">
                           <p><span className="font-medium text-foreground">{builderEmoji} {builderDisplayName || builderName}</span> — {builderDesc || "No description"}</p>
-                          <p>Dept: {builderDept || "—"} · Agent: {builderAgent || "—"} · Model: {builderPreferredModel}</p>
+                          <p>Dept: {builderDept || "—"} · Agent: {builderAgent || "—"} · Model: {getModelName(builderPreferredModel)}{isPremiumModel(builderPreferredModel) ? " ⚡ Premium" : ""}</p>
                           <p>{builderInputs.length} inputs · Token budget: {builderTokenBudget.toLocaleString()} · Timeout: {builderTimeout}s</p>
                           <p>Web search: {builderWebSearch ? "Yes" : "No"} · Approval: {builderApprovalRequired ? "Required" : "No"}</p>
                         </div>
