@@ -1,8 +1,12 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AlexChat } from "@/components/AlexChat";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
+import { useTenant } from "@/contexts/TenantContext";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const { onboardingComplete, isLoading } = useTenant();
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -15,6 +19,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <AlexChat />
+      {!isLoading && !onboardingComplete && <OnboardingWizard />}
     </SidebarProvider>
   );
 }
