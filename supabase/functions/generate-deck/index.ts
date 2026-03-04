@@ -493,6 +493,20 @@ serve(async (req) => {
       completed_at: new Date().toISOString(),
     }).eq("id", jobId);
 
+    // 9. Insert usage event
+    try {
+      await supabase.from("usage_events").insert({
+        tenant_id: tenantId,
+        event_type: "deck_generation",
+        tokens_used: tokensUsed,
+        model_used: "google/gemini-2.5-pro",
+        skill_id: skillId || null,
+        job_id: jobId,
+      });
+    } catch (ue) {
+      console.error("Usage event insert failed:", ue);
+    }
+
     return new Response(JSON.stringify({ jobId, fileUrl, slideCount: slides.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

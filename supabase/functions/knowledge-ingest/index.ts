@@ -271,6 +271,17 @@ serve(async (req) => {
       }
     }
 
+    // Insert usage event for knowledge ingestion
+    try {
+      await supabase.from("usage_events").insert({
+        tenant_id: tenant_id,
+        event_type: "knowledge_ingest",
+        tokens_used: tokens,
+      });
+    } catch (ue) {
+      console.error("Usage event insert failed:", ue);
+    }
+
     return new Response(JSON.stringify({ document: doc }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
