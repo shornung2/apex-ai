@@ -28,6 +28,7 @@ export type Database = {
           scheduled_task_id: string | null
           skill_id: string
           status: string
+          tenant_id: string
           title: string
           tokens_used: number | null
         }
@@ -44,6 +45,7 @@ export type Database = {
           scheduled_task_id?: string | null
           skill_id: string
           status?: string
+          tenant_id: string
           title: string
           tokens_used?: number | null
         }
@@ -60,6 +62,7 @@ export type Database = {
           scheduled_task_id?: string | null
           skill_id?: string
           status?: string
+          tenant_id?: string
           title?: string
           tokens_used?: number | null
         }
@@ -71,6 +74,13 @@ export type Database = {
             referencedRelation: "scheduled_tasks"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "agent_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       content_folders: {
@@ -79,18 +89,21 @@ export type Database = {
           id: string
           name: string
           parent_id: string | null
+          tenant_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           parent_id?: string | null
+          tenant_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           parent_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -98,6 +111,13 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "content_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_folders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -114,6 +134,7 @@ export type Database = {
           owner: string
           skill_id: string | null
           skill_name: string | null
+          tenant_id: string
           title: string
           updated_at: string
           view_count: number
@@ -129,6 +150,7 @@ export type Database = {
           owner?: string
           skill_id?: string | null
           skill_name?: string | null
+          tenant_id: string
           title: string
           updated_at?: string
           view_count?: number
@@ -144,6 +166,7 @@ export type Database = {
           owner?: string
           skill_id?: string | null
           skill_name?: string | null
+          tenant_id?: string
           title?: string
           updated_at?: string
           view_count?: number
@@ -156,6 +179,13 @@ export type Database = {
             referencedRelation: "content_folders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "content_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       knowledge_chunks: {
@@ -165,6 +195,7 @@ export type Database = {
           created_at: string
           document_id: string
           id: string
+          tenant_id: string
           tokens: number | null
         }
         Insert: {
@@ -173,6 +204,7 @@ export type Database = {
           created_at?: string
           document_id: string
           id?: string
+          tenant_id: string
           tokens?: number | null
         }
         Update: {
@@ -181,6 +213,7 @@ export type Database = {
           created_at?: string
           document_id?: string
           id?: string
+          tenant_id?: string
           tokens?: number | null
         }
         Relationships: [
@@ -189,6 +222,13 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_chunks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -203,6 +243,7 @@ export type Database = {
           id: string
           mime_type: string | null
           status: string
+          tenant_id: string
           title: string
           tokens: number | null
         }
@@ -215,6 +256,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           status?: string
+          tenant_id: string
           title: string
           tokens?: number | null
         }
@@ -227,6 +269,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           status?: string
+          tenant_id?: string
           title?: string
           tokens?: number | null
         }
@@ -238,6 +281,13 @@ export type Database = {
             referencedRelation: "knowledge_folders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "knowledge_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       knowledge_folders: {
@@ -246,18 +296,21 @@ export type Database = {
           id: string
           name: string
           parent_id: string | null
+          tenant_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           parent_id?: string | null
+          tenant_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           parent_id?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -265,6 +318,13 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "knowledge_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_folders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -285,6 +345,7 @@ export type Database = {
           skill_id: string
           skill_name: string
           status: string
+          tenant_id: string
           title: string
         }
         Insert: {
@@ -302,6 +363,7 @@ export type Database = {
           skill_id: string
           skill_name: string
           status?: string
+          tenant_id: string
           title: string
         }
         Update: {
@@ -319,6 +381,7 @@ export type Database = {
           skill_id?: string
           skill_name?: string
           status?: string
+          tenant_id?: string
           title?: string
         }
         Relationships: [
@@ -327,6 +390,13 @@ export type Database = {
             columns: ["skill_id"]
             isOneToOne: false
             referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -355,6 +425,7 @@ export type Database = {
           schedulable: boolean
           system_prompt: string
           tags: string[]
+          tenant_id: string
           timeout_seconds: number
           token_budget: number
           trigger_keywords: string[]
@@ -385,6 +456,7 @@ export type Database = {
           schedulable?: boolean
           system_prompt?: string
           tags?: string[]
+          tenant_id: string
           timeout_seconds?: number
           token_budget?: number
           trigger_keywords?: string[]
@@ -415,6 +487,7 @@ export type Database = {
           schedulable?: boolean
           system_prompt?: string
           tags?: string[]
+          tenant_id?: string
           timeout_seconds?: number
           token_budget?: number
           trigger_keywords?: string[]
@@ -422,7 +495,15 @@ export type Database = {
           version?: string
           web_search_enabled?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "skills_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       telegram_sessions: {
         Row: {
@@ -460,11 +541,86 @@ export type Database = {
         }
         Relationships: []
       }
+      tenants: {
+        Row: {
+          allowed_domains: string[]
+          created_at: string
+          id: string
+          name: string
+          plan: string
+          slug: string
+          status: string
+          token_budget_monthly: number
+          updated_at: string
+        }
+        Insert: {
+          allowed_domains?: string[]
+          created_at?: string
+          id?: string
+          name: string
+          plan?: string
+          slug: string
+          status?: string
+          token_budget_monthly?: number
+          updated_at?: string
+        }
+        Update: {
+          allowed_domains?: string[]
+          created_at?: string
+          id?: string
+          name?: string
+          plan?: string
+          slug?: string
+          status?: string
+          token_budget_monthly?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          onboarding_complete: boolean
+          role: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          onboarding_complete?: boolean
+          role?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          onboarding_complete?: boolean
+          role?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_settings: {
         Row: {
           created_at: string
           id: string
           key: string
+          tenant_id: string
           updated_at: string
           value: Json
         }
@@ -472,6 +628,7 @@ export type Database = {
           created_at?: string
           id?: string
           key: string
+          tenant_id: string
           updated_at?: string
           value?: Json
         }
@@ -479,17 +636,27 @@ export type Database = {
           created_at?: string
           id?: string
           key?: string
+          tenant_id?: string
           updated_at?: string
           value?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workspace_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_my_tenant_id: { Args: never; Returns: string }
+      get_tenant_for_domain: { Args: { _domain: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

@@ -70,6 +70,7 @@ serve(async (req) => {
             promptTemplate: skill.prompt_template,
             systemPrompt: skill.system_prompt,
             webSearchEnabled: skill.web_search_enabled ?? false,
+            tenantId: task.tenant_id,
           }),
         });
 

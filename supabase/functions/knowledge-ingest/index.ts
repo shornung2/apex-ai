@@ -117,7 +117,7 @@ serve(async (req) => {
 
   try {
     const supabase = getServiceSupabase();
-    const { file_path, title, mime_type, folder_id } = await req.json();
+    const { file_path, title, mime_type, folder_id, tenant_id } = await req.json();
 
     if (!file_path || !title) {
       return new Response(
@@ -182,18 +182,21 @@ serve(async (req) => {
     const tokens = Math.ceil(extractedText.length / 4);
 
     // Insert document record
+    const docInsert: Record<string, any> = {
+      title,
+      content: extractedText || null,
+      doc_type: "upload",
+      status,
+      tokens,
+      file_path,
+      mime_type: mime_type || null,
+      folder_id: folder_id || null,
+    };
+    if (tenant_id) docInsert.tenant_id = tenant_id;
+
     const { data: doc, error: insertError } = await supabase
       .from("knowledge_documents")
-      .insert({
-        title,
-        content: extractedText || null,
-        doc_type: "upload",
-        status,
-        tokens,
-        file_path,
-        mime_type: mime_type || null,
-        folder_id: folder_id || null,
-      })
+      .insert(docInsert)
       .select()
       .single();
 
@@ -209,12 +212,16 @@ serve(async (req) => {
       const paragraphs = extractedText
         .split(/\n\n+/)
         .filter((p) => p.trim().length > 20);
-      const chunks = paragraphs.map((content, idx) => ({
-        document_id: doc.id,
-        content: content.trim(),
-        chunk_index: idx,
-        tokens: Math.ceil(content.length / 4),
-      }));
+      const chunks = paragraphs.map((content, idx) => {
+        const chunk: Record<string, any> = {
+          document_id: doc.id,
+          content: content.trim(),
+          chunk_index: idx,
+          tokens: Math.ceil(content.length / 4),
+        };
+        if (tenant_id) chunk.tenant_id = tenant_id;
+        return chunk;
+      });
 
       if (chunks.length > 0) {
         const { error: chunkError } = await supabase

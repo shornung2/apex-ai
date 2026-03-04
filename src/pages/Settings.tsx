@@ -16,6 +16,7 @@ import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/use-tenant";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -49,6 +50,7 @@ interface OpenRouterModel {
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  const { tenantId } = useTenant();
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const [workspaceName, setWorkspaceName] = useState("Solutionment");
   const [industry, setIndustry] = useState("Technology Consulting");
@@ -147,7 +149,7 @@ export default function SettingsPage() {
     setOpenrouterEnabled(enabled);
     await supabase
       .from("workspace_settings")
-      .upsert({ key: "openrouter_enabled", value: enabled, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      .upsert({ key: "openrouter_enabled", value: enabled, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "key" });
     toast({ title: `OpenRouter ${enabled ? "enabled" : "disabled"}` });
   };
 
@@ -166,7 +168,7 @@ export default function SettingsPage() {
     setSavingModels(true);
     await supabase
       .from("workspace_settings")
-      .upsert({ key: "openrouter_models", value: updated as any, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      .upsert({ key: "openrouter_models", value: updated as any, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "key" });
     setSelectedModels(updated);
     setSavingModels(false);
   };

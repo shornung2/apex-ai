@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/use-tenant";
 import { FolderOpen, FolderPlus, BookOpen } from "lucide-react";
 
 type Folder = { id: string; name: string };
@@ -23,6 +24,7 @@ export function SaveToLibraryDialog({
   title, content, agentType, skillId, skillName, department, jobId, disabled,
 }: SaveToLibraryDialogProps) {
   const { toast } = useToast();
+  const { tenantId } = useTenant();
   const [open, setOpen] = useState(false);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function SaveToLibraryDialog({
 
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
-    const { data } = await supabase.from("content_folders").insert({ name: newFolderName.trim() }).select().single();
+    const { data } = await supabase.from("content_folders").insert({ name: newFolderName.trim(), tenant_id: tenantId! }).select().single();
     if (data) {
       setFolders((prev) => [...prev, data as Folder].sort((a, b) => a.name.localeCompare(b.name)));
       setSelectedFolder(data.id);
@@ -60,6 +62,7 @@ export function SaveToLibraryDialog({
       skill_name: skillName || null,
       department: department || null,
       job_id: jobId || null,
+      tenant_id: tenantId!,
     });
     setSaving(false);
     if (error) {

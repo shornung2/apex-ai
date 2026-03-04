@@ -142,19 +142,22 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    const { skillId, skillName, agentType, department, title, inputs, deckType } = await req.json();
+    const { skillId, skillName, agentType, department, title, inputs, deckType, tenantId } = await req.json();
 
     // 1. Insert job as running
+    const jobInsert: Record<string, any> = {
+      skill_id: skillId,
+      agent_type: agentType,
+      department,
+      title,
+      status: "running",
+      inputs,
+    };
+    if (tenantId) jobInsert.tenant_id = tenantId;
+
     const { data: job, error: insertError } = await supabase
       .from("agent_jobs")
-      .insert({
-        skill_id: skillId,
-        agent_type: agentType,
-        department,
-        title,
-        status: "running",
-        inputs,
-      })
+      .insert(jobInsert)
       .select("id")
       .single();
 

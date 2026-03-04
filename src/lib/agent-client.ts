@@ -6,6 +6,7 @@ const DISPATCH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-di
 export interface RunSkillOptions {
   skill: Skill;
   inputs: Record<string, string>;
+  tenantId?: string;
   onDelta: (text: string) => void;
   onJobId: (jobId: string) => void;
   onDone: () => void;
@@ -13,7 +14,7 @@ export interface RunSkillOptions {
   signal?: AbortSignal;
 }
 
-export async function runSkill({ skill, inputs, onDelta, onJobId, onDone, onError, signal }: RunSkillOptions) {
+export async function runSkill({ skill, inputs, tenantId, onDelta, onJobId, onDone, onError, signal }: RunSkillOptions) {
   try {
     const resp = await fetch(DISPATCH_URL, {
       method: "POST",
@@ -32,6 +33,7 @@ export async function runSkill({ skill, inputs, onDelta, onJobId, onDone, onErro
         systemPrompt: skill.systemPrompt || "",
         preferredModel: skill.preferredModel,
         webSearchEnabled: skill.webSearchEnabled,
+        tenantId,
       }),
       signal,
     });
@@ -96,9 +98,10 @@ export interface RunDeckSkillOptions {
   skill: Skill;
   inputs: Record<string, string>;
   deckType: "capabilities" | "proposal";
+  tenantId?: string;
 }
 
-export async function runDeckSkill({ skill, inputs, deckType }: RunDeckSkillOptions): Promise<{ jobId: string; fileUrl: string; slideCount: number }> {
+export async function runDeckSkill({ skill, inputs, deckType, tenantId }: RunDeckSkillOptions): Promise<{ jobId: string; fileUrl: string; slideCount: number }> {
   const resp = await fetch(DECK_URL, {
     method: "POST",
     headers: {
@@ -113,6 +116,7 @@ export async function runDeckSkill({ skill, inputs, deckType }: RunDeckSkillOpti
       title: `${skill.displayName || skill.name}: ${Object.values(inputs).filter(Boolean).slice(0, 2).join(", ")}`,
       inputs,
       deckType,
+      tenantId,
     }),
   });
 

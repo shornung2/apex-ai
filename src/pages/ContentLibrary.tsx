@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/use-tenant";
 import ReactMarkdown from "react-markdown";
 import {
   Search, FolderPlus, FolderOpen, Trash2, Download, MoreVertical,
@@ -34,6 +35,7 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
 export default function ContentLibrary() {
   const { toast } = useToast();
+  const { tenantId } = useTenant();
   const [folders, setFolders] = useState<ContentFolder[]>([]);
   const [items, setItems] = useState<ContentItem[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -141,7 +143,7 @@ export default function ContentLibrary() {
   // --- CRUD operations ---
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
-    await supabase.from("content_folders").insert({ name: newFolderName.trim(), parent_id: currentFolderId });
+    await supabase.from("content_folders").insert({ name: newFolderName.trim(), parent_id: currentFolderId, tenant_id: tenantId! });
     setNewFolderName("");
     setNewFolderOpen(false);
     fetchData();

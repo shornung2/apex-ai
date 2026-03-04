@@ -10,6 +10,7 @@ import { agentDefinitions, departmentDefinitions, type Department } from "@/data
 import { ArrowLeft, Copy, BookOpen, RotateCcw, CheckCircle, XCircle, Loader2, Clock, AlertTriangle, FileDown, Presentation } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/use-tenant";
 import { SaveToLibraryDialog } from "@/components/SaveToLibraryDialog";
 
 const statusConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
@@ -26,6 +27,7 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 export default function JobDetail() {
   const { jobId } = useParams<{ jobId: string }>();
   const { toast } = useToast();
+  const { tenantId } = useTenant();
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -104,6 +106,7 @@ export default function JobDetail() {
       doc_type: "agent_output",
       status: "ready",
       tokens: job.tokens_used || 0,
+      tenant_id: tenantId!,
     });
     setSaving(false);
     if (error) {

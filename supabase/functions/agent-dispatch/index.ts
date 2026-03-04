@@ -156,7 +156,22 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    const { skillId, skillName, agentType, department, title, inputs, promptTemplate, systemPrompt, webSearchEnabled, preferredModel } = await req.json();
+    const { skillId, skillName, agentType, department, title, inputs, promptTemplate, systemPrompt, webSearchEnabled, preferredModel, tenantId: clientTenantId } = await req.json();
+
+    // Resolve tenant_id: use client-provided value, or look up from auth header
+    let tenantId = clientTenantId;
+    if (!tenantId) {
+      // Try to get tenant from the calling user's profile
+      const authHeader = req.headers.get("Authorization")?.replace("Bearer ", "");
+      if (authHeader && authHeader !== serviceRoleKey) {
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("tenant_id")
+          .eq("id", (await createClient(supabaseUrl, authHeader).auth.getUser()).data.user?.id)
+          .single();
+        tenantId = profile?.tenant_id;
+      }
+    }
 
     // 0. Extract attached context files (if any) before processing inputs
     let attachedContext = "";
@@ -172,16 +187,19 @@ serve(async (req) => {
     }
 
     // 1. Insert job as queued
+    const jobInsert: Record<string, any> = {
+      skill_id: skillId,
+      agent_type: agentType,
+      department,
+      title,
+      status: "queued",
+      inputs,
+    };
+    if (tenantId) jobInsert.tenant_id = tenantId;
+
     const { data: job, error: insertError } = await supabase
       .from("agent_jobs")
-      .insert({
-        skill_id: skillId,
-        agent_type: agentType,
-        department,
-        title,
-        status: "queued",
-        inputs,
-      })
+      .insert(jobInsert)
       .select("id")
       .single();
 
