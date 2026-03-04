@@ -1,50 +1,92 @@
 
 
-# TenantContext Migration Plan
+# Dynamic Tenant Domain Mapping + Invite User Function
 
 ## Summary
 
-Convert the existing `useTenant` hook into a React Context so tenant data is fetched once at the app root and shared across all components without redundant queries. Add richer tenant metadata (name, plan, status) and role-based flags. Add a loading spinner while tenant context resolves.
+Three changes: (1) Replace the hardcoded `@solutionment.com` check in `auth-azure-callback` with a database-driven tenant lookup, (2) auto-provision `user_profiles` in the callback (first user for a tenant gets `admin` role), (3) create a new `invite-user` edge function.
 
-## What Changes
+## Changes
 
-### 1. Create `src/contexts/TenantContext.tsx`
-- Query `user_profiles` joined with `tenants` for `auth.uid()`:
-  ```sql
-  user_profiles.select("tenant_id, role, full_name, email, onboarding_complete, tenants(name, plan, status)")
-  ```
-- Store: `tenantId`, `tenantName`, `tenantPlan`, `tenantStatus`, `userRole`, `onboardingComplete`
-- Derived: `isAdmin` (admin or super_admin), `isSuperAdmin` (super_admin only)
-- If no profile row exists, set `isLoading = false` and all values to `null`
-- Export `TenantProvider` component and `useTenant()` hook (replaces the existing hook)
+### 1. Update `supabase/functions/auth-azure-callback/index.ts`
 
-### 2. Wire into App
-- In `src/App.tsx`, wrap the `AuthGuard` children with `<TenantProvider>`
-- While `isLoading` is true, render a full-screen centered spinner (Loader2 icon) instead of app content
-- Place the provider inside `AuthGuard` so it only runs when authenticated
+**Remove** lines 127-133 (the hardcoded domain check).
 
-### 3. Delete old hook
-- Remove `src/hooks/use-tenant.ts`
-- Update all imports of `useTenant` across the codebase to point to `@/contexts/TenantContext`
+**Replace with** (after email extraction, before user creation):
 
-### 4. Files with import changes (no logic changes needed)
-All these files already use `const { tenantId } = useTenant()` — just update the import path:
-- `src/pages/Capabilities.tsx`
-- `src/pages/Knowledge.tsx`
-- `src/pages/ContentLibrary.tsx`
-- `src/pages/Tasks.tsx`
-- `src/pages/Settings.tsx`
-- `src/pages/Department.tsx`
-- `src/pages/JobDetail.tsx`
-- `src/components/SaveToLibraryDialog.tsx`
+```typescript
+// Dynamic tenant lookup
+const domain = email.toLowerCase().split('@')[1];
+const { data: tenant, error: tenantError } = await supabase
+  .from('tenants')
+  .select('id, name, status')
+  .contains('allowed_domains', [domain])
+  .single();
 
-### 5. Edge functions — no changes needed
-All edge functions (`agent-dispatch`, `generate-deck`, `knowledge-ingest`, `task-scheduler`, `alex-chat`) already receive and use `tenantId` correctly. No changes required.
+if (!tenant || tenantError) {
+  return redirect(`${redirectTo}?error=Your organization is not registered...`);
+}
+if (tenant.status === 'suspended') {
+  return redirect(`${redirectTo}?error=Your organization's access has been suspended...`);
+}
+```
 
-## Technical Details
+Note: The supabase client is created with service_role key, so it bypasses RLS — this query will work.
 
-- The context uses a single `useQuery` call with `staleTime: 5min` to avoid refetching
-- The `tenants` table has a foreign key relationship from `user_profiles.tenant_id` to `tenants.id`, so the Supabase join syntax works
-- No database migration needed — the schema already supports this query
-- The `profiles_select_own` RLS policy allows reading your own profile, and `tenants_select` allows reading your own tenant row, so the joined query works under RLS
+**Move** the supabase client creation (lines 137-139) to **before** the tenant lookup, since we need it for the query.
+
+**After** user creation/lookup (around line 164), add profile upsert:
+
+```typescript
+const authUser = existingUser || (await supabase.auth.admin.listUsers()).data.users
+  .find(u => u.email?.toLowerCase() === email.toLowerCase());
+
+// Check if profile exists
+const { data: existingProfile } = await supabase
+  .from('user_profiles').select('id').eq('id', authUser.id).maybeSingle();
+
+let role = 'member';
+if (!existingProfile) {
+  const { count } = await supabase
+    .from('user_profiles').select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenant.id);
+  if (count === 0) role = 'admin';
+}
+
+await supabase.from('user_profiles').upsert({
+  id: authUser.id, tenant_id: tenant.id,
+  full_name: fullName || null, email, role,
+}, { onConflict: 'id', ignoreDuplicates: false });
+```
+
+### 2. Create `supabase/functions/invite-user/index.ts`
+
+New edge function that:
+- Validates caller's JWT via `getClaims()`
+- Looks up caller's profile to verify admin/super_admin role
+- Accepts `{ email }` in request body
+- Extracts domain, checks if it's in tenant's `allowed_domains` — if not, appends it
+- Calls `supabase.auth.admin.inviteUserByEmail(email, { redirectTo })`
+- Returns `{ success: true, message: 'Invitation sent' }`
+
+### 3. Update `supabase/config.toml`
+
+Add:
+```toml
+[functions.invite-user]
+verify_jwt = false
+```
+(Set to `false` because we validate JWT manually in code via `getClaims()`, per the project's signing-keys pattern.)
+
+### 4. No changes needed to `auth-azure-login`
+
+Already generic — no domain restrictions there.
+
+## Files affected
+
+| File | Action |
+|---|---|
+| `supabase/functions/auth-azure-callback/index.ts` | Edit: replace hardcoded domain check with tenant lookup + profile upsert |
+| `supabase/functions/invite-user/index.ts` | Create new edge function |
+| `supabase/config.toml` | Add invite-user config |
 
