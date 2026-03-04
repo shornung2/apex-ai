@@ -588,6 +588,7 @@ export type Database = {
           id: string
           onboarding_complete: boolean
           role: string
+          status: string
           tenant_id: string
         }
         Insert: {
@@ -597,6 +598,7 @@ export type Database = {
           id: string
           onboarding_complete?: boolean
           role?: string
+          status?: string
           tenant_id: string
         }
         Update: {
@@ -606,6 +608,7 @@ export type Database = {
           id?: string
           onboarding_complete?: boolean
           role?: string
+          status?: string
           tenant_id?: string
         }
         Relationships: [
