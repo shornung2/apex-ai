@@ -410,6 +410,65 @@ export type Database = {
           },
         ]
       }
+      skill_pack_templates: {
+        Row: {
+          display_order: number | null
+          id: string
+          pack_id: string
+          skill_template: Json
+        }
+        Insert: {
+          display_order?: number | null
+          id?: string
+          pack_id: string
+          skill_template: Json
+        }
+        Update: {
+          display_order?: number | null
+          id?: string
+          pack_id?: string
+          skill_template?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_pack_templates_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "skill_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_packs: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          target_segment: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          target_segment?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+          target_segment?: string | null
+        }
+        Relationships: []
+      }
       skills: {
         Row: {
           agent_type: string
