@@ -16,6 +16,7 @@ import Knowledge from "./pages/Knowledge";
 import ContentLibrary from "./pages/ContentLibrary";
 import Help from "./pages/Help";
 import SettingsPage from "./pages/Settings";
+import WorkspaceAdmin from "./pages/WorkspaceAdmin";
 import NotFound from "./pages/NotFound";
 import Tasks from "./pages/Tasks";
 import Auth from "./pages/Auth";
@@ -49,6 +50,7 @@ const App = () => (
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/help" element={<Help />} />
                         <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/workspace-admin" element={<WorkspaceAdmin />} />
                         <Route path="/super-admin" element={<SuperAdmin />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
