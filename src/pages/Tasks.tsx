@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { dbRowToSkill, type Skill } from "@/data/mock-data";
 import { SkillForm } from "@/components/SkillForm";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/use-tenant";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 
@@ -54,6 +55,7 @@ type ScheduledTask = {
 
 export default function Tasks() {
   const { toast } = useToast();
+  const { tenantId } = useTenant();
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -161,6 +163,7 @@ export default function Tasks() {
       cron_expression: buildCronExpression(),
       next_run_at: computeInitialNextRun(),
       status: "active",
+      tenant_id: tenantId!,
     });
 
     setCreating(false);

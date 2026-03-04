@@ -14,6 +14,7 @@ import { Search, Plus, Trash2, GripVertical, BookOpen, Wrench, Loader2, Check, P
 import { supabase } from "@/integrations/supabase/client";
 import { agentDefinitions, departmentDefinitions, dbRowToSkill, type Department, type AgentType, type SkillInput, type Skill } from "@/data/mock-data";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/use-tenant";
 import ReactMarkdown from "react-markdown";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
@@ -92,6 +93,7 @@ function SectionHeader({ title, step, isOpen }: { title: string; step: number; i
 
 export default function Capabilities() {
   const { toast } = useToast();
+  const { tenantId } = useTenant();
   const [activeTab, setActiveTab] = useState("library");
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("all");
@@ -348,6 +350,7 @@ export default function Capabilities() {
       web_search_enabled: builderWebSearch,
       is_system: false,
       schedulable: builderSchedulable,
+      tenant_id: tenantId!,
     };
 
     let error;

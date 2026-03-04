@@ -17,6 +17,7 @@ import {
 import { SkillForm } from "@/components/SkillForm";
 import { runSkill, runDeckSkill } from "@/lib/agent-client";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/use-tenant";
 import { supabase } from "@/integrations/supabase/client";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
@@ -26,6 +27,7 @@ export default function Department() {
   const { dept } = useParams<{ dept: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { tenantId } = useTenant();
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [deptSkills, setDeptSkills] = useState<Skill[]>([]);
@@ -62,7 +64,7 @@ export default function Department() {
       try {
         const deckType = selectedSkill.name.toLowerCase().includes("proposal") ? "proposal" : "capabilities";
         toast({ title: "Generating deck...", description: "This may take 30-60 seconds." });
-        const result = await runDeckSkill({ skill: selectedSkill, inputs: data, deckType });
+        const result = await runDeckSkill({ skill: selectedSkill, inputs: data, deckType, tenantId: tenantId || undefined });
         setSelectedSkill(null);
         setIsRunning(false);
         toast({ title: "Deck ready!", description: `${result.slideCount} slides generated.` });
@@ -83,6 +85,7 @@ export default function Department() {
     runSkill({
       skill: selectedSkill,
       inputs: data,
+      tenantId: tenantId || undefined,
       signal: controller.signal,
       onJobId: (id) => {
         jobId = id;

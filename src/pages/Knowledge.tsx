@@ -14,6 +14,7 @@ import {
   FolderPlus, Folder, FolderOpen, ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/use-tenant";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -49,6 +50,7 @@ type FolderRow = { id: string; name: string; parent_id: string | null; created_a
 
 export default function Knowledge() {
   const { toast } = useToast();
+  const { tenantId } = useTenant();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState<any[]>([]);
   const [folders, setFolders] = useState<FolderRow[]>([]);
@@ -129,7 +131,7 @@ export default function Knowledge() {
         continue;
       }
       const { error } = await supabase.functions.invoke("knowledge-ingest", {
-        body: { file_path: filePath, title: file.name, mime_type: file.type, folder_id: currentFolderId },
+        body: { file_path: filePath, title: file.name, mime_type: file.type, folder_id: currentFolderId, tenant_id: tenantId },
       });
       if (error) {
         toast({ title: "Ingestion failed", description: `${file.name}: ${error.message}`, variant: "destructive" });
@@ -265,7 +267,7 @@ export default function Knowledge() {
 
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
-    await supabase.from("knowledge_folders").insert({ name: newFolderName.trim(), parent_id: currentFolderId });
+    await supabase.from("knowledge_folders").insert({ name: newFolderName.trim(), parent_id: currentFolderId, tenant_id: tenantId! });
     setCreatingFolder(false);
     setNewFolderName("");
     fetchData();
