@@ -261,6 +261,11 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 - View all past and current agent jobs in reverse-chronological order.
 - Each row shows the job title, agent type, department, status, and timestamp.
 - Click any job to open its detail page.
+- Use the **kebab menu (⋮)** on each row for additional actions:
+  - **Download PDF** — export the completed job output as a formatted PDF file.
+  - **Download Word** — export the completed job output as a .docx Word document with headings and bold formatting preserved.
+  - **Delete** — permanently remove the job record (with confirmation dialog).
+- Download options are only available for completed jobs with output.
 
 ### Job Detail Page
 - **Inputs** — See exactly what was submitted to the agent.

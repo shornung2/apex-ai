@@ -6,10 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { agentDefinitions, departmentDefinitions, type Department } from "@/data/mock-data";
-import { Search, ExternalLink, Loader2 } from "lucide-react";
+import { Search, ExternalLink, Loader2, MoreVertical, FileText, FileDown, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { jsPDF } from "jspdf";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
+import { saveAs } from "file-saver";
 
 const statusColors: Record<string, string> = {
   complete: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
@@ -22,13 +28,90 @@ const statusColors: Record<string, string> = {
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
+function sanitizeFilename(title: string) {
+  return title.replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, "_").slice(0, 80) || "job-output";
+}
+
+async function downloadAsPdf(job: any) {
+  const doc = new jsPDF();
+  const margin = 20;
+  const pageWidth = doc.internal.pageSize.getWidth() - margin * 2;
+
+  doc.setFontSize(16);
+  doc.text(job.title || "Job Output", margin, margin + 5);
+
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(`Date: ${new Date(job.created_at).toLocaleString()}  •  Status: ${job.status}  •  Tokens: ${job.tokens_used || "N/A"}`, margin, margin + 14);
+  doc.setTextColor(0);
+
+  doc.setFontSize(11);
+  const output = job.output || "No output available.";
+  // Strip markdown formatting for clean PDF
+  const clean = output.replace(/#{1,6}\s/g, "").replace(/\*\*/g, "").replace(/\*/g, "").replace(/`/g, "");
+  const lines = doc.splitTextToSize(clean, pageWidth);
+  let y = margin + 24;
+  for (const line of lines) {
+    if (y > doc.internal.pageSize.getHeight() - margin) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.text(line, margin, y);
+    y += 5.5;
+  }
+
+  doc.save(`${sanitizeFilename(job.title)}.pdf`);
+}
+
+async function downloadAsWord(job: any) {
+  const output = job.output || "No output available.";
+  const paragraphs: Paragraph[] = [
+    new Paragraph({ text: job.title || "Job Output", heading: HeadingLevel.HEADING_1 }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: `Date: ${new Date(job.created_at).toLocaleString()}  •  Status: ${job.status}  •  Tokens: ${job.tokens_used || "N/A"}`, size: 18, color: "888888" }),
+      ],
+      spacing: { after: 300 },
+    }),
+  ];
+
+  // Split by double newlines for paragraphs, handle markdown headings
+  for (const block of output.split(/\n\n+/)) {
+    const trimmed = block.trim();
+    if (!trimmed) continue;
+    const headingMatch = trimmed.match(/^(#{1,3})\s+(.*)/);
+    if (headingMatch) {
+      const level = headingMatch[1].length === 1 ? HeadingLevel.HEADING_2 : headingMatch[1].length === 2 ? HeadingLevel.HEADING_3 : HeadingLevel.HEADING_4;
+      paragraphs.push(new Paragraph({ text: headingMatch[2], heading: level }));
+    } else {
+      // Handle bold markdown
+      const runs: TextRun[] = [];
+      const parts = trimmed.split(/(\*\*[^*]+\*\*)/);
+      for (const part of parts) {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          runs.push(new TextRun({ text: part.slice(2, -2), bold: true }));
+        } else {
+          runs.push(new TextRun({ text: part }));
+        }
+      }
+      paragraphs.push(new Paragraph({ children: runs }));
+    }
+  }
+
+  const doc = new Document({ sections: [{ children: paragraphs }] });
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `${sanitizeFilename(job.title)}.docx`);
+}
+
 export default function History() {
+  const { toast } = useToast();
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -50,6 +133,18 @@ export default function History() {
 
     fetchJobs();
   }, [agentFilter, statusFilter, deptFilter, search]);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase.from("agent_jobs").delete().eq("id", deleteTarget);
+    if (error) {
+      toast({ title: "Failed to delete job", description: error.message, variant: "destructive" });
+    } else {
+      setJobs(prev => prev.filter(j => j.id !== deleteTarget));
+      toast({ title: "Job deleted" });
+    }
+    setDeleteTarget(null);
+  };
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-7xl">
@@ -110,13 +205,14 @@ export default function History() {
                     <TableHead>Task</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Tokens</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {jobs.map((job) => {
                     const agent = agentDefinitions.find((a) => a.type === job.agent_type);
                     const dept = departmentDefinitions[job.department as Department];
+                    const hasOutput = job.status === "complete" && job.output;
                     return (
                       <TableRow key={job.id} className="border-border/30 hover:bg-muted/30">
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
@@ -140,9 +236,40 @@ export default function History() {
                           {job.tokens_used ? job.tokens_used.toLocaleString() : "—"}
                         </TableCell>
                         <TableCell>
-                          <Link to={`/jobs/${job.id}`}>
-                            <Button variant="ghost" size="sm" className="h-7 text-xs"><ExternalLink className="h-3 w-3" /></Button>
-                          </Link>
+                          <div className="flex items-center gap-1">
+                            <Link to={`/jobs/${job.id}`}>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0"><ExternalLink className="h-3 w-3" /></Button>
+                            </Link>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"><MoreVertical className="h-3.5 w-3.5" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuItem
+                                  disabled={!hasOutput}
+                                  onClick={() => downloadAsPdf(job)}
+                                >
+                                  <FileText className="h-3.5 w-3.5 mr-2" />
+                                  Download PDF
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  disabled={!hasOutput}
+                                  onClick={() => downloadAsWord(job)}
+                                >
+                                  <FileDown className="h-3.5 w-3.5 mr-2" />
+                                  Download Word
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setDeleteTarget(job.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -160,6 +287,19 @@ export default function History() {
           </CardContent>
         </Card>
       </motion.div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone. The job record and its output will be permanently removed.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }
