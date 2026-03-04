@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { motion, Reorder } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,6 +90,66 @@ function SectionHeader({ title, step, isOpen }: { title: string; step: number; i
       </div>
       <span className="text-sm font-semibold flex-1 text-left">{title}</span>
       <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+    </div>
+  );
+}
+
+function SortableSkillCard({ skill, feedbackStats, openrouterModels, onEdit }: {
+  skill: Skill;
+  feedbackStats: Record<string, { total: number; positive: number }>;
+  openrouterModels: OpenRouterModel[];
+  onEdit: (skill: Skill) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: skill.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 10 : undefined };
+  const agent = agentDefinitions.find((a) => a.type === skill.agentType);
+  const dept = departmentDefinitions[skill.department];
+  const modelId = resolveModelId(skill);
+  const isOR = isOpenRouterModel(modelId);
+  const dynamicCost = estimateCostForModel(modelId, skill.tokenBudget || 10000, openrouterModels);
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <Card className="glass-card hover:border-primary/30 transition-all cursor-pointer group" onClick={() => onEdit(skill)}>
+        <CardContent className="p-5 space-y-3">
+          <div className="flex items-start justify-between">
+            <span className="text-2xl">{skill.emoji}</span>
+            <div className="flex gap-1.5 items-center">
+              <button {...listeners} className="touch-none cursor-grab active:cursor-grabbing p-0.5 -m-0.5" onClick={(e) => e.stopPropagation()}>
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-50 transition-opacity" />
+              </button>
+              <Badge variant="outline" className="text-[10px]">{dept?.name}</Badge>
+              <Badge variant="outline" className="text-[10px]">{agent?.name}</Badge>
+              <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold">{skill.displayName || skill.name}</h3>
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{skill.description}</p>
+            {feedbackStats[skill.id]?.total >= 5 && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                ⭐ {Math.round((feedbackStats[skill.id].positive / feedbackStats[skill.id].total) * 100)}% positive ({feedbackStats[skill.id].total} ratings)
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span>{skill.inputs.length} inputs</span>
+            <span>·</span>
+            <span>{skill.inputs.filter((i) => i.required).length} required</span>
+            {dynamicCost !== null && (
+              <>
+                <span>·</span>
+                <span>~${dynamicCost < 0.01 ? "<0.01" : dynamicCost.toFixed(2)}</span>
+              </>
+            )}
+            <span>·</span>
+            <span className={isOR ? "text-blue-400" : isPremiumModel(modelId) ? "text-primary" : ""}>
+              {isOR ? `🔗 ${modelId}` : getModelName(modelId)}
+            </span>
+            {skill.isSystem && <Badge variant="outline" className="text-[10px] ml-auto">System</Badge>}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -311,11 +374,19 @@ export default function Capabilities() {
     return ai - bi;
   });
 
-  const handleReorder = (newOrder: Skill[]) => {
-    const ids = newOrder.map(s => s.id);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedSkills.findIndex(s => s.id === active.id);
+    const newIndex = orderedSkills.findIndex(s => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(orderedSkills, oldIndex, newIndex);
+    const ids = reordered.map(s => s.id);
     setSkillOrder(ids);
     localStorage.setItem("apex-skill-order", JSON.stringify(ids));
-  };
+  }, [orderedSkills]);
 
   const resetBuilder = () => {
     setEditingSkillId(null);
@@ -467,60 +538,24 @@ export default function Capabilities() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <Reorder.Group axis="y" values={orderedSkills} onReorder={handleReorder} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" as="div">
-                {orderedSkills.map((skill) => {
-                  const agent = agentDefinitions.find((a) => a.type === skill.agentType);
-                  const dept = departmentDefinitions[skill.department];
-                  const modelId = resolveModelId(skill);
-                  const isOR = isOpenRouterModel(modelId);
-                  const dynamicCost = estimateCostForModel(modelId, skill.tokenBudget || 10000, openrouterModels);
-                  return (
-                    <Reorder.Item key={skill.id} value={skill} as="div">
-                      <Card className="glass-card hover:border-primary/30 transition-all cursor-grab active:cursor-grabbing group" onClick={() => loadSkillIntoBuilder(skill)}>
-                        <CardContent className="p-5 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <span className="text-2xl">{skill.emoji}</span>
-                            <div className="flex gap-1.5 items-center">
-                              <GripVertical className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-50 transition-opacity" />
-                              <Badge variant="outline" className="text-[10px]">{dept?.name}</Badge>
-                              <Badge variant="outline" className="text-[10px]">{agent?.name}</Badge>
-                              <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-semibold">{skill.displayName || skill.name}</h3>
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{skill.description}</p>
-                            {feedbackStats[skill.id]?.total >= 5 && (
-                              <p className="text-[10px] text-muted-foreground mt-1">
-                                ⭐ {Math.round((feedbackStats[skill.id].positive / feedbackStats[skill.id].total) * 100)}% positive ({feedbackStats[skill.id].total} ratings)
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                            <span>{skill.inputs.length} inputs</span>
-                            <span>·</span>
-                            <span>{skill.inputs.filter((i) => i.required).length} required</span>
-                            {dynamicCost !== null && (
-                              <>
-                                <span>·</span>
-                                <span>~${dynamicCost < 0.01 ? "<0.01" : dynamicCost.toFixed(2)}</span>
-                              </>
-                            )}
-                            <span>·</span>
-                            <span className={isOR ? "text-blue-400" : isPremiumModel(modelId) ? "text-primary" : ""}>
-                              {isOR ? `🔗 ${modelId}` : getModelName(modelId)}
-                            </span>
-                            {skill.isSystem && <Badge variant="outline" className="text-[10px] ml-auto">System</Badge>}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Reorder.Item>
-                  );
-                })}
-                {orderedSkills.length === 0 && (
-                  <div className="col-span-full text-center text-muted-foreground py-12">No skills match your filters</div>
-                )}
-              </Reorder.Group>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={orderedSkills.map(s => s.id)} strategy={rectSortingStrategy}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {orderedSkills.map((skill) => (
+                      <SortableSkillCard
+                        key={skill.id}
+                        skill={skill}
+                        feedbackStats={feedbackStats}
+                        openrouterModels={openrouterModels}
+                        onEdit={loadSkillIntoBuilder}
+                      />
+                    ))}
+                    {orderedSkills.length === 0 && (
+                      <div className="col-span-full text-center text-muted-foreground py-12">No skills match your filters</div>
+                    )}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </TabsContent>
 
