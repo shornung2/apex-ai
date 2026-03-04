@@ -316,7 +316,38 @@ serve(async (req) => {
     }
 
     const systemPromptText = systemPrompt || (AGENT_PERSONAS[agentType] || AGENT_PERSONAS.researcher);
-    const webSearchSuffix = webSearchEnabled ? WEB_SEARCH_CAVEAT : "";
+
+    // Web search: call Brave Search API for live grounding when enabled
+    let webSearchSuffix = "";
+    if (webSearchEnabled) {
+      const braveKey = Deno.env.get("BRAVE_SEARCH_API_KEY");
+      if (braveKey) {
+        try {
+          const searchQuery = filledTemplate.slice(0, 400);
+          const searchRes = await fetch(
+            `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQuery)}&count=10&freshness=pw`,
+            { headers: { "Accept": "application/json", "X-Subscription-Token": braveKey } }
+          );
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const results = searchData.web?.results || [];
+            if (results.length > 0) {
+              webSearchSuffix = "\n\n## LIVE WEB SEARCH RESULTS\nThe following are recent web search results relevant to this task. Use them to ground your response with current information. Cite sources where appropriate.\n\n" +
+                results.map((r: any, i: number) => `[${i + 1}] **${r.title}**\n${r.description}\nSource: ${r.url}`).join("\n\n");
+            }
+          } else {
+            console.error("Brave Search API error:", searchRes.status);
+          }
+        } catch (err) {
+          console.error("Brave Search failed, falling back to caveat:", err);
+        }
+      }
+      // Fallback to static caveat if Brave search didn't produce results
+      if (!webSearchSuffix) {
+        webSearchSuffix = WEB_SEARCH_CAVEAT;
+      }
+    }
+
     const attachedDocsSuffix = attachedContext
       ? "\n\n## ATTACHED DOCUMENTS\nThe user uploaded the following documents as additional context. Use this information to ground your response.\n\n" + attachedContext
       : "";
