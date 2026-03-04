@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Building2, Key, Bot, BarChart3, Users, Palette, Sun, Moon, Monitor, Activity, BookOpen, Sparkles, CalendarClock, CheckCircle, Loader2, Search } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Building2, Key, Bot, BarChart3, Users, Palette, Sun, Moon, Monitor, Activity, BookOpen, Sparkles, CalendarClock, CheckCircle, Loader2, Search, DollarSign, Zap, FileText, AlertTriangle, TrendingUp } from "lucide-react";
 import { agentDefinitions } from "@/data/mock-data";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/contexts/TenantContext";
 import TeamWorkspaceSection from "@/components/TeamWorkspaceSection";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -46,6 +48,202 @@ interface OpenRouterModel {
   promptPrice?: string | null;
   completionPrice?: string | null;
   contextLength?: number | null;
+}
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  agent_job: "Agent Job",
+  deck_generation: "Deck Generation",
+  knowledge_ingest: "Knowledge Ingest",
+  api_call: "API Call",
+};
+
+function UsageBillingSection({ tenantId }: { tenantId: string | null }) {
+  const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState<any[]>([]);
+  const [recentEvents, setRecentEvents] = useState<any[]>([]);
+  const [dailyData, setDailyData] = useState<{ date: string; tokens: number }[]>([]);
+  const [costPer1k, setCostPer1k] = useState(0.015);
+  const [tokenBudget, setTokenBudget] = useState(0);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    async function fetchBilling() {
+      const [eventsRes, recentRes, settingsRes, tenantRes] = await Promise.all([
+        supabase
+          .from("usage_events")
+          .select("event_type, tokens_used, created_at")
+          .gte("created_at", startOfMonth.toISOString()),
+        supabase
+          .from("usage_events")
+          .select("id, event_type, tokens_used, model_used, skill_id, created_at, skills(display_name, name)")
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("workspace_settings")
+          .select("value")
+          .eq("key", "cost_per_1k_tokens")
+          .maybeSingle(),
+        supabase
+          .from("tenants")
+          .select("token_budget_monthly")
+          .eq("id", tenantId)
+          .maybeSingle(),
+      ]);
+
+      setEvents(eventsRes.data || []);
+      setRecentEvents(recentRes.data || []);
+      if (settingsRes.data?.value) {
+        const v = typeof settingsRes.data.value === 'number' ? settingsRes.data.value : parseFloat(String(settingsRes.data.value));
+        if (!isNaN(v)) setCostPer1k(v);
+      }
+      if (tenantRes.data?.token_budget_monthly) setTokenBudget(tenantRes.data.token_budget_monthly);
+
+      // Build daily chart data for last 30 days
+      const dailyMap: Record<string, number> = {};
+      const allDailyRes = await supabase
+        .from("usage_events")
+        .select("tokens_used, created_at")
+        .gte("created_at", thirtyDaysAgo.toISOString());
+
+      for (const e of allDailyRes.data || []) {
+        const day = new Date(e.created_at).toISOString().split("T")[0];
+        dailyMap[day] = (dailyMap[day] || 0) + (e.tokens_used || 0);
+      }
+
+      const chart: { date: string; tokens: number }[] = [];
+      for (let d = new Date(thirtyDaysAgo); d <= new Date(); d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().split("T")[0];
+        chart.push({ date: key, tokens: dailyMap[key] || 0 });
+      }
+      setDailyData(chart);
+      setLoading(false);
+    }
+    fetchBilling();
+  }, [tenantId]);
+
+  const monthAgentJobs = events.filter((e) => e.event_type === "agent_job").length;
+  const monthDecks = events.filter((e) => e.event_type === "deck_generation").length;
+  const monthTokens = events.reduce((sum, e) => sum + (e.tokens_used || 0), 0);
+  const estimatedCost = (monthTokens / 1000) * costPer1k;
+  const budgetPercent = tokenBudget > 0 ? Math.round((monthTokens / tokenBudget) * 100) : 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Token Budget Warnings */}
+      {tokenBudget > 0 && budgetPercent >= 100 && (
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive">
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">You've reached your monthly token budget. New jobs may be limited. Contact Solutionment immediately.</p>
+        </div>
+      )}
+      {tokenBudget > 0 && budgetPercent >= 80 && budgetPercent < 100 && (
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">You've used {budgetPercent}% of your {tokenBudget.toLocaleString()} monthly token budget. Contact Solutionment to increase your limit.</p>
+        </div>
+      )}
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: "Agent Jobs Run", value: monthAgentJobs, icon: Zap },
+          { label: "Decks Generated", value: monthDecks, icon: FileText },
+          { label: "Total Tokens", value: monthTokens.toLocaleString(), icon: TrendingUp },
+          { label: "Estimated Cost", value: `$${estimatedCost.toFixed(2)} est.`, icon: DollarSign },
+        ].map((stat) => (
+          <Card key={stat.label} className="glass-card">
+            <CardContent className="pt-5 pb-4 px-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <stat.icon className="h-3.5 w-3.5" />
+                <span className="text-[11px]">{stat.label}</span>
+              </div>
+              <p className="text-2xl font-bold">{stat.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Usage Trend Chart */}
+      <Card className="glass-card">
+        <CardHeader><CardTitle className="text-lg">Daily Token Usage (Last 30 Days)</CardTitle></CardHeader>
+        <CardContent>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dailyData}>
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  interval={4}
+                />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip
+                  labelFormatter={(v) => new Date(v as string).toLocaleDateString()}
+                  formatter={(v: number) => [v.toLocaleString(), "Tokens"]}
+                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }}
+                />
+                <Bar dataKey="tokens" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity Table */}
+      <Card className="glass-card">
+        <CardHeader><CardTitle className="text-lg">Recent Activity</CardTitle></CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date/Time</TableHead>
+                <TableHead>Event Type</TableHead>
+                <TableHead>Skill</TableHead>
+                <TableHead className="text-right">Tokens</TableHead>
+                <TableHead>Model</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentEvents.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    No usage events yet. Run a skill to see activity here.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                recentEvents.map((e: any) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="text-xs">{new Date(e.created_at).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">{EVENT_TYPE_LABELS[e.event_type] || e.event_type}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{e.skills?.display_name || e.skills?.name || "—"}</TableCell>
+                    <TableCell className="text-right text-sm">{(e.tokens_used || 0).toLocaleString()}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground font-mono">{e.model_used || "—"}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 export default function SettingsPage() {
@@ -221,7 +419,8 @@ export default function SettingsPage() {
             <TabsTrigger value="appearance" className="gap-1.5"><Palette className="h-3.5 w-3.5" /> Appearance</TabsTrigger>
             <TabsTrigger value="api" className="gap-1.5"><Key className="h-3.5 w-3.5" /> API Keys</TabsTrigger>
             <TabsTrigger value="agents" className="gap-1.5"><Bot className="h-3.5 w-3.5" /> Agents</TabsTrigger>
-            <TabsTrigger value="usage" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Usage</TabsTrigger>
+            <TabsTrigger value="billing" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Usage & Billing</TabsTrigger>
+            <TabsTrigger value="usage" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> System</TabsTrigger>
             <TabsTrigger value="members" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Members</TabsTrigger>
           </TabsList>
 
@@ -444,6 +643,10 @@ export default function SettingsPage() {
                 ))}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="billing">
+            <UsageBillingSection tenantId={tenantId} />
           </TabsContent>
 
           <TabsContent value="usage">

@@ -422,12 +422,27 @@ serve(async (req) => {
           }
 
           // 7. Update job with final output
+          const finalTokens = totalTokens || Math.ceil(fullOutput.length / 4);
           await supabase.from("agent_jobs").update({
             status: "complete",
             output: fullOutput,
-            tokens_used: totalTokens || Math.ceil(fullOutput.length / 4),
+            tokens_used: finalTokens,
             completed_at: new Date().toISOString(),
           }).eq("id", jobId);
+
+          // 8. Insert usage event
+          try {
+            await supabase.from("usage_events").insert({
+              tenant_id: tenantId,
+              event_type: "agent_job",
+              tokens_used: finalTokens,
+              model_used: selectedModel,
+              skill_id: skillId || null,
+              job_id: jobId,
+            });
+          } catch (ue) {
+            console.error("Usage event insert failed:", ue);
+          }
 
           controller.enqueue(new TextEncoder().encode(`data: [DONE]\n\n`));
           controller.close();
