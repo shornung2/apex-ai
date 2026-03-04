@@ -12,14 +12,12 @@ import {
   CalendarClock,
   LogOut,
   Shield,
+  Building2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useTenant } from "@/contexts/TenantContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sidebar,
   SidebarContent,
@@ -58,39 +56,18 @@ const bottomItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-const TOKEN_BUDGET = 50_000;
-
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  const { isSuperAdmin } = useTenant();
+  const { isAdmin, isSuperAdmin } = useTenant();
   const deptOpen = location.pathname.startsWith("/departments");
-  const { resolvedTheme } = useTheme();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
   };
-
-  const [tokensUsed, setTokensUsed] = useState<number | null>(null);
-
-  useEffect(() => {
-    supabase
-      .from("agent_jobs")
-      .select("tokens_used")
-      .then(({ data }) => {
-        if (data) {
-          const total = data.reduce((sum, row) => sum + (row.tokens_used || 0), 0);
-          setTokensUsed(total);
-        }
-      });
-  }, []);
-
-  const tokenPercent = tokensUsed !== null ? Math.round((tokensUsed / TOKEN_BUDGET) * 100) : 0;
-  const tokenColor =
-    tokenPercent > 80 ? "bg-destructive" : tokenPercent > 60 ? "bg-amber-500" : "bg-emerald-500";
 
   const logo = apexLogo;
 
@@ -162,29 +139,23 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="space-y-3">
-        {!collapsed && (
-          <div className="px-3 space-y-1.5">
-            {tokensUsed === null ? (
-              <Skeleton className="h-6 w-full" />
-            ) : (
-              <>
-                <div className="flex items-center justify-between text-[10px] text-foreground/70">
-                  <span>Token Usage</span>
-                  <span>{tokensUsed.toLocaleString()} / {TOKEN_BUDGET.toLocaleString()}</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${tokenColor}`}
-                    style={{ width: `${tokenPercent}%` }}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        )}
+      <SidebarFooter>
         <SidebarMenu>
           {bottomItems.map((item) => renderNavItem(item))}
+          {isAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <NavLink
+                  to="/workspace-admin"
+                  className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                  activeClassName="bg-sidebar-accent text-primary font-medium"
+                >
+                  <Building2 className="h-4 w-4" />
+                  {!collapsed && <span>Workspace Admin</span>}
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           {isSuperAdmin && (
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
