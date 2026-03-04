@@ -99,6 +99,7 @@ export default function Capabilities() {
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [allSkills, setAllSkills] = useState<Skill[]>([]);
+  const [feedbackStats, setFeedbackStats] = useState<Record<string, { total: number; positive: number }>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
@@ -250,7 +251,28 @@ export default function Capabilities() {
   const fetchSkills = async () => {
     setLoading(true);
     const { data } = await supabase.from("skills").select("*").order("department").order("agent_type").order("name");
-    if (data) setAllSkills(data.map(dbRowToSkill));
+    if (data) {
+      const skills = data.map(dbRowToSkill);
+      setAllSkills(skills);
+      // Fetch feedback stats
+      const skillIds = skills.map(s => s.id);
+      if (skillIds.length > 0) {
+        const { data: jobs } = await supabase
+          .from("agent_jobs")
+          .select("skill_id, feedback_rating")
+          .in("skill_id", skillIds)
+          .not("feedback_rating", "is", null);
+        if (jobs) {
+          const stats: Record<string, { total: number; positive: number }> = {};
+          for (const j of jobs) {
+            if (!stats[j.skill_id]) stats[j.skill_id] = { total: 0, positive: 0 };
+            stats[j.skill_id].total++;
+            if (j.feedback_rating === 1) stats[j.skill_id].positive++;
+          }
+          setFeedbackStats(stats);
+        }
+      }
+    }
     setLoading(false);
   };
 
@@ -447,6 +469,11 @@ export default function Capabilities() {
                         <div>
                           <h3 className="text-sm font-semibold">{skill.displayName || skill.name}</h3>
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{skill.description}</p>
+                          {feedbackStats[skill.id]?.total >= 5 && (
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              ⭐ {Math.round((feedbackStats[skill.id].positive / feedbackStats[skill.id].total) * 100)}% positive ({feedbackStats[skill.id].total} ratings)
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                           <span>{skill.inputs.length} inputs</span>

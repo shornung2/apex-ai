@@ -4,10 +4,11 @@ import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { subscribeToJob } from "@/lib/agent-client";
 import { agentDefinitions, departmentDefinitions, type Department } from "@/data/mock-data";
-import { ArrowLeft, Copy, BookOpen, RotateCcw, CheckCircle, XCircle, Loader2, Clock, AlertTriangle, FileDown, Presentation } from "lucide-react";
+import { ArrowLeft, Copy, BookOpen, RotateCcw, CheckCircle, XCircle, Loader2, Clock, AlertTriangle, FileDown, Presentation, ThumbsUp, ThumbsDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/contexts/TenantContext";
@@ -252,6 +253,89 @@ export default function JobDetail() {
           </Card>
         </motion.div>
       )}
+
+      {/* Feedback */}
+      {job.status === "complete" && (
+        <FeedbackSection jobId={job.id} initialRating={job.feedback_rating} initialNote={job.feedback_note} />
+      )}
+    </motion.div>
+  );
+}
+
+function FeedbackSection({ jobId, initialRating, initialNote }: { jobId: string; initialRating: number | null; initialNote: string | null }) {
+  const { toast } = useToast();
+  const [rating, setRating] = useState<number | null>(initialRating);
+  const [note, setNote] = useState(initialNote || "");
+  const [showNote, setShowNote] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const submitted = rating !== null;
+
+  const submitFeedback = async (value: number) => {
+    setSaving(true);
+    setRating(value);
+    const update: Record<string, any> = { feedback_rating: value };
+    if (value === -1) {
+      setShowNote(true);
+      // Don't save note yet — wait for explicit submit
+      await supabase.from("agent_jobs").update({ feedback_rating: value }).eq("id", jobId);
+      setSaving(false);
+      return;
+    }
+    await supabase.from("agent_jobs").update(update).eq("id", jobId);
+    setSaving(false);
+    toast({ title: "Thanks — your feedback helps us improve Apex AI." });
+  };
+
+  const submitNote = async () => {
+    setSaving(true);
+    await supabase.from("agent_jobs").update({ feedback_note: note || null }).eq("id", jobId);
+    setSaving(false);
+    setShowNote(false);
+    toast({ title: "Thanks — your feedback helps us improve Apex AI." });
+  };
+
+  return (
+    <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
+      <Card className="glass-card">
+        <CardContent className="p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Was this output useful?</span>
+            <div className="flex gap-2">
+              <Button
+                variant={rating === 1 ? "default" : "outline"}
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={submitted || saving}
+                onClick={() => submitFeedback(1)}
+              >
+                <ThumbsUp className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={rating === -1 ? "destructive" : "outline"}
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={(submitted && rating !== -1) || saving}
+                onClick={() => submitFeedback(-1)}
+              >
+                <ThumbsDown className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          {showNote && rating === -1 && (
+            <div className="space-y-2">
+              <Textarea
+                placeholder="What could be improved? (optional)"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="min-h-[60px]"
+              />
+              <Button size="sm" onClick={submitNote} disabled={saving}>
+                Submit Feedback
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </motion.div>
   );
 }
