@@ -1,72 +1,73 @@
 
 
-# Build with Alex — AI-Assisted Skill Builder
+# Multi-Tenancy Foundation for Apex AI
 
 ## Summary
 
-Add a "Build with Alex" mode to the Skill Builder that replaces the right-side Preview panel with an inline Alex chat, specifically tuned for skill creation and prompt engineering. Alex will generate full, comprehensive system prompts and suggest skill configurations. Also update Help content and Telegram bot commands to reflect this new feature.
+Run a single large database migration that creates the tenants/user_profiles tables, adds `tenant_id` to all 8 data tables, backfills existing data to a default Solutionment tenant, and replaces all RLS policies with tenant-scoped versions. Then update the frontend code to include `tenant_id` in all inserts/queries.
 
-## Changes
+## Database Migration
 
-### 1. Edge Function: `supabase/functions/alex-chat/index.ts`
+A single migration containing the 6 steps you specified:
 
-Add a `mode` parameter to the request body. When `mode === "skill-builder"`:
-- Use a specialized system prompt focused on prompt engineering and skill architecture
-- The system prompt will include detailed instructions on writing exceptional, comprehensive prompts (role definition, output structure, variable usage, edge cases, formatting rules, quality bars)
-- Receive `builderState` (name, description, department, agentType, inputs, systemPrompt, preferredModel) as context
-- Alex must always write FULL, production-ready prompts — never abbreviated or placeholder content
-- Instruct Alex to wrap actionable suggestions in `\`\`\`skill-update` code blocks with JSON: `{ "field": "systemPrompt", "value": "..." }` (also supports fields like `description`, `inputs`, `name`)
+1. **Create `tenants` table** with plan/status checks, RLS policy via `get_my_tenant_id()`
+2. **Create `user_profiles` table** with role check, self-referencing RLS (with `SECURITY DEFINER` helper to avoid recursion)
+3. **Create `get_my_tenant_id()` function** — `SECURITY DEFINER`, stable
+4. **Seed Solutionment tenant** — `('Solutionment', 'solutionment', '{solutionment.com}', 'enterprise', 'active')`
+5. **Add `tenant_id`** to all 8 tables (skills, agent_jobs, knowledge_documents, knowledge_chunks, content_folders, content_items, scheduled_tasks, workspace_settings) — nullable add, backfill, then NOT NULL + indexes
+6. **Replace RLS policies** — drop all existing `auth_*` policies, create `tenant_*` policies using `get_my_tenant_id()` for all 8 tables
 
-The skill-builder system prompt will contain:
-- The 5-step skill architecture reference
-- Detailed prompt engineering framework (role/persona, task decomposition, output format specification, variable injection with `{{field}}`, quality constraints, edge case handling)
-- Instructions to always produce complete, ready-to-use prompts — never outlines or summaries
-- Knowledge of available agent types, departments, input field types
+### RLS Recursion Note
 
-### 2. Frontend: `src/pages/Capabilities.tsx`
+The `profiles_select_own` policy references `user_profiles` itself. To avoid infinite recursion, the sub-select `(SELECT tenant_id FROM public.user_profiles WHERE id = auth.uid())` will be replaced with `public.get_my_tenant_id()` which is `SECURITY DEFINER` and bypasses RLS.
 
-**New state:**
-- `builderMode: "manual" | "alex"` — toggles between Preview panel and Alex chat panel
-- `alexMessages`, `alexInput`, `alexLoading` — chat state for the inline Alex
+Similarly, `tenants_select` will use `get_my_tenant_id()` instead of a direct sub-query on `user_profiles`.
 
-**UI changes:**
-- Add a toggle button in the builder header: "Build with Alex" (sparkles icon) / "Manual" 
-- When `builderMode === "alex"`, the right-side Preview card becomes an Alex chat panel:
-  - Scrollable message area with markdown rendering
-  - Input bar at the bottom
-  - Each message sent includes the current builder state as context
-- Parse assistant messages for `\`\`\`skill-update` blocks → render "Apply" buttons next to each suggestion
-- Clicking "Apply" sets the corresponding builder field (e.g., `setBuilderSystemPrompt(value)`)
-- Keep the Preview panel accessible by toggling back to "Manual"
+## Frontend Code Changes
 
-**Alex context payload sent with each message:**
-```typescript
-{ 
-  mode: "skill-builder", 
-  messages: alexMessages,
-  builderState: { name, displayName, description, department, agentType, inputs, systemPrompt, preferredModel }
-}
-```
+After the migration, update all code that inserts or queries tenant-scoped tables to include `tenant_id`:
 
-### 3. Help Content: `src/pages/Help.tsx`
-
-Update the following sections:
-
-- **Capabilities & Skill Builder**: Add "Build with Alex" subsection explaining the feature, how to activate it, what Alex can do (generate prompts, suggest inputs, refine configurations), and how to apply suggestions
-- **Alex AI Assistant**: Add that Alex can now assist directly in the Skill Builder with prompt engineering and skill design
-- Update the APP_KNOWLEDGE in `alex-chat/index.ts` to mention "Build with Alex" as a feature
-
-### 4. Telegram Bot: `supabase/functions/telegram-bot/index.ts`
-
-- Update `/help` command text to mention "Build with Alex" as a web-app feature for skill creation
-- No functional Telegram changes needed — Build with Alex is a web-only feature
-
-### Files Modified
+### Files to update:
 
 | File | Change |
 |---|---|
-| `supabase/functions/alex-chat/index.ts` | Add `mode: "skill-builder"` with specialized prompt engineering system prompt; update APP_KNOWLEDGE |
-| `src/pages/Capabilities.tsx` | Add Alex chat panel in builder, toggle, `skill-update` block parsing with Apply buttons |
-| `src/pages/Help.tsx` | Document "Build with Alex" in Capabilities and Alex Assistant sections |
-| `supabase/functions/telegram-bot/index.ts` | Update `/help` text to mention Build with Alex |
+| `src/pages/Capabilities.tsx` | Include `tenant_id` from user profile when saving/creating skills |
+| `src/pages/Knowledge.tsx` | Include `tenant_id` on document/folder inserts |
+| `src/pages/ContentLibrary.tsx` | Include `tenant_id` on content_items/content_folders inserts |
+| `src/pages/Tasks.tsx` | Include `tenant_id` on scheduled_tasks inserts |
+| `src/pages/Dashboard.tsx` | No change needed — selects are filtered by RLS automatically |
+| `src/pages/History.tsx` | No change needed — selects filtered by RLS |
+| `src/pages/Settings.tsx` | Include `tenant_id` on workspace_settings inserts |
+| `src/lib/agent-client.ts` | Include `tenant_id` when creating agent_jobs |
+| Edge functions (`agent-dispatch`, `task-scheduler`, etc.) | Use service_role key so they bypass RLS; ensure they set `tenant_id` from the calling user's profile |
+
+### Tenant ID retrieval pattern
+
+Create a shared hook `src/hooks/use-tenant.ts`:
+
+```typescript
+// Fetches and caches the current user's tenant_id from user_profiles
+const { data: profile } = useQuery({
+  queryKey: ["my-profile"],
+  queryFn: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.from("user_profiles").select("tenant_id, role, full_name").eq("id", user.id).single();
+    return data;
+  }
+});
+```
+
+All pages that perform inserts will use `profile.tenant_id`.
+
+### Auth flow update
+
+In `src/components/AuthGuard.tsx` or a post-login hook: after sign-in, check if `user_profiles` row exists. If not, auto-create one by looking up the tenant via `allowed_domains` matching the user's email domain. This replaces explicit tenant assignment.
+
+## Technical Details
+
+- The `profiles_select_own` policy allows users to see all profiles within their tenant (for team features later), but only update their own
+- `get_my_tenant_id()` is `SECURITY DEFINER` to avoid RLS recursion — it reads `user_profiles` without being subject to the table's own policies
+- Indexes on `tenant_id` ensure query performance at scale
+- Edge functions using `service_role` key are unaffected by RLS but should still scope queries by `tenant_id` for correctness
+- The `telegram_sessions` table is excluded from tenant scoping since it uses `chat_id` (Telegram-specific) rather than org-scoped data
 
