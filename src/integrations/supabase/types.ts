@@ -194,6 +194,7 @@ export type Database = {
           content: string
           created_at: string
           document_id: string
+          embedding: string | null
           id: string
           tenant_id: string
           tokens: number | null
@@ -203,6 +204,7 @@ export type Database = {
           content: string
           created_at?: string
           document_id: string
+          embedding?: string | null
           id?: string
           tenant_id: string
           tokens?: number | null
@@ -212,6 +214,7 @@ export type Database = {
           content?: string
           created_at?: string
           document_id?: string
+          embedding?: string | null
           id?: string
           tenant_id?: string
           tokens?: number | null
@@ -657,6 +660,20 @@ export type Database = {
     Functions: {
       get_my_tenant_id: { Args: never; Returns: string }
       get_tenant_for_domain: { Args: { _domain: string }; Returns: string }
+      match_knowledge_chunks: {
+        Args: {
+          match_count?: number
+          match_tenant_id: string
+          query_embedding: string
+          similarity_threshold?: number
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_id: string
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

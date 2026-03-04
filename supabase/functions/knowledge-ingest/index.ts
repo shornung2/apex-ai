@@ -14,6 +14,25 @@ function getServiceSupabase() {
   );
 }
 
+/** Generate embedding vector using Lovable AI gateway */
+async function generateEmbedding(text: string): Promise<number[] | null> {
+  try {
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) { console.error("LOVABLE_API_KEY not set, skipping embedding"); return null; }
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "google/text-embedding-004", input: text.slice(0, 8000) }),
+    });
+    if (!res.ok) { console.error("Embedding API error:", res.status, await res.text()); return null; }
+    const data = await res.json();
+    return data?.data?.[0]?.embedding ?? null;
+  } catch (err) {
+    console.error("Embedding generation failed:", err);
+    return null;
+  }
+}
+
 /** Extract text from a DOCX file (ZIP containing word/document.xml) */
 async function extractDocxText(data: Uint8Array): Promise<string> {
   const { JSZip } = await import("https://esm.sh/jszip@3.10.1");
@@ -224,11 +243,30 @@ serve(async (req) => {
       });
 
       if (chunks.length > 0) {
-        const { error: chunkError } = await supabase
+        const { data: insertedChunks, error: chunkError } = await supabase
           .from("knowledge_chunks")
-          .insert(chunks);
+          .insert(chunks)
+          .select("id, content");
         if (chunkError) {
           console.error("Chunk insert error:", chunkError);
+        }
+
+        // Generate embeddings for each chunk
+        if (insertedChunks && insertedChunks.length > 0) {
+          for (const chunk of insertedChunks) {
+            try {
+              const embedding = await generateEmbedding(chunk.content);
+              if (embedding) {
+                const { error: embedError } = await supabase
+                  .from("knowledge_chunks")
+                  .update({ embedding: JSON.stringify(embedding) } as any)
+                  .eq("id", chunk.id);
+                if (embedError) console.error("Embedding update error for chunk", chunk.id, embedError);
+              }
+            } catch (err) {
+              console.error("Embedding failed for chunk", chunk.id, err);
+            }
+          }
         }
       }
     }

@@ -7,6 +7,25 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/** Generate embedding vector using Lovable AI gateway */
+async function generateEmbedding(text: string): Promise<number[] | null> {
+  try {
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) return null;
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "google/text-embedding-004", input: text.slice(0, 8000) }),
+    });
+    if (!res.ok) { console.error("Embedding API error:", res.status); return null; }
+    const data = await res.json();
+    return data?.data?.[0]?.embedding ?? null;
+  } catch (err) {
+    console.error("Embedding generation failed:", err);
+    return null;
+  }
+}
+
 const APP_KNOWLEDGE = `
 # Apex AI Platform Guide
 
@@ -216,29 +235,73 @@ serve(async (req) => {
         `System Prompt: ${builderState.systemPrompt ? `(${builderState.systemPrompt.length} chars) ${builderState.systemPrompt.slice(0, 500)}${builderState.systemPrompt.length > 500 ? "..." : ""}` : "(empty)"}`;
     }
 
-    // RAG: extract search terms from the latest user message
+    // RAG: semantic search with keyword fallback
     const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
     let knowledgeContext = "";
 
     if (lastUserMsg && mode !== "skill-builder") {
-      const searchTerms = lastUserMsg.content
-        .split(/\s+/)
-        .filter((t: string) => t.length > 3)
-        .slice(0, 8);
+      let ragChunks: any[] = [];
 
-      if (searchTerms.length > 0) {
-        const orFilter = searchTerms.map((t: string) => `content.ilike.%${t}%`).join(",");
-        const { data: chunks } = await supabase
-          .from("knowledge_chunks")
-          .select("content")
-          .or(orFilter)
-          .limit(5);
+      // Get tenant_id for semantic search
+      let chatTenantId: string | null = null;
+      const authHeader = req.headers.get("Authorization")?.replace("Bearer ", "");
+      if (authHeader) {
+        try {
+          const userClient = createClient(Deno.env.get("SUPABASE_URL")!, authHeader);
+          const { data: userData } = await userClient.auth.getUser();
+          if (userData?.user?.id) {
+            const { data: profile } = await supabase
+              .from("user_profiles")
+              .select("tenant_id")
+              .eq("id", userData.user.id)
+              .single();
+            chatTenantId = profile?.tenant_id ?? null;
+          }
+        } catch { /* ignore */ }
+      }
 
-        if (chunks && chunks.length > 0) {
-          knowledgeContext =
-            "\n\n## KNOWLEDGE BASE CONTEXT\nUse the following organizational context to ground your response when relevant:\n\n" +
-            chunks.map((c: any, i: number) => `[Context ${i + 1}]: ${c.content}`).join("\n\n");
+      // Try semantic search
+      if (chatTenantId) {
+        try {
+          const queryEmbedding = await generateEmbedding(lastUserMsg.content);
+          if (queryEmbedding) {
+            const { data: semResults } = await supabase.rpc("match_knowledge_chunks", {
+              query_embedding: JSON.stringify(queryEmbedding),
+              match_tenant_id: chatTenantId,
+              match_count: 5,
+              similarity_threshold: 0.65,
+            });
+            if (semResults && semResults.length >= 3) {
+              ragChunks = semResults;
+            }
+          }
+        } catch (err) {
+          console.error("Semantic search failed in alex-chat:", err);
         }
+      }
+
+      // Keyword fallback
+      if (ragChunks.length < 3) {
+        const searchTerms = lastUserMsg.content.split(/\s+/).filter((t: string) => t.length > 3).slice(0, 8);
+        if (searchTerms.length > 0) {
+          const orFilter = searchTerms.map((t: string) => `content.ilike.%${t}%`).join(",");
+          const { data: kwChunks } = await supabase
+            .from("knowledge_chunks")
+            .select("content, id")
+            .or(orFilter)
+            .limit(5);
+          if (kwChunks && kwChunks.length > 0) {
+            const semIds = new Set(ragChunks.map((c: any) => c.chunk_id));
+            const deduped = kwChunks.filter((c: any) => !semIds.has(c.id));
+            ragChunks = [...ragChunks, ...deduped.map((c: any) => ({ content: c.content }))];
+          }
+        }
+      }
+
+      if (ragChunks.length > 0) {
+        knowledgeContext =
+          "\n\n## KNOWLEDGE BASE CONTEXT\nUse the following organizational context to ground your response when relevant:\n\n" +
+          ragChunks.slice(0, 5).map((c: any, i: number) => `[Context ${i + 1}]: ${c.content}`).join("\n\n");
       }
     }
 
