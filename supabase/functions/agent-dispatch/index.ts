@@ -7,6 +7,25 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/** Generate embedding vector using Lovable AI gateway */
+async function generateEmbedding(text: string): Promise<number[] | null> {
+  try {
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) return null;
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "google/text-embedding-004", input: text.slice(0, 8000) }),
+    });
+    if (!res.ok) { console.error("Embedding API error:", res.status); return null; }
+    const data = await res.json();
+    return data?.data?.[0]?.embedding ?? null;
+  } catch (err) {
+    console.error("Embedding generation failed:", err);
+    return null;
+  }
+}
+
 const SHARED_OUTPUT_RULES = `
 
 OUTPUT FORMATTING RULES
@@ -213,26 +232,54 @@ serve(async (req) => {
 
     const jobId = job.id;
 
-    // 2. Retrieve knowledge chunks for grounding
+    // 2. Retrieve knowledge chunks for grounding (semantic search with keyword fallback)
     const inputValues = Object.values(inputs).join(" ");
-    const searchTerms = inputValues
-      .split(/\s+/)
-      .filter((t: string) => t.length > 3)
-      .slice(0, 10);
-
     let knowledgeContext = "";
-    if (searchTerms.length > 0) {
-      const orFilter = searchTerms.map((t: string) => `content.ilike.%${t}%`).join(",");
-      const { data: chunks } = await supabase
-        .from("knowledge_chunks")
-        .select("content")
-        .or(orFilter)
-        .limit(5);
+    let semanticChunks: any[] = [];
 
-      if (chunks && chunks.length > 0) {
-        knowledgeContext = "\n\n## KNOWLEDGE BASE CONTEXT\nUse the following context to ground your response. If relevant, incorporate it. If not, proceed with your best judgment.\n\n" +
-          chunks.map((c: any, i: number) => `[Context ${i + 1}]: ${c.content}`).join("\n\n");
+    // Try semantic search first
+    if (tenantId) {
+      try {
+        const queryEmbedding = await generateEmbedding(inputValues);
+        if (queryEmbedding) {
+          const { data: semResults } = await supabase.rpc("match_knowledge_chunks", {
+            query_embedding: JSON.stringify(queryEmbedding),
+            match_tenant_id: tenantId,
+            match_count: 5,
+            similarity_threshold: 0.65,
+          });
+          if (semResults && semResults.length >= 3) {
+            semanticChunks = semResults;
+          }
+        }
+      } catch (err) {
+        console.error("Semantic search failed, falling back to keyword:", err);
       }
+    }
+
+    // Fall back to keyword search if semantic search returned < 3 results
+    if (semanticChunks.length < 3) {
+      const searchTerms = inputValues.split(/\s+/).filter((t: string) => t.length > 3).slice(0, 10);
+      if (searchTerms.length > 0) {
+        const orFilter = searchTerms.map((t: string) => `content.ilike.%${t}%`).join(",");
+        const { data: kwChunks } = await supabase
+          .from("knowledge_chunks")
+          .select("content, id")
+          .or(orFilter)
+          .limit(5);
+
+        if (kwChunks && kwChunks.length > 0) {
+          // Deduplicate: exclude any already found by semantic search
+          const semIds = new Set(semanticChunks.map((c: any) => c.chunk_id));
+          const deduped = kwChunks.filter((c: any) => !semIds.has(c.id));
+          semanticChunks = [...semanticChunks, ...deduped.map((c: any) => ({ content: c.content }))];
+        }
+      }
+    }
+
+    if (semanticChunks.length > 0) {
+      knowledgeContext = "\n\n## KNOWLEDGE BASE CONTEXT\nUse the following context to ground your response. If relevant, incorporate it. If not, proceed with your best judgment.\n\n" +
+        semanticChunks.slice(0, 5).map((c: any, i: number) => `[Context ${i + 1}]: ${c.content}`).join("\n\n");
     }
 
     // 3. Build the prompt
