@@ -1,74 +1,95 @@
 
 
-# Super Admin Dashboard
+# Onboarding Wizard for New Tenants
 
 ## Summary
 
-Create a new `/super-admin` page with four tabs (Tenants, Usage, Audit Log, Quality) for Solutionment staff to manage all customer tenants. Add a guarded sidebar link and backend functions to bypass tenant RLS.
+Create a full-screen onboarding wizard (4 steps) that renders when `onboardingComplete` is false. Includes a new `seed-skill-packs` edge function to provision starter skills, and a dismissible Quick Start banner on the Dashboard.
 
 ## Database Changes
 
-**Migration**: Create two SECURITY DEFINER functions that check the caller is `super_admin` before returning cross-tenant data:
+None needed for the wizard itself. The `onboarding_complete` column already exists on `user_profiles`. Workspace settings keys (`company_name`, `industry`, `primary_use_case`) will be upserted into the existing `workspace_settings` table.
 
-1. `admin_list_all_tenants()` — returns all tenants with user count per tenant
-2. `admin_list_all_agent_jobs(...)` — returns all agent_jobs joined with tenant name, with optional filters (tenant_id, status, date range, search). Used by Audit Log and Quality tabs.
-3. `admin_insert_tenant(...)` — inserts a new tenant row (bypasses missing INSERT RLS)
-4. `admin_update_tenant(...)` — updates any tenant row (bypasses tenant-scoped UPDATE RLS)
-5. `admin_usage_summary()` — returns per-tenant aggregated usage for current month
+## New Edge Function: `seed-skill-packs`
 
-All functions: `SECURITY DEFINER`, check `(SELECT role FROM user_profiles WHERE id = auth.uid()) = 'super_admin'`, raise exception if not.
+Create `supabase/functions/seed-skill-packs/index.ts`:
 
-No new tables needed. The `agent_jobs` table already has all needed columns.
+- Accepts `{ tenant_id, packs: string[] }` where packs are `"presales"`, `"sales"`, `"marketing"`
+- Validates the caller is authenticated and belongs to the tenant
+- For each selected pack, inserts a predefined set of skills into the `skills` table with `is_system = true` and the correct `tenant_id`
+- Returns `{ seeded: number }` (total skills inserted)
+- Skills are defined inline in the function as arrays of skill objects with appropriate names, descriptions, departments, agent types, prompt templates, etc.
 
-## Frontend Changes
+### Skill Pack Contents (summary):
 
-### 1. New page: `src/pages/SuperAdmin.tsx`
+**Presales (12 skills)**: RFP Response Drafter, Discovery Prep, Competitive Brief, Solution Qualifier, Executive Proposal, POC Planner, Technical Q&A, Win Theme Builder, Demo Script, Pricing Strategy, Reference Story, Objection Handler
 
-Four tabs using shadcn Tabs:
+**Sales (10 skills)**: Account Research, Personalized Outreach, Deal Strategy, Champion Coach, Pipeline Review, Win/Loss Analysis, Territory Plan, Proposal Builder, Follow-Up Email, Call Debrief
 
-**Tab 1 — Tenants**: Table via `admin_list_all_tenants()` RPC. Columns: Name, Slug, Plan (badge), Status (badge), Domains, Users count, Jobs this month, Created. Actions: Edit (sheet/slide-in panel to edit name, plan, status, allowed_domains, token_budget_monthly), Suspend/Reactivate toggle. "New Tenant" button opens a dialog.
+**Marketing (8 skills)**: Thought Leadership, LinkedIn Post, Market Intelligence, Campaign Messaging, SEO Brief, Email Nurture, Case Study, Social Calendar
 
-**Tab 2 — Usage Overview**: Summary cards at top (Total Active Tenants, Total Jobs, Total Tokens, Avg Tokens/Tenant). Table sorted by tokens desc from `admin_usage_summary()` RPC.
+Each skill has minimal but functional prompt templates. All use `preferred_model: 'haiku'` and sensible defaults.
 
-**Tab 3 — Audit Log**: All agent_jobs from `admin_list_all_agent_jobs()` RPC. Filters: tenant dropdown, status dropdown, date range, search by title. Columns: Tenant, Job Title, Agent, Department, Status, Tokens, Created At.
+## New Component: `OnboardingWizard`
 
-**Tab 4 — Quality**: Same RPC filtered for negative feedback (will need a `feedback_rating` column — but since the schema doesn't have one yet, this tab will show jobs with status `failed` as a proxy, or we add `feedback_rating` and `feedback_note` columns).
+Create `src/components/OnboardingWizard.tsx`:
 
-Actually, the `agent_jobs` table doesn't have `feedback_rating` or `feedback_note` columns. We need a small migration to add them.
+- Full-screen fixed overlay (`z-50`, dark semi-transparent background)
+- Centered card with max-width ~640px
+- 4-step progress indicator (circles + connecting lines, filled = complete/current)
+- Uses `useTenant()` for tenantId/tenantName
 
-**Migration addition**: 
-```sql
-ALTER TABLE agent_jobs ADD COLUMN IF NOT EXISTS feedback_rating smallint;
-ALTER TABLE agent_jobs ADD COLUMN IF NOT EXISTS feedback_note text;
-```
+### Step 1 — Welcome
+- Logo, headline, subheadline, "Get Started" button
 
-### 2. Update `src/components/AppSidebar.tsx`
+### Step 2 — About Your Team
+- Company name (pre-filled from `tenantName`), Industry select, Primary use case radio group
+- On Next: upsert 3 rows into `workspace_settings` (keys: `company_name`, `industry`, `primary_use_case`)
 
-- Import `Shield` from lucide-react and `useTenant`
-- After the bottomItems rendering, conditionally render a "Super Admin" link with amber/yellow styling when `isSuperAdmin` is true
+### Step 3 — Skill Packs
+- 3 selectable cards (multi-select with checkboxes)
+- Auto-selected based on Step 2's use case choice
+- User can toggle selections
 
-### 3. Update `src/App.tsx`
+### Step 4 — Upload Document
+- Reuse the file upload logic from Knowledge page (upload to storage, call `knowledge-ingest`)
+- "Skip this step" link prominently shown
+- On upload success: green checkmark with filename
 
-- Add route `/super-admin` with the new page component
-- Wrap in AuthGuard + TenantProvider (already handled by the `/*` catch-all)
+### On Complete:
+1. Call `seed-skill-packs` edge function with selected packs
+2. `UPDATE user_profiles SET onboarding_complete = true WHERE id = userId`
+3. Close overlay
+4. Toast: "Your workspace is ready. You have {n} new skills — try one now!"
+5. Set a localStorage flag `show_quick_start = true`
 
-### 4. Route guard in `SuperAdmin.tsx`
+## Update `AppLayout.tsx`
 
-- Check `isSuperAdmin` from TenantContext. If false, redirect to `/` and show toast "Access denied."
+- Import `useTenant` and `OnboardingWizard`
+- If `!onboardingComplete && !isLoading`, render `<OnboardingWizard />` as a sibling to the layout (full-screen overlay on top)
+
+## Quick Start Banner on Dashboard
+
+- In `Dashboard.tsx`, add a dismissible banner at the top (above hero)
+- Show when `localStorage.getItem('show_quick_start') === 'true'`
+- Display 3 suggested skill names from the seeded packs
+- Dismiss removes from localStorage
+- Links to the relevant department page
 
 ## Files Affected
 
 | File | Action |
 |---|---|
-| Database migration | Create: RPC functions + feedback columns |
-| `src/pages/SuperAdmin.tsx` | Create: full page with 4 tabs |
-| `src/components/AppSidebar.tsx` | Edit: add conditional Super Admin link |
-| `src/App.tsx` | Edit: add `/super-admin` route |
+| `src/components/OnboardingWizard.tsx` | Create |
+| `src/components/AppLayout.tsx` | Edit: render wizard overlay when onboarding incomplete |
+| `src/pages/Dashboard.tsx` | Edit: add Quick Start banner |
+| `supabase/functions/seed-skill-packs/index.ts` | Create |
+| `supabase/config.toml` | Edit: add seed-skill-packs function config |
 
 ## Technical Notes
 
-- All cross-tenant data access goes through SECURITY DEFINER RPCs that verify `super_admin` role server-side
-- No RLS policy changes needed — RPCs bypass RLS by design
-- The Quality tab filters on `feedback_rating = -1` (thumbs down)
-- Job detail links open in new tabs via `window.open`
+- The wizard is an overlay, not a route — no navigation changes needed
+- File upload in Step 4 replicates the Knowledge page's upload pattern (storage upload + `knowledge-ingest` invocation)
+- The seed function uses the service role key to bypass RLS for bulk skill insertion
+- Skills seeded with `is_system = true` so they can be distinguished from user-created skills
 
