@@ -456,7 +456,13 @@ This mode uses a specialized prompt engineering AI that understands skill archit
 
 ### Which Skills Can Be Scheduled?
 
-Skills that produce useful output when re-run with the same inputs are marked as "schedulable." Examples include Company Research, Market Trends, Social Media Posts, and Blog Articles. You can also mark custom skills as schedulable in the Skill Builder's **Behavior & Options** section.
+Skills that produce useful output when re-run with the same inputs are marked as "schedulable." The following skills are schedulable out of the box:
+
+- **Research & Intelligence:** Company Research, Contact Research, General Research, Market & Industry Trends, Competitive Battle Card, Market Intelligence Brief, Win/Loss Analysis
+- **Content & Marketing:** Thought Leadership Article, LinkedIn / Social Posts, Marketing Copy, General Marketing Content, Marketing Strategy, SEO Blog Brief
+- **Sales:** Pipeline Review Prep, Account Expansion Map
+
+You can also mark any custom skill as schedulable in the Skill Builder's **Behavior & Options** section.
 
 ### Creating a Scheduled Task
 
