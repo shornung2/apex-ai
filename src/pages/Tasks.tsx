@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { dbRowToSkill, type Skill } from "@/data/mock-data";
 import { SkillForm } from "@/components/SkillForm";
 import { useToast } from "@/hooks/use-toast";
-import { useTenant } from "@/hooks/use-tenant";
+import { useTenant } from "@/contexts/TenantContext";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 
