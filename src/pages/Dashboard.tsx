@@ -100,7 +100,7 @@ export default function Dashboard() {
       {/* Hero */}
       <motion.div variants={item} className="relative overflow-hidden rounded-2xl p-8 glass-card glow-border">
         <div className="relative z-10">
-          <h1 className="text-3xl font-bold tracking-tight">What do you need today?</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Put your AI agents to work</h1>
           <p className="text-muted-foreground mt-2 max-w-lg">
             Select a department to browse skills, or explore Capabilities to build new ones.
           </p>
