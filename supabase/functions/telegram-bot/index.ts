@@ -243,6 +243,20 @@ async function handleSkillSelection(
     return;
   }
 
+  // Check if the agent type is disabled
+  const { data: toggleRow } = await supabase
+    .from("workspace_settings")
+    .select("value")
+    .eq("key", "agent_toggles")
+    .maybeSingle();
+  if (toggleRow?.value && typeof toggleRow.value === "object") {
+    const toggles = toggleRow.value as Record<string, boolean>;
+    if (toggles[skill.agent_type as string] === false) {
+      await sendMessage(chatId, `⚠️ The <b>${escapeHtml(skill.agent_type as string)}</b> agent is currently disabled. Contact your workspace administrator to re-enable it.`);
+      return;
+    }
+  }
+
   const inputs = (skill.inputs as SkillInput[]) || [];
   const requiredInputs = inputs.filter((i) => i.required !== false);
 
@@ -536,6 +550,17 @@ serve(async (req) => {
   try {
     const update: TelegramUpdate = await req.json();
 
+    // Check if Telegram integration is enabled for the workspace
+    // We check all workspace_settings rows with key=telegram_enabled
+    const { data: telegramSettings } = await supabase
+      .from("workspace_settings")
+      .select("value")
+      .eq("key", "telegram_enabled");
+
+    // If no setting found, default to disabled
+    const telegramRow = telegramSettings?.[0];
+    const isTelegramEnabled = telegramRow?.value === true;
+
     // Handle callback queries (inline keyboard taps)
     if (update.callback_query) {
       const cb = update.callback_query;
@@ -543,6 +568,11 @@ serve(async (req) => {
       if (!chatId) return new Response("ok");
 
       await answerCallback(cb.id);
+
+      if (!isTelegramEnabled) {
+        await sendMessage(chatId, "⚠️ The Telegram integration is currently disabled for this workspace. Please ask your workspace administrator to enable it in Settings > Integrations.");
+        return new Response("ok");
+      }
 
       if (cb.data?.startsWith("select_skill:")) {
         const skillId = cb.data.split(":")[1];
@@ -557,6 +587,16 @@ serve(async (req) => {
     const chatId = message.chat.id;
     const text = message.text.trim();
     const firstName = message.from?.first_name;
+
+    // Block all commands except /start and /help when disabled
+    if (!isTelegramEnabled && text !== "/start" && text !== "/help") {
+      await sendMessage(chatId, "⚠️ The Telegram integration is currently disabled for this workspace. Please ask your workspace administrator to enable it in Settings > Integrations.");
+      return new Response("ok");
+    }
+    if (!isTelegramEnabled && (text === "/start" || text === "/help")) {
+      await sendMessage(chatId, "👋 <b>Apex AI Bot</b>\n\nThe Telegram integration is currently <b>disabled</b> for this workspace.\n\nTo enable it, ask your workspace administrator to go to <b>Settings > Integrations</b> in the Apex AI web app and turn on the Telegram toggle.");
+      return new Response("ok");
+    }
 
     // Command handling
     if (text === "/start") {

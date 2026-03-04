@@ -192,7 +192,26 @@ serve(async (req) => {
       }
     }
 
-    // 0. Extract attached context files (if any) before processing inputs
+    // 0a. Check if the agent type is disabled in workspace settings
+    if (tenantId && agentType) {
+      const { data: toggleRow } = await supabase
+        .from("workspace_settings")
+        .select("value")
+        .eq("tenant_id", tenantId)
+        .eq("key", "agent_toggles")
+        .maybeSingle();
+      if (toggleRow?.value && typeof toggleRow.value === "object") {
+        const toggles = toggleRow.value as Record<string, boolean>;
+        if (toggles[agentType] === false) {
+          return new Response(JSON.stringify({ error: `The "${agentType}" agent is currently disabled in your workspace settings. Contact your administrator to re-enable it.` }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
+    // 0b. Extract attached context files (if any) before processing inputs
     let attachedContext = "";
     if (inputs._attached_context) {
       attachedContext = inputs._attached_context;
