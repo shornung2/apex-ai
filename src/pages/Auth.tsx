@@ -19,14 +19,14 @@ const Auth = () => {
       toast({
         title: "Authentication Error",
         description: decodeURIComponent(error),
-        variant: "destructive",
+        variant: "destructive"
       });
       window.history.replaceState({}, '', '/auth');
     }
 
     const token = searchParams.get('token');
     const type = searchParams.get('type');
-    
+
     if (token && type) {
       handleTokenVerification(token, type);
       return;
@@ -53,7 +53,7 @@ const Auth = () => {
     try {
       const { data, error } = await supabase.auth.verifyOtp({
         token_hash: token,
-        type: type as 'magiclink' | 'email',
+        type: type as 'magiclink' | 'email'
       });
 
       if (error) {
@@ -61,7 +61,7 @@ const Auth = () => {
         toast({
           title: "Authentication Error",
           description: error.message,
-          variant: "destructive",
+          variant: "destructive"
         });
         setLoading(false);
         window.history.replaceState({}, '', '/auth');
@@ -73,7 +73,7 @@ const Auth = () => {
         navigate("/");
         return;
       }
-      
+
       setLoading(false);
       window.history.replaceState({}, '', '/auth');
     } catch (error) {
@@ -81,7 +81,7 @@ const Auth = () => {
       toast({
         title: "Authentication Error",
         description: "Failed to verify authentication token",
-        variant: "destructive",
+        variant: "destructive"
       });
       setLoading(false);
       window.history.replaceState({}, '', '/auth');
@@ -94,7 +94,7 @@ const Auth = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const redirectTo = encodeURIComponent(window.location.origin + '/auth');
       const loginUrl = `${supabaseUrl}/functions/v1/auth-azure-login?redirect_to=${redirectTo}`;
-      
+
       try {
         if (window.top && window.top !== window.self) {
           window.top.location.href = loginUrl;
@@ -109,7 +109,7 @@ const Auth = () => {
       toast({
         title: "Sign In Error",
         description: "Failed to initiate sign in",
-        variant: "destructive",
+        variant: "destructive"
       });
       setIsSigningIn(false);
     }
@@ -119,8 +119,8 @@ const Auth = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -142,32 +142,32 @@ const Auth = () => {
             </div>
 
             <p className="text-sm text-muted-foreground">
-              Sign in with your organization's Microsoft account
+              Sign in with your Solutionment Microsoft account
             </p>
 
             <Button
               onClick={handleMicrosoftSignIn}
               disabled={isSigningIn}
               className="w-full h-12 font-medium"
-              variant="default"
-            >
+              variant="default">
+              
               <svg className="w-5 h-5 mr-3" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
-                <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-                <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-                <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-                <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+                <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+                <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+                <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
               </svg>
               {isSigningIn ? "Signing in..." : "Sign in with Microsoft"}
             </Button>
 
-            <p className="text-xs text-muted-foreground">
-              Access is available to registered organizations. Contact hello@solutionment.com to get set up.
+            <p className="text-xs text-muted-foreground">Access is available to registered organizations. Contact sales@solutionment.com to get set up.
+
             </p>
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>);
+
 };
 
 export default Auth;
