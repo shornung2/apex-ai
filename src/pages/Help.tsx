@@ -38,7 +38,6 @@ Apex AI is a platform that puts AI agents to work across your Sales and Marketin
 
 ### Tips
 - Click any job in the activity feed to view its full detail page.
-- The token usage bar in the sidebar gives you an at-a-glance budget view.
 - Click "View all" on the Scheduled Tasks card to manage your automated tasks.`,
   },
   {
@@ -279,21 +278,41 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
   {
     id: "settings",
     title: "Settings",
-    content: `The Settings page lets you configure your workspace. Some tabs are **admin-only** and hidden from regular members.
+    content: `The Settings page contains personal preferences and system overview — available to all users.
 
-### General (All users)
+### General
 - Set your workspace name and industry.
 
-### Appearance (All users)
+### Appearance
 - Toggle between **Light**, **Dark**, and **System** mode.
 - Your preference is saved and persists across sessions.
 
-### API Keys & Integrations (Admin only)
+### System
+- View token usage, total runs, success rate, knowledge docs count, active skills, and scheduled tasks.
+- A quick overview of your workspace health at a glance.
 
-**AI Gateway** — Connected via Lovable AI. Always active.
+### Tips
+- For administrative functions (agents, API keys, integrations, billing), see the **Workspace Admin** page — available only to workspace administrators and super admins.`,
+  },
+  {
+    id: "workspace-admin",
+    title: "Workspace Admin",
+    content: `The Workspace Admin page is available only to **workspace administrators** and **super admins**. It appears in the sidebar between Settings and Super Admin. Non-admin users cannot see or access this page.
 
-**OpenRouter Integration:**
-1. Go to **Settings > API Keys**.
+### Team & Workspace
+- At the top of the page, manage workspace details, team member roles, and invite new users.
+
+### Agent Configuration
+- Enable or disable specific agent types across departments.
+- **When an agent is disabled**, all skills using that agent type are blocked from execution — in the web app, via Telegram, and through the API.
+- The agent-dispatch service returns a 403 error if a disabled agent is requested.
+- Useful for controlling which capabilities are available to your team.
+- Agent toggle states are persisted to workspace settings and take effect immediately.
+
+### API Keys
+- **AI Gateway** — Connected via Lovable AI. Always active.
+- **OpenRouter Integration:**
+1. Go to **Workspace Admin > API Keys**.
 2. Toggle **OpenRouter** on.
 3. If your API key is already stored, you'll see "Key configured" and the full OpenRouter model catalog will load.
 4. **Browse models** — scroll through the searchable list of all available OpenRouter models.
@@ -301,49 +320,30 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 6. Selected models immediately become available in the Skill Builder's Preferred Model dropdown.
 7. To change your API key, contact your administrator to update the backend secret.
 
-### Agent Configuration (Admin only)
-- Enable or disable specific agent types across departments.
-- **When an agent is disabled**, all skills using that agent type are blocked from execution — in the web app, via Telegram, and through the API.
-- The agent-dispatch edge function returns a 403 error if a disabled agent is requested.
-- Useful for controlling which capabilities are available to your team.
-- Agent toggle states are persisted to workspace settings and take effect immediately.
-
-### Integrations (Admin only)
+### Integrations
 - **Telegram Bot** — Enable or disable the Telegram integration for your workspace.
 - Telegram is **disabled by default** for new workspaces.
 - When disabled, the Telegram bot responds to all messages with a notice directing users to contact their administrator.
-- When enabled, full setup instructions are shown in the Settings panel.
-- See the **Telegram Bot Integration** section below for detailed setup steps.
+- When enabled, full setup instructions are shown in the panel.
+- See the **Telegram Bot Integration** section for detailed setup steps.
 
-### Usage & Billing (Admin only)
-- The **Usage & Billing** tab provides a detailed breakdown of your monthly token consumption.
+### Usage & Billing
 - **Stat cards** show agent jobs run, decks generated, total tokens, and estimated cost.
 - A **daily token usage chart** visualizes your consumption over the last 30 days.
 - The **activity table** lists recent usage events with event type, skill, tokens, and model used.
 - **Token budget warnings** appear when you approach (80%) or exceed (100%) your monthly token limit.
 
-### System (All users)
-- View token usage, total runs, success rate, knowledge docs count, active skills, and scheduled tasks.
-
-### Team & Workspace (Admin only)
-- Visible only to workspace administrators and super admins.
-- Manage workspace details, team member roles, and invite new users.
-
 ### Multi-Tenant Access
 - Apex AI supports multiple organizations. Access is determined by your email domain — each organization registers its allowed domains.
 - The first user from a new organization is automatically granted the admin role.
-- Contact hello@solutionment.com to register your organization.
-
-### Tips
-- If you're approaching your token budget, consider adjusting estimated costs on individual skills in the Skill Builder.
-- Non-admin users see only General, Appearance, and System tabs.`,
+- Contact hello@solutionment.com to register your organization.`,
   },
   {
     id: "telegram-bot",
     title: "Telegram Bot Integration",
     content: `Run any Apex AI skill directly from Telegram — same agents, same skills, just a chat interface. You can also chat with Alex, your AI assistant, and view your scheduled tasks.
 
-**Important:** The Telegram integration is **disabled by default**. A workspace administrator must enable it in **Settings > Integrations** before the bot will respond to commands.
+**Important:** The Telegram integration is **disabled by default**. A workspace administrator must enable it in **Workspace Admin > Integrations** before the bot will respond to commands.
 
 ### Setup Guide (Step by Step)
 
@@ -597,7 +597,7 @@ Agents can receive context from multiple sources simultaneously:
   {
     id: "usage-billing",
     title: "Usage & Billing",
-    content: `The Usage & Billing tab in Settings provides detailed visibility into your token consumption and costs.
+    content: `The Usage & Billing tab in **Workspace Admin** provides detailed visibility into your token consumption and costs. This tab is only accessible to workspace administrators and super admins.
 
 ### Stat Cards
 - **Agent Jobs Run** — number of agent jobs executed this month.
