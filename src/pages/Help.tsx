@@ -495,7 +495,7 @@ The Overview dashboard shows up to 3 upcoming scheduled tasks with their next ru
   {
     id: "grounding",
     title: "Agent Grounding & Context",
-    content: `All agents in Apex AI are grounded in your organization's knowledge. Here's how it works end-to-end.
+    content: `All agents in Apex AI are grounded in your organization's knowledge and live web data. Here's how it works end-to-end.
 
 ### How Grounding Works
 
@@ -505,11 +505,24 @@ The Overview dashboard shows up to 3 upcoming scheduled tasks with their next ru
 4. The top matching chunks are injected into the agent's system prompt as context.
 5. The agent uses this context to produce more relevant, organization-specific outputs.
 
+### Live Web Search (Brave Search)
+
+Skills with **web search enabled** automatically fetch live results from the web before the agent generates its response:
+
+- The system sends a search query derived from your inputs to the **Brave Search API**.
+- Up to **10 recent web results** (filtered to the past week) are retrieved with titles, descriptions, and source URLs.
+- These results are injected into the agent's system prompt as **LIVE WEB SEARCH RESULTS**, giving the model current, real-world context.
+- The agent is instructed to cite sources where appropriate.
+- If web search is unavailable (e.g. API key not configured), the system falls back gracefully to a recency caveat informing the model of its training cutoff.
+
+**Skills that use live web search include:** Morning Coffee, Company Research Brief, Competitive Battle Card, Market Intelligence Brief, Win/Loss Analysis, SEO Blog Brief, LinkedIn Post Series, and any custom skill with web search enabled.
+
 ### Sources of Context
 
 Agents can receive context from multiple sources simultaneously:
 
 - **Knowledge Base (RAG)** — Automatic. All uploaded documents (PDF, DOCX, PPTX, TXT, etc.) are chunked and searchable. Folder structure does not affect grounding.
+- **Live Web Search** — Automatic for web-search-enabled skills. Current web results are fetched and injected as grounding context.
 - **Additional Context files** — When running a skill, users can attach extra files via the "Additional Context" upload zone (max 10 files, 10 MB total). These are extracted and injected into the agent's prompt.
 - **File attachments in skills** — When a user uploads a file to a skill form (e.g. meeting transcripts), the extracted text is passed directly as an input value in the prompt template.
 - **File attachments in Alex Chat** — When a user attaches a file while chatting with Alex, the content is injected into the system prompt alongside RAG results.
@@ -523,7 +536,8 @@ Agents can receive context from multiple sources simultaneously:
 - **Attach meeting transcripts** — use the file upload in Meeting Prep Coach for targeted prep.
 - **Keep documents current** — delete outdated documents and upload newer versions.
 - **All file types work equally** — PDF, DOCX, PPTX, TXT, MD, and CSV are all extracted and chunked identically.
-- **Upload brand guidelines as .docx** — for best text extraction in deck generation.`,
+- **Upload brand guidelines as .docx** — for best text extraction in deck generation.
+- **Web search skills work best with specific inputs** — the more specific your inputs, the better the search results and grounding.`,
   },
   {
     id: "skill-packs",
