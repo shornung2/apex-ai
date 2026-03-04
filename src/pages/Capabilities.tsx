@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { motion, Reorder } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -311,11 +314,19 @@ export default function Capabilities() {
     return ai - bi;
   });
 
-  const handleReorder = (newOrder: Skill[]) => {
-    const ids = newOrder.map(s => s.id);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedSkills.findIndex(s => s.id === active.id);
+    const newIndex = orderedSkills.findIndex(s => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(orderedSkills, oldIndex, newIndex);
+    const ids = reordered.map(s => s.id);
     setSkillOrder(ids);
     localStorage.setItem("apex-skill-order", JSON.stringify(ids));
-  };
+  }, [orderedSkills]);
 
   const resetBuilder = () => {
     setEditingSkillId(null);
