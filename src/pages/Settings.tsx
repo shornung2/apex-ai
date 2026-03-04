@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/contexts/TenantContext";
+import TeamWorkspaceSection from "@/components/TeamWorkspaceSection";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -50,7 +51,7 @@ interface OpenRouterModel {
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const { tenantId } = useTenant();
+  const { tenantId, isAdmin } = useTenant();
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const [workspaceName, setWorkspaceName] = useState("Solutionment");
   const [industry, setIndustry] = useState("Technology Consulting");
@@ -206,6 +207,12 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground mt-1">Workspace configuration and administration</p>
       </motion.div>
+
+      {isAdmin && (
+        <motion.div variants={item}>
+          <TeamWorkspaceSection />
+        </motion.div>
+      )}
 
       <motion.div variants={item}>
         <Tabs defaultValue="general" className="space-y-6">

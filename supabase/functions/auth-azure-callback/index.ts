@@ -185,9 +185,17 @@ serve(async (req) => {
     // Auto-provision user_profiles row
     const { data: existingProfile } = await supabase
       .from('user_profiles')
-      .select('id')
+      .select('id, status')
       .eq('id', authUser.id)
       .maybeSingle();
+
+    // Block removed users
+    if (existingProfile && (existingProfile as any).status === 'removed') {
+      return new Response(null, {
+        status: 302,
+        headers: { 'Location': `${redirectTo}?error=${encodeURIComponent('Your access to Apex AI has been revoked. Please contact your organization administrator.')}` },
+      });
+    }
 
     let role = 'member';
     if (!existingProfile) {
