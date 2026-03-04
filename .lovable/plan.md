@@ -1,83 +1,74 @@
 
 
-# Semantic Vector Search with pgvector
+# Super Admin Dashboard
 
 ## Summary
 
-Add pgvector-based semantic search to the Knowledge Base, replacing keyword ILIKE matching with embedding-based retrieval. Includes database schema changes, embedding generation during ingestion, updated RAG retrieval in both agent-dispatch and alex-chat, and a backfill function for existing chunks.
+Create a new `/super-admin` page with four tabs (Tenants, Usage, Audit Log, Quality) for Solutionment staff to manage all customer tenants. Add a guarded sidebar link and backend functions to bypass tenant RLS.
 
-## Part A — Database Migration
+## Database Changes
 
-Run a single migration that:
-1. Enables the `vector` extension
-2. Adds an `embedding vector(768)` column to `knowledge_chunks`
-3. Creates an IVFFlat index on the embedding column
-4. Creates the `match_knowledge_chunks` function (returns content, document_id, chunk_id, similarity filtered by tenant_id and threshold)
+**Migration**: Create two SECURITY DEFINER functions that check the caller is `super_admin` before returning cross-tenant data:
 
-## Part B — Embedding Generation in knowledge-ingest
+1. `admin_list_all_tenants()` — returns all tenants with user count per tenant
+2. `admin_list_all_agent_jobs(...)` — returns all agent_jobs joined with tenant name, with optional filters (tenant_id, status, date range, search). Used by Audit Log and Quality tabs.
+3. `admin_insert_tenant(...)` — inserts a new tenant row (bypasses missing INSERT RLS)
+4. `admin_update_tenant(...)` — updates any tenant row (bypasses tenant-scoped UPDATE RLS)
+5. `admin_usage_summary()` — returns per-tenant aggregated usage for current month
 
-Update `supabase/functions/knowledge-ingest/index.ts`:
+All functions: `SECURITY DEFINER`, check `(SELECT role FROM user_profiles WHERE id = auth.uid()) = 'super_admin'`, raise exception if not.
 
-- Add a helper function `generateEmbedding(text: string): Promise<number[] | null>` that calls `https://ai.gateway.lovable.dev/v1/embeddings` with model `google/text-embedding-004`
-- After inserting chunks (line ~227-233), iterate over the inserted chunk IDs and:
-  1. Call `generateEmbedding(chunk.content)`
-  2. If successful, `UPDATE knowledge_chunks SET embedding = $vector WHERE id = chunkId`
-  3. If it fails, log the error and continue (chunk remains searchable via keyword fallback)
-- To get chunk IDs, change the chunk insert to `.insert(chunks).select('id, content')` so we get the IDs back
+No new tables needed. The `agent_jobs` table already has all needed columns.
 
-## Part C — Update RAG Retrieval
+## Frontend Changes
 
-### agent-dispatch (lines 216-236)
+### 1. New page: `src/pages/SuperAdmin.tsx`
 
-Replace the current ILIKE search block with:
-1. Call `generateEmbedding(inputValues)` to get a query vector
-2. If embedding succeeds, call `supabase.rpc('match_knowledge_chunks', { query_embedding: vector, match_tenant_id: tenantId, match_count: 5, similarity_threshold: 0.65 })`
-3. If semantic search returns 3+ results, use those as grounding context
-4. If fewer than 3 results (or embedding call failed), fall back to the existing ILIKE keyword search
-5. Deduplicate by chunk content if both sources run
+Four tabs using shadcn Tabs:
 
-### alex-chat (lines 219-243)
+**Tab 1 — Tenants**: Table via `admin_list_all_tenants()` RPC. Columns: Name, Slug, Plan (badge), Status (badge), Domains, Users count, Jobs this month, Created. Actions: Edit (sheet/slide-in panel to edit name, plan, status, allowed_domains, token_budget_monthly), Suspend/Reactivate toggle. "New Tenant" button opens a dialog.
 
-Same pattern as agent-dispatch:
-1. Generate embedding of the last user message content
-2. Try semantic search via `match_knowledge_chunks` RPC
-3. Fall back to ILIKE if insufficient results
-4. Note: alex-chat doesn't have tenantId readily available — need to extract it from the knowledge_chunks query (the RLS handles it, but for the RPC we need to pass it). Will extract tenant from the auth header similar to agent-dispatch's pattern.
+**Tab 2 — Usage Overview**: Summary cards at top (Total Active Tenants, Total Jobs, Total Tokens, Avg Tokens/Tenant). Table sorted by tokens desc from `admin_usage_summary()` RPC.
 
-### Shared embedding helper
+**Tab 3 — Audit Log**: All agent_jobs from `admin_list_all_agent_jobs()` RPC. Filters: tenant dropdown, status dropdown, date range, search by title. Columns: Tenant, Job Title, Agent, Department, Status, Tokens, Created At.
 
-Both functions and knowledge-ingest need the same `generateEmbedding` function. Since Deno edge functions don't share code easily, the helper will be duplicated in each function (small, ~15 lines).
+**Tab 4 — Quality**: Same RPC filtered for negative feedback (will need a `feedback_rating` column — but since the schema doesn't have one yet, this tab will show jobs with status `failed` as a proxy, or we add `feedback_rating` and `feedback_note` columns).
 
-## Part D — Backfill Function
+Actually, the `agent_jobs` table doesn't have `feedback_rating` or `feedback_note` columns. We need a small migration to add them.
 
-Create `supabase/functions/backfill-embeddings/index.ts`:
-- Validates caller JWT, checks `user_profiles.role` is `super_admin`
-- Accepts optional `{ tenant_id }` in body (super_admin can backfill any tenant)
-- Queries up to 50 `knowledge_chunks` where `embedding IS NULL`
-- For each, generates embedding and updates the row
-- Returns `{ processed: number, remaining: number }`
-
-Update `supabase/config.toml` to add:
-```toml
-[functions.backfill-embeddings]
-verify_jwt = false
+**Migration addition**: 
+```sql
+ALTER TABLE agent_jobs ADD COLUMN IF NOT EXISTS feedback_rating smallint;
+ALTER TABLE agent_jobs ADD COLUMN IF NOT EXISTS feedback_note text;
 ```
+
+### 2. Update `src/components/AppSidebar.tsx`
+
+- Import `Shield` from lucide-react and `useTenant`
+- After the bottomItems rendering, conditionally render a "Super Admin" link with amber/yellow styling when `isSuperAdmin` is true
+
+### 3. Update `src/App.tsx`
+
+- Add route `/super-admin` with the new page component
+- Wrap in AuthGuard + TenantProvider (already handled by the `/*` catch-all)
+
+### 4. Route guard in `SuperAdmin.tsx`
+
+- Check `isSuperAdmin` from TenantContext. If false, redirect to `/` and show toast "Access denied."
 
 ## Files Affected
 
 | File | Action |
 |---|---|
-| Database migration | Create: enable vector, add column, index, RPC function |
-| `supabase/functions/knowledge-ingest/index.ts` | Edit: add embedding generation after chunk insert |
-| `supabase/functions/agent-dispatch/index.ts` | Edit: replace ILIKE with semantic search + fallback |
-| `supabase/functions/alex-chat/index.ts` | Edit: replace ILIKE with semantic search + fallback |
-| `supabase/functions/backfill-embeddings/index.ts` | Create: new edge function |
-| `supabase/config.toml` | Edit: add backfill-embeddings config |
+| Database migration | Create: RPC functions + feedback columns |
+| `src/pages/SuperAdmin.tsx` | Create: full page with 4 tabs |
+| `src/components/AppSidebar.tsx` | Edit: add conditional Super Admin link |
+| `src/App.tsx` | Edit: add `/super-admin` route |
 
 ## Technical Notes
 
-- The Lovable AI gateway supports embeddings at `https://ai.gateway.lovable.dev/v1/embeddings` with model `google/text-embedding-004` (768 dimensions)
-- IVFFlat index with `lists = 100` is appropriate for the expected dataset size
-- The `match_knowledge_chunks` function uses `SECURITY DEFINER` to bypass RLS while still filtering by tenant_id explicitly
-- Backward compatibility is preserved: chunks without embeddings are still findable via keyword fallback
+- All cross-tenant data access goes through SECURITY DEFINER RPCs that verify `super_admin` role server-side
+- No RLS policy changes needed — RPCs bypass RLS by design
+- The Quality tab filters on `feedback_rating = -1` (thumbs down)
+- Job detail links open in new tabs via `window.open`
 
