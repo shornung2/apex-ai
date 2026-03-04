@@ -109,15 +109,16 @@ function SortableSkillCard({ skill, feedbackStats, openrouterModels, onEdit }: {
   const dynamicCost = estimateCostForModel(modelId, skill.tokenBudget || 10000, openrouterModels);
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
-      <Card className="glass-card hover:border-primary/30 transition-all cursor-pointer group" onClick={() => onEdit(skill)}>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <Card
+        className={`glass-card hover:border-primary/30 transition-all group ${isDragging ? "cursor-grabbing ring-2 ring-primary/30" : "cursor-grab"}`}
+        onClick={() => { if (!isDragging) onEdit(skill); }}
+      >
         <CardContent className="p-5 space-y-3">
           <div className="flex items-start justify-between">
             <span className="text-2xl">{skill.emoji}</span>
             <div className="flex gap-1.5 items-center">
-              <button {...listeners} className="touch-none cursor-grab active:cursor-grabbing p-0.5 -m-0.5" onClick={(e) => e.stopPropagation()}>
-                <GripVertical className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-50 transition-opacity" />
-              </button>
+              <GripVertical className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-50 transition-opacity" />
               <Badge variant="outline" className="text-[10px]">{dept?.name}</Badge>
               <Badge variant="outline" className="text-[10px]">{agent?.name}</Badge>
               <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
