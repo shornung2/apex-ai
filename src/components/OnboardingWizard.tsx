@@ -11,7 +11,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, ArrowLeft, Upload, Check, Loader2, FileText } from "lucide-react";
-import logoLight from "@/assets/logo-light.jpg";
+import apexLogo from "@/assets/apex-ai-logo.png";
 
 const STEPS = ["Welcome", "About Your Team", "Skill Packs", "Upload Document"];
 
@@ -238,7 +238,7 @@ export function OnboardingWizard() {
             {/* Step 1: Welcome */}
             {step === 0 && (
               <div className="text-center space-y-6">
-                <img src={logoLight} alt="Apex AI" className="h-24 w-24 object-contain mx-auto rounded" />
+                <img src={apexLogo} alt="Apex AI" className="h-32 w-32 object-contain mx-auto" />
                 <h1 className="text-3xl font-bold tracking-tight">Welcome to Apex AI</h1>
                 <p className="text-muted-foreground max-w-md mx-auto">
                   Your AI-powered presales and sales intelligence platform by Solutionment.
