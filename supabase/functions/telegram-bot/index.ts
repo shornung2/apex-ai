@@ -135,7 +135,7 @@ async function handleStart(chatId: number, firstName?: string) {
   await sendMessage(
     chatId,
     `👋 <b>Welcome${name ? `, ${escapeHtml(name)}` : ""}!</b>\n\n` +
-      `I'm your <b>Apex AI Assistant</b>. I can run any skill or agent for you right here in Telegram.\n\n` +
+      `I'm your <b>Apex AI Assistant</b> with <b>24 production-quality skills</b> across 3 packs: Presales Excellence, Sales Productivity, and Marketing & Content.\n\n` +
       `<b>Commands:</b>\n` +
       `/skills — Browse available skills\n` +
       `/tasks — View your scheduled tasks\n` +
@@ -165,14 +165,18 @@ async function handleHelp(chatId: number) {
       `2. Tap a skill to select it\n` +
       `3. I'll ask for each input one at a time\n` +
       `4. Once complete, I'll run the agent and send you the result\n\n` +
-      `<b>New features:</b>\n` +
+      `<b>Skill Packs:</b>\n` +
+      `📋 <b>Presales Excellence</b> — 8 production-quality skills (RFP analysis, discovery prep, battle cards, proposals, and more)\n` +
+      `💼 <b>Sales Productivity</b> — 8 skills (research, outreach, deal strategy, negotiation, pipeline review)\n` +
+      `📢 <b>Marketing & Content</b> — 8 skills (thought leadership, LinkedIn, SEO, case studies, launches)\n\n` +
+      `<b>Features:</b>\n` +
       `📊 <b>Usage tracking</b> — use /usage to see your monthly token consumption and estimated costs.\n` +
-      `👍👎 <b>Output feedback</b> — rate job results in the web app to help improve quality. Quality badges appear on skills with 5+ ratings.\n` +
-      `🧙 <b>Onboarding wizard</b> — new users are guided through workspace setup in the web app (4-step wizard).\n\n` +
+      `👍👎 <b>Output feedback</b> — rate job results in the web app to help improve quality.\n` +
+      `🧙 <b>Onboarding wizard</b> — new users are guided through workspace setup in the web app.\n\n` +
       `Deck generation: Skills with PowerPoint output automatically generate .pptx files and send you a download link.\n` +
       `Use /tasks to see your automated scheduled tasks.\n\n` +
       `<b>Build with Alex (Web App):</b>\n` +
-      `In the web app's Skill Builder, click "Build with Alex" to get AI-assisted help creating skills and writing system prompts. Alex will generate complete, production-ready prompts and suggest configurations you can apply with one click.\n\n` +
+      `In the web app's Skill Builder, click "Build with Alex" to get AI-assisted help creating skills and writing system prompts.\n\n` +
       `Or just <b>type any message</b> to chat with Alex, your AI assistant!`
   );
 }

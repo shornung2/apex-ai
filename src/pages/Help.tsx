@@ -508,6 +508,53 @@ Agents can receive context from multiple sources simultaneously:
 - **Upload brand guidelines as .docx** — for best text extraction in deck generation.`,
   },
   {
+    id: "skill-packs",
+    title: "Skill Packs",
+    content: `Skill Packs are curated collections of production-quality skills with expert-written system prompts, structured inputs, and proven output formats.
+
+### What Are Skill Packs?
+- Each pack contains **8 skills** with complete, production-ready definitions — not templates, but fully-configured skills with detailed system prompts, input fields with placeholders and hints, and structured output formats.
+- Packs are designed by domain experts and cover the most common workflows in presales, sales, and marketing.
+
+### The Three Starter Packs
+
+**Presales Excellence** (8 skills)
+- 📋 RFP Analyzer & Scorer — Score RFP opportunities with a weighted Go/No-Go rubric
+- 🔍 Discovery Call Prep Coach — Build pre-call hypotheses and themed question sets
+- ⚔️ Competitive Battle Card — Strategic battle cards with trap questions and landmines
+- 📝 Executive Proposal Draft — Polished executive proposals with business case framing
+- ✅ Solution Qualification Scorecard — Multi-dimensional deal qualification scoring
+- ✉️ Meeting Follow-Up Email — Specific, strategic follow-up emails by meeting type
+- 🧪 POC & Pilot Plan — Complete POC plans with success criteria and risk registers
+- 🛡️ Objection Response Builder — Multi-layered objection handling strategies
+
+**Sales Productivity** (8 skills)
+- 🔬 Company Research Brief — Deep-dive account intelligence with sales insights
+- 📬 Personalized Outreach Email — Three-variant outreach emails with follow-up sequences
+- ♟️ Deal Strategy Session — Structured deal coaching with stakeholder mapping
+- 🏆 Champion Coaching Guide — Enable your internal champion to win internally
+- 📈 Pipeline Review Prep — Deal health assessments and forecast analysis
+- 🤝 Sales Negotiation Prep — BATNA analysis and concession strategies
+- 🗺️ Account Expansion Map — Whitespace analysis and growth planning
+- 📊 Win/Loss Analysis — Root cause analysis with pattern identification
+
+**Marketing & Content** (8 skills)
+- 💭 Thought Leadership Article — Authoritative articles with original perspectives
+- 💼 LinkedIn Post Series — Multi-format post series with engagement optimization
+- 📡 Market Intelligence Brief — Trend analysis and competitive landscape mapping
+- 📢 Campaign Messaging Framework — Value props, persona messaging, and creative direction
+- 🔎 SEO Blog Brief — Keyword strategy, competitive analysis, and content outlines
+- 📚 Customer Case Study Draft — Challenge-solution-results storytelling
+- 📧 Email Nurture Sequence — Multi-touch sequences with conversion optimization
+- 🚀 Product Launch Announcement — Full launch content packages across channels
+
+### How Packs Are Seeded
+- During **onboarding**, you select which packs to install. Selected packs are automatically seeded into your workspace.
+- **Admins** can seed additional packs at any time via the platform API.
+- Skills from packs are added as regular skills — you can edit, customize, or delete them like any other skill.
+- **Duplicate detection** prevents the same skill from being added twice.`,
+  },
+  {
     id: "onboarding",
     title: "Onboarding & Setup",
     content: `When you first sign in, the Onboarding Wizard guides you through setting up your workspace in 4 steps.
@@ -521,7 +568,8 @@ Agents can receive context from multiple sources simultaneously:
 - This information personalizes your workspace and pre-selects relevant skill packs.
 
 ### Step 3: Skill Packs
-- Choose from curated skill packs: **Presales Excellence** (12 skills), **Sales Productivity** (10 skills), and **Marketing & Content** (8 skills).
+- Choose from curated skill packs: **Presales Excellence** (8 skills), **Sales Productivity** (8 skills), and **Marketing & Content** (8 skills).
+- Each pack contains production-quality skills with expert-written system prompts — not basic templates.
 - Packs are auto-selected based on your use case, but you can adjust selections.
 - Selected packs are seeded into your workspace when you finish.
 
