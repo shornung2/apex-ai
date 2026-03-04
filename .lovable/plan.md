@@ -1,95 +1,72 @@
 
 
-# Onboarding Wizard for New Tenants
+# Output Quality Feedback
 
 ## Summary
 
-Create a full-screen onboarding wizard (4 steps) that renders when `onboardingComplete` is false. Includes a new `seed-skill-packs` edge function to provision starter skills, and a dismissible Quick Start banner on the Dashboard.
+Add thumbs up/down feedback to completed job outputs, show quality badges on skill cards, and ensure the Super Admin Quality tab works with existing columns.
 
 ## Database Changes
 
-None needed for the wizard itself. The `onboarding_complete` column already exists on `user_profiles`. Workspace settings keys (`company_name`, `industry`, `primary_use_case`) will be upserted into the existing `workspace_settings` table.
+The `feedback_rating` and `feedback_note` columns already exist on `agent_jobs`. A migration is needed only to add a validation trigger constraining `feedback_rating` to `1` or `-1`.
 
-## New Edge Function: `seed-skill-packs`
+```sql
+CREATE OR REPLACE FUNCTION validate_feedback_rating()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.feedback_rating IS NOT NULL AND NEW.feedback_rating NOT IN (1, -1) THEN
+    RAISE EXCEPTION 'feedback_rating must be 1 or -1';
+  END IF;
+  RETURN NEW;
+END;
+$$;
 
-Create `supabase/functions/seed-skill-packs/index.ts`:
+CREATE TRIGGER trg_validate_feedback_rating
+BEFORE INSERT OR UPDATE ON public.agent_jobs
+FOR EACH ROW EXECUTE FUNCTION validate_feedback_rating();
+```
 
-- Accepts `{ tenant_id, packs: string[] }` where packs are `"presales"`, `"sales"`, `"marketing"`
-- Validates the caller is authenticated and belongs to the tenant
-- For each selected pack, inserts a predefined set of skills into the `skills` table with `is_system = true` and the correct `tenant_id`
-- Returns `{ seeded: number }` (total skills inserted)
-- Skills are defined inline in the function as arrays of skill objects with appropriate names, descriptions, departments, agent types, prompt templates, etc.
+## Frontend Changes
 
-### Skill Pack Contents (summary):
+### 1. JobDetail.tsx — Feedback UI
 
-**Presales (12 skills)**: RFP Response Drafter, Discovery Prep, Competitive Brief, Solution Qualifier, Executive Proposal, POC Planner, Technical Q&A, Win Theme Builder, Demo Script, Pricing Strategy, Reference Story, Objection Handler
+After the output card (when `status === 'complete'`), add a feedback section:
 
-**Sales (10 skills)**: Account Research, Personalized Outreach, Deal Strategy, Champion Coach, Pipeline Review, Win/Loss Analysis, Territory Plan, Proposal Builder, Follow-Up Email, Call Debrief
+- "Was this output useful?" label with ThumbsUp / ThumbsDown icon buttons
+- If `job.feedback_rating` is already set: show the selected button highlighted, both disabled
+- On thumbs-down: reveal a textarea "What could be improved?" with a "Submit Feedback" button
+- On any save: `supabase.from('agent_jobs').update({ feedback_rating, feedback_note }).eq('id', jobId)`
+- Toast: "Thanks — your feedback helps us improve Apex AI."
 
-**Marketing (8 skills)**: Thought Leadership, LinkedIn Post, Market Intelligence, Campaign Messaging, SEO Brief, Email Nurture, Case Study, Social Calendar
+### 2. Capabilities.tsx — Quality badge on skill cards
 
-Each skill has minimal but functional prompt templates. All use `preferred_model: 'haiku'` and sensible defaults.
+In the skill library grid, for each skill card, query aggregate feedback stats. Use a single batch query after skills load:
 
-## New Component: `OnboardingWizard`
+```sql
+SELECT skill_id, 
+  COUNT(*) as total, 
+  SUM(CASE WHEN feedback_rating = 1 THEN 1 ELSE 0 END) as positive
+FROM agent_jobs 
+WHERE feedback_rating IS NOT NULL AND skill_id = ANY($skillIds)
+GROUP BY skill_id
+```
 
-Create `src/components/OnboardingWizard.tsx`:
+On cards where `total >= 5`, show `⭐ {pct}% positive ({total} ratings)` as small muted text.
 
-- Full-screen fixed overlay (`z-50`, dark semi-transparent background)
-- Centered card with max-width ~640px
-- 4-step progress indicator (circles + connecting lines, filled = complete/current)
-- Uses `useTenant()` for tenantId/tenantName
+### 3. Department.tsx — Same quality badge
 
-### Step 1 — Welcome
-- Logo, headline, subheadline, "Get Started" button
+Same pattern: after loading department skills, fetch feedback stats and display on skill cards.
 
-### Step 2 — About Your Team
-- Company name (pre-filled from `tenantName`), Industry select, Primary use case radio group
-- On Next: upsert 3 rows into `workspace_settings` (keys: `company_name`, `industry`, `primary_use_case`)
+### 4. SuperAdmin Quality tab
 
-### Step 3 — Skill Packs
-- 3 selectable cards (multi-select with checkboxes)
-- Auto-selected based on Step 2's use case choice
-- User can toggle selections
-
-### Step 4 — Upload Document
-- Reuse the file upload logic from Knowledge page (upload to storage, call `knowledge-ingest`)
-- "Skip this step" link prominently shown
-- On upload success: green checkmark with filename
-
-### On Complete:
-1. Call `seed-skill-packs` edge function with selected packs
-2. `UPDATE user_profiles SET onboarding_complete = true WHERE id = userId`
-3. Close overlay
-4. Toast: "Your workspace is ready. You have {n} new skills — try one now!"
-5. Set a localStorage flag `show_quick_start = true`
-
-## Update `AppLayout.tsx`
-
-- Import `useTenant` and `OnboardingWizard`
-- If `!onboardingComplete && !isLoading`, render `<OnboardingWizard />` as a sibling to the layout (full-screen overlay on top)
-
-## Quick Start Banner on Dashboard
-
-- In `Dashboard.tsx`, add a dismissible banner at the top (above hero)
-- Show when `localStorage.getItem('show_quick_start') === 'true'`
-- Display 3 suggested skill names from the seeded packs
-- Dismiss removes from localStorage
-- Links to the relevant department page
+Already correctly queries `feedback_rating = -1` via the `admin_list_all_agent_jobs` RPC. No changes needed.
 
 ## Files Affected
 
 | File | Action |
 |---|---|
-| `src/components/OnboardingWizard.tsx` | Create |
-| `src/components/AppLayout.tsx` | Edit: render wizard overlay when onboarding incomplete |
-| `src/pages/Dashboard.tsx` | Edit: add Quick Start banner |
-| `supabase/functions/seed-skill-packs/index.ts` | Create |
-| `supabase/config.toml` | Edit: add seed-skill-packs function config |
-
-## Technical Notes
-
-- The wizard is an overlay, not a route — no navigation changes needed
-- File upload in Step 4 replicates the Knowledge page's upload pattern (storage upload + `knowledge-ingest` invocation)
-- The seed function uses the service role key to bypass RLS for bulk skill insertion
-- Skills seeded with `is_system = true` so they can be distinguished from user-created skills
+| Database migration | Create: feedback validation trigger |
+| `src/pages/JobDetail.tsx` | Edit: add feedback row after output |
+| `src/pages/Capabilities.tsx` | Edit: add quality badge to skill cards |
+| `src/pages/Department.tsx` | Edit: add quality badge to skill cards |
 
