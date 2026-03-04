@@ -110,6 +110,7 @@ Apex AI is a platform that puts AI agents to work across your Sales and Marketin
 ### Skill Library
 - Browse all skills across departments in one view.
 - Filter by department, agent type, or search by name.
+- **Drag to reorder** — grab any skill card and drag it to rearrange the order. Your custom order is saved automatically and remembered across sessions.
 - Click any skill to view its details or run it.
 
 ### Skill Builder
