@@ -139,10 +139,12 @@ async function handleStart(chatId: number, firstName?: string) {
       `<b>Commands:</b>\n` +
       `/skills — Browse available skills\n` +
       `/tasks — View your scheduled tasks\n` +
+      `/usage — View your monthly usage summary\n` +
       `/cancel — Cancel current operation\n` +
       `/clear — Reset Alex conversation history\n` +
       `/help — Show this help message\n\n` +
       `💡 Just type any message to <b>chat with Alex</b>, your AI assistant!\n\n` +
+      `📊 Rate any job output with 👍/👎 in the web app to help improve quality.\n\n` +
       `Try <b>/skills</b> to get started!`
   );
 }
@@ -154,6 +156,7 @@ async function handleHelp(chatId: number) {
       `/start — Welcome message\n` +
       `/skills — List all available skills by department\n` +
       `/tasks — View your active scheduled tasks\n` +
+      `/usage — Monthly usage summary (jobs, tokens, cost)\n` +
       `/cancel — Cancel current skill input\n` +
       `/clear — Reset Alex conversation history\n` +
       `/help — Show this help\n\n` +
@@ -162,6 +165,10 @@ async function handleHelp(chatId: number) {
       `2. Tap a skill to select it\n` +
       `3. I'll ask for each input one at a time\n` +
       `4. Once complete, I'll run the agent and send you the result\n\n` +
+      `<b>New features:</b>\n` +
+      `📊 <b>Usage tracking</b> — use /usage to see your monthly token consumption and estimated costs.\n` +
+      `👍👎 <b>Output feedback</b> — rate job results in the web app to help improve quality. Quality badges appear on skills with 5+ ratings.\n` +
+      `🧙 <b>Onboarding wizard</b> — new users are guided through workspace setup in the web app (4-step wizard).\n\n` +
       `Deck generation: Skills with PowerPoint output automatically generate .pptx files and send you a download link.\n` +
       `Use /tasks to see your automated scheduled tasks.\n\n` +
       `<b>Build with Alex (Web App):</b>\n` +
@@ -608,6 +615,34 @@ serve(async (req) => {
         msg += "Manage tasks in the Apex AI web app.";
         await sendMessage(chatId, msg);
       }
+      return new Response("ok");
+    }
+
+    if (text === "/usage") {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { data: events } = await supabase
+        .from("usage_events")
+        .select("event_type, tokens_used")
+        .gte("created_at", startOfMonth.toISOString());
+
+      const totalJobs = (events || []).filter((e: any) => e.event_type === "agent_job").length;
+      const totalTokens = (events || []).reduce((sum: number, e: any) => sum + (e.tokens_used || 0), 0);
+      const estimatedCost = (totalTokens / 1000) * 0.015;
+
+      const monthName = new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
+
+      await sendMessage(
+        chatId,
+        `📊 <b>Usage Summary — ${escapeHtml(monthName)}</b>\n\n` +
+          `• Agent jobs run: <b>${totalJobs}</b>\n` +
+          `• Total events: <b>${(events || []).length}</b>\n` +
+          `• Tokens used: <b>${totalTokens.toLocaleString()}</b>\n` +
+          `• Estimated cost: <b>$${estimatedCost.toFixed(2)}</b>\n\n` +
+          `View detailed breakdowns in the web app under Settings > Usage & Billing.`
+      );
       return new Response("ok");
     }
 

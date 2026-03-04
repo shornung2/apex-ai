@@ -238,7 +238,7 @@ export function OnboardingWizard() {
             {/* Step 1: Welcome */}
             {step === 0 && (
               <div className="text-center space-y-6">
-                <img src={logoLight} alt="Apex AI" className="h-12 mx-auto rounded" />
+                <img src={logoLight} alt="Apex AI" className="h-24 w-24 object-contain mx-auto rounded" />
                 <h1 className="text-3xl font-bold tracking-tight">Welcome to Apex AI</h1>
                 <p className="text-muted-foreground max-w-md mx-auto">
                   Your AI-powered presales and sales intelligence platform by Solutionment.

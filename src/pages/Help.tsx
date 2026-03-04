@@ -34,6 +34,7 @@ Apex AI is a platform that puts AI agents to work across your Sales and Marketin
 - **Knowledge Base** — number of documents stored.
 - **Scheduled Tasks** — up to 3 upcoming scheduled tasks with next run times, plus a "View all" link to the Tasks page.
 - **Recent Activity** — a live feed of the latest jobs with status indicators (queued, running, complete, failed).
+- **Quick Start Banner** — after completing onboarding, a banner appears suggesting skills to try based on the packs you selected. Dismiss it by clicking the X.
 
 ### Tips
 - Click any job in the activity feed to view its full detail page.
@@ -309,6 +310,13 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 - If the invited user's email domain is not already in your organization's allowed domains, it will be added automatically.
 - Invited users receive an email with a link to join the platform.
 
+### Usage & Billing
+- The **Usage & Billing** tab provides a detailed breakdown of your monthly token consumption.
+- **Stat cards** show agent jobs run, decks generated, total tokens, and estimated cost.
+- A **daily token usage chart** visualizes your consumption over the last 30 days.
+- The **activity table** lists recent usage events with event type, skill, tokens, and model used.
+- **Token budget warnings** appear when you approach (80%) or exceed (100%) your monthly token limit.
+
 ### Usage
 - View token usage, total runs, success rate, knowledge docs count, active skills, and scheduled tasks.
 
@@ -498,6 +506,80 @@ Agents can receive context from multiple sources simultaneously:
 - **Keep documents current** — delete outdated documents and upload newer versions.
 - **All file types work equally** — PDF, DOCX, PPTX, TXT, MD, and CSV are all extracted and chunked identically.
 - **Upload brand guidelines as .docx** — for best text extraction in deck generation.`,
+  },
+  {
+    id: "onboarding",
+    title: "Onboarding & Setup",
+    content: `When you first sign in, the Onboarding Wizard guides you through setting up your workspace in 4 steps.
+
+### Step 1: Welcome
+- See the Apex AI logo and a brief introduction to the platform.
+- Click **Get Started** to begin.
+
+### Step 2: About Your Team
+- Enter your **company name**, select your **industry**, and choose your **primary use case** (Presales, Sales, Marketing, or All).
+- This information personalizes your workspace and pre-selects relevant skill packs.
+
+### Step 3: Skill Packs
+- Choose from curated skill packs: **Presales Excellence** (12 skills), **Sales Productivity** (10 skills), and **Marketing & Content** (8 skills).
+- Packs are auto-selected based on your use case, but you can adjust selections.
+- Selected packs are seeded into your workspace when you finish.
+
+### Step 4: Upload Document
+- Optionally upload a company document (overview, product guide, playbook) to ground your agents in your business context.
+- Supported formats: PDF, Word, PowerPoint, Text, CSV (max 10 MB).
+- You can **skip this step** and upload documents later via the Knowledge Base.
+
+### After Onboarding
+- A **Quick Start banner** appears on the Dashboard suggesting skills to try based on your selected packs.
+- Dismiss it anytime by clicking the X.`,
+  },
+  {
+    id: "usage-billing",
+    title: "Usage & Billing",
+    content: `The Usage & Billing tab in Settings provides detailed visibility into your token consumption and costs.
+
+### Stat Cards
+- **Agent Jobs Run** — number of agent jobs executed this month.
+- **Decks Generated** — number of PowerPoint decks created this month.
+- **Total Tokens** — total tokens consumed across all events this month.
+- **Estimated Cost** — calculated from your configured cost-per-1K-tokens rate.
+
+### Usage Trend Chart
+- A bar chart showing **daily token usage over the last 30 days**.
+- Hover over any bar to see the exact token count for that day.
+
+### Activity Table
+- A detailed log of the 20 most recent usage events.
+- Shows date/time, event type, skill name, tokens used, and AI model.
+
+### Token Budget Warnings
+- If your organization has a monthly token budget configured:
+  - At **80% usage**: an amber warning banner appears.
+  - At **100% usage**: a red warning banner appears indicating jobs may be limited.
+- Contact your administrator to increase the budget if needed.`,
+  },
+  {
+    id: "output-feedback",
+    title: "Output Quality Feedback",
+    content: `After every completed agent job, you can rate the output quality to help improve Apex AI.
+
+### How It Works
+1. Open any completed job from the **History** page or after running a skill.
+2. Below the output, you'll see **"Was this output useful?"** with thumbs up and thumbs down buttons.
+3. Click **👍** to rate positively — your feedback is saved immediately.
+4. Click **👎** to rate negatively — a text box appears where you can optionally describe what could be improved.
+5. Click **Submit Feedback** to save your note, or leave it blank.
+
+### Quality Badges on Skills
+- Skills that have received **5 or more ratings** display a quality badge on their card.
+- The badge shows the percentage of positive ratings and total rating count (e.g. "⭐ 85% positive (20 ratings)").
+- Badges appear on skill cards in both **Department** pages and the **Capabilities** skill library.
+
+### How Feedback Is Used
+- Feedback data helps administrators identify skills that may need prompt refinement.
+- The **Super Admin Quality** tab shows all negatively-rated jobs with feedback notes for review.
+- Over time, feedback drives continuous improvement of AI skill performance.`,
   },
 ];
 
