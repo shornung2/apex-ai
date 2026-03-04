@@ -21,6 +21,8 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           department: string
+          feedback_note: string | null
+          feedback_rating: number | null
           file_url: string | null
           id: string
           inputs: Json
@@ -38,6 +40,8 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           department: string
+          feedback_note?: string | null
+          feedback_rating?: number | null
           file_url?: string | null
           id?: string
           inputs?: Json
@@ -55,6 +59,8 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           department?: string
+          feedback_note?: string | null
+          feedback_rating?: number | null
           file_url?: string | null
           id?: string
           inputs?: Json
@@ -661,6 +667,78 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_insert_tenant: {
+        Args: {
+          _allowed_domains?: string[]
+          _name: string
+          _plan?: string
+          _slug: string
+        }
+        Returns: string
+      }
+      admin_list_all_agent_jobs: {
+        Args: {
+          _date_from?: string
+          _date_to?: string
+          _feedback_rating?: number
+          _limit?: number
+          _offset?: number
+          _search?: string
+          _status?: string
+          _tenant_id?: string
+        }
+        Returns: {
+          agent_type: string
+          completed_at: string
+          created_at: string
+          department: string
+          feedback_note: string
+          feedback_rating: number
+          id: string
+          skill_id: string
+          status: string
+          tenant_id: string
+          tenant_name: string
+          title: string
+          tokens_used: number
+        }[]
+      }
+      admin_list_all_tenants: {
+        Args: never
+        Returns: {
+          allowed_domains: string[]
+          created_at: string
+          id: string
+          name: string
+          plan: string
+          slug: string
+          status: string
+          token_budget_monthly: number
+          user_count: number
+        }[]
+      }
+      admin_update_tenant: {
+        Args: {
+          _allowed_domains?: string[]
+          _id: string
+          _name?: string
+          _plan?: string
+          _status?: string
+          _token_budget_monthly?: number
+        }
+        Returns: undefined
+      }
+      admin_usage_summary: {
+        Args: never
+        Returns: {
+          jobs_this_month: number
+          last_active: string
+          plan: string
+          tenant_id: string
+          tenant_name: string
+          tokens_this_month: number
+        }[]
+      }
       get_my_tenant_id: { Args: never; Returns: string }
       get_tenant_for_domain: { Args: { _domain: string }; Returns: string }
       match_knowledge_chunks: {

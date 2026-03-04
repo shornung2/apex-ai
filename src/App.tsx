@@ -19,6 +19,7 @@ import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Tasks from "./pages/Tasks";
 import Auth from "./pages/Auth";
+import SuperAdmin from "./pages/SuperAdmin";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/help" element={<Help />} />
                         <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/super-admin" element={<SuperAdmin />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </AppLayout>

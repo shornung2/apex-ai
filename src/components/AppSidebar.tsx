@@ -11,8 +11,10 @@ import {
   HelpCircle,
   CalendarClock,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { useTenant } from "@/contexts/TenantContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
@@ -63,6 +65,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
+  const { isSuperAdmin } = useTenant();
   const deptOpen = location.pathname.startsWith("/departments");
   const { resolvedTheme } = useTheme();
 
@@ -182,6 +185,20 @@ export function AppSidebar() {
         )}
         <SidebarMenu>
           {bottomItems.map((item) => renderNavItem(item))}
+          {isSuperAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <NavLink
+                  to="/super-admin"
+                  className="text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
+                  activeClassName="bg-amber-500/10 text-amber-300 font-medium"
+                >
+                  <Shield className="h-4 w-4" />
+                  {!collapsed && <span>Super Admin</span>}
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleSignOut}>
               <LogOut className="h-4 w-4" />
