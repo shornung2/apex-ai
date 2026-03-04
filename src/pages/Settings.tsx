@@ -421,7 +421,7 @@ export default function SettingsPage() {
             <TabsTrigger value="agents" className="gap-1.5"><Bot className="h-3.5 w-3.5" /> Agents</TabsTrigger>
             <TabsTrigger value="billing" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Usage & Billing</TabsTrigger>
             <TabsTrigger value="usage" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> System</TabsTrigger>
-            <TabsTrigger value="members" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Members</TabsTrigger>
+            
           </TabsList>
 
           <TabsContent value="general">
@@ -723,14 +723,6 @@ export default function SettingsPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="members">
-            <Card className="glass-card">
-              <CardHeader><CardTitle className="text-lg">Team Members</CardTitle></CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Member management coming soon. Currently single-user workspace.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </motion.div>
     </motion.div>
