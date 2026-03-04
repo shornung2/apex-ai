@@ -142,7 +142,7 @@ const Auth = () => {
             </div>
 
             <p className="text-sm text-muted-foreground">
-              Sign in with your Solutionment Microsoft account
+              Sign in with your organization's Microsoft account
             </p>
 
             <Button
@@ -161,7 +161,7 @@ const Auth = () => {
             </Button>
 
             <p className="text-xs text-muted-foreground">
-              Only Solutionment employees (@solutionment.com) can access this application.
+              Access is available to registered organizations. Contact hello@solutionment.com to get set up.
             </p>
           </div>
         </CardContent>

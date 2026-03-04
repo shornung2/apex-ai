@@ -8,7 +8,7 @@ const helpSections = [
   {
     id: "getting-started",
     title: "Getting Started",
-    content: `**Welcome to Apex AI — your AI-powered business platform by Solutionment.**
+    content: `**Welcome to Apex AI — your multi-tenant AI-powered business platform by Solutionment.**
 
 Apex AI is a platform that puts AI agents to work across your Sales and Marketing departments. Each agent has specialized skills that produce high-quality outputs — research reports, proposals, strategies, articles, and more.
 
@@ -304,8 +304,18 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 - Enable or disable specific agent types across departments.
 - Useful for controlling which capabilities are available to your team.
 
+### User Invitations (Admin only)
+- Admins can invite new users by email from the Settings page.
+- If the invited user's email domain is not already in your organization's allowed domains, it will be added automatically.
+- Invited users receive an email with a link to join the platform.
+
 ### Usage
 - View token usage, total runs, success rate, knowledge docs count, active skills, and scheduled tasks.
+
+### Multi-Tenant Access
+- Apex AI supports multiple organizations. Access is determined by your email domain — each organization registers its allowed domains.
+- The first user from a new organization is automatically granted the admin role.
+- Contact hello@solutionment.com to register your organization.
 
 ### Tips
 - If you're approaching your token budget, consider adjusting estimated costs on individual skills in the Skill Builder.`,
