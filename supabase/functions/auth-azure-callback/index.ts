@@ -124,21 +124,39 @@ serve(async (req) => {
       });
     }
 
-    // Validate domain
-    if (!email.toLowerCase().endsWith('@solutionment.com')) {
-      return new Response(null, {
-        status: 302,
-        headers: { 'Location': `${redirectTo}?error=Only Solutionment employees can access this application` },
-      });
-    }
+    console.log('User email extracted:', email);
 
-    console.log('User email validated:', email);
-
+    // Create Supabase admin client (service role bypasses RLS)
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Check if user exists
+    // Dynamic tenant lookup by email domain
+    const domain = email.toLowerCase().split('@')[1];
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenants')
+      .select('id, name, status')
+      .contains('allowed_domains', [domain])
+      .single();
+
+    if (!tenant || tenantError) {
+      console.error('Tenant lookup failed for domain:', domain, tenantError);
+      return new Response(null, {
+        status: 302,
+        headers: { 'Location': `${redirectTo}?error=${encodeURIComponent('Your organization is not registered on Apex AI. Please contact Solutionment at hello@solutionment.com to get set up.')}` },
+      });
+    }
+
+    if (tenant.status === 'suspended') {
+      return new Response(null, {
+        status: 302,
+        headers: { 'Location': `${redirectTo}?error=${encodeURIComponent("Your organization's Apex AI access has been suspended. Please contact Solutionment.")}` },
+      });
+    }
+
+    console.log('Tenant matched:', tenant.name, tenant.id);
+
+    // Check if user exists in Supabase Auth
     const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
     if (listError) {
       return new Response(null, {
@@ -147,10 +165,10 @@ serve(async (req) => {
       });
     }
 
-    const existingUser = existingUsers.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    let authUser = existingUsers.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
-    if (!existingUser) {
-      const { error: createError } = await supabase.auth.admin.createUser({
+    if (!authUser) {
+      const { data: createData, error: createError } = await supabase.auth.admin.createUser({
         email,
         email_confirm: true,
         user_metadata: { full_name: fullName, provider: 'azure' },
@@ -161,7 +179,35 @@ serve(async (req) => {
           headers: { 'Location': `${redirectTo}?error=Failed to create user account` },
         });
       }
+      authUser = createData.user;
     }
+
+    // Auto-provision user_profiles row
+    const { data: existingProfile } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('id', authUser.id)
+      .maybeSingle();
+
+    let role = 'member';
+    if (!existingProfile) {
+      // First user for this tenant gets admin role
+      const { count } = await supabase
+        .from('user_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenant.id);
+      if (count === 0) role = 'admin';
+    }
+
+    await supabase.from('user_profiles').upsert({
+      id: authUser.id,
+      tenant_id: tenant.id,
+      full_name: fullName || null,
+      email: email,
+      role: existingProfile ? undefined : role,
+    }, { onConflict: 'id', ignoreDuplicates: false });
+
+    console.log('User profile upserted, role:', existingProfile ? '(unchanged)' : role);
 
     // Generate magic link token
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
