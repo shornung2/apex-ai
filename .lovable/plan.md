@@ -1,153 +1,64 @@
 
 
-# Skill Pack Infrastructure, Production Seed, and Documentation Update
+## Plan: Integrate Brave Search API + Create Tests
 
-## Summary
+### What We're Doing
+Replace the static `WEB_SEARCH_CAVEAT` with live web search results from the **Brave Search API** for skills with `web_search_enabled: true`. Then create tests to verify affected skills work correctly.
 
-Create the `skill_packs` and `skill_pack_templates` tables, replace the old `seed-skill-packs` edge function with a new `seed-skill-pack` function that reads from the templates table, seed the 3 packs (24 total skills) with full production-quality definitions from the uploaded MD file, add the 13 non-overlapping skills to the Solutionment tenant, write tests, and update Help + Telegram.
+### Step 1: Store the Brave Search API Key
+Use `add_secret` to request the `BRAVE_SEARCH_API_KEY` from you.
 
-## Part A: Database — Two New Tables
+### Step 2: Modify `agent-dispatch/index.ts`
+Between building `filledTemplate` (line ~308) and constructing `finalSystemPrompt` (line ~323):
 
-Migration to create:
+1. If `webSearchEnabled === true`, check for `BRAVE_SEARCH_API_KEY` in env
+2. If present, call Brave Web Search API (`https://api.search.brave.com/res/v1/web/search`) with the filled prompt as query (truncated to ~400 chars), requesting fresh results (`freshness=pw` for past week)
+3. Extract titles, descriptions, URLs from results and format as a `## LIVE WEB SEARCH RESULTS` section
+4. Inject into system prompt **instead of** the `WEB_SEARCH_CAVEAT`
+5. If `BRAVE_SEARCH_API_KEY` is missing, fall back to existing caveat (graceful degradation)
 
-```sql
-CREATE TABLE public.skill_packs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  slug TEXT NOT NULL UNIQUE,
-  description TEXT,
-  target_segment TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE public.skill_pack_templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  pack_id UUID NOT NULL REFERENCES public.skill_packs(id) ON DELETE CASCADE,
-  skill_template JSONB NOT NULL,
-  display_order INT DEFAULT 0
-);
-
-ALTER TABLE public.skill_packs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.skill_pack_templates ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "packs_readable" ON public.skill_packs FOR SELECT TO authenticated USING (true);
-CREATE POLICY "templates_readable" ON public.skill_pack_templates FOR SELECT TO authenticated USING (true);
+Key code change (pseudocode):
+```typescript
+let webSearchSection = "";
+if (webSearchEnabled) {
+  const braveKey = Deno.env.get("BRAVE_SEARCH_API_KEY");
+  if (braveKey) {
+    const searchQuery = filledTemplate.slice(0, 400);
+    const searchRes = await fetch(
+      `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQuery)}&count=10&freshness=pw`,
+      { headers: { "Accept": "application/json", "X-Subscription-Token": braveKey } }
+    );
+    const searchData = await searchRes.json();
+    const results = searchData.web?.results || [];
+    if (results.length > 0) {
+      webSearchSection = "\n\n## LIVE WEB SEARCH RESULTS\n" +
+        results.map((r, i) => `[${i+1}] **${r.title}**\n${r.description}\nSource: ${r.url}`).join("\n\n");
+    }
+  }
+  if (!webSearchSection) {
+    webSearchSection = WEB_SEARCH_CAVEAT; // fallback
+  }
+}
 ```
 
-## Part B: New Edge Function — `seed-skill-pack`
+Then replace line 319 (`const webSearchSuffix = ...`) to use `webSearchSection` instead.
 
-Replace the existing `supabase/functions/seed-skill-packs/index.ts` with a new `supabase/functions/seed-skill-pack/index.ts` that:
+### Step 3: Create Tests (`supabase/functions/agent-dispatch/index.test.ts`)
+Deno tests calling the deployed function via HTTP:
+1. **Rejects unauthenticated requests** - no auth header returns error
+2. **Rejects disabled agent** - agent toggled off returns 403
+3. **Web search skill includes live results** - `webSearchEnabled: true` produces output with current data
+4. **Non-web-search skill skips search** - `webSearchEnabled: false` works normally
+5. **Graceful fallback** - if Brave key missing, skill still runs with caveat
 
-- Accepts `{ packSlugs: string[] }`
-- Verifies JWT, looks up caller's `tenant_id` and `role` from `user_profiles`
-- Requires `admin` or `super_admin` role
-- For each slug: fetches `skill_pack_templates` rows for that pack
-- For each template: checks if a skill with the same `name` already exists for this tenant — skips duplicates
-- Inserts into `skills` with `tenant_id`, `is_system = false`, all fields from the template JSONB
-- Returns `{ seeded, skipped, packs }`
+### Step 4: Update Help Documentation (`src/pages/Help.tsx`)
+Update the web search documentation to reflect that web-search-enabled skills now fetch live results via Brave Search when configured.
 
-Add to `supabase/config.toml`:
-```
-[functions.seed-skill-pack]
-verify_jwt = true
-```
+### Affected Skills
+All skills with `web_search_enabled: true`: Morning Coffee, Competitive Battle Card, Company Intelligence Brief, Win/Loss Analysis, SEO Blog Brief, LinkedIn Post Series, and any others flagged in the database.
 
-## Part C: Seed the 3 Packs with Production Templates
-
-Use the database insert tool to populate `skill_packs` (3 rows) and `skill_pack_templates` (24 rows) with the full production-quality skill definitions from the uploaded MD file.
-
-### Pack 1: Presales Excellence (8 skills)
-1. RFP Analyzer & Scorer — researcher, 9 inputs, ~250-line system prompt
-2. Discovery Call Prep Coach — meeting-prep, 5 inputs
-3. Competitive Battle Card — researcher, 5 inputs
-4. Executive Proposal Draft — content, 7 inputs
-5. Solution Qualification Scorecard — strategist, 6 inputs
-6. Meeting Follow-Up Email — content, 6 inputs
-7. POC & Pilot Plan — strategist, 7 inputs
-8. Objection Response Builder — strategist, 5 inputs
-
-### Pack 2: Sales Productivity (8 skills)
-1. Company Research Brief — researcher, 5 inputs
-2. Personalized Outreach Email — content, 6 inputs
-3. Deal Strategy Session — strategist, 6 inputs
-4. Champion Coaching Guide — strategist, 6 inputs
-5. Pipeline Review Prep — meeting-prep, 5 inputs
-6. Sales Negotiation Prep — strategist, 6 inputs
-7. Account Expansion Map — strategist, 6 inputs
-8. Win/Loss Analysis — researcher, 6 inputs
-
-### Pack 3: Marketing & Content (8 skills)
-1. Thought Leadership Article — content, 6 inputs
-2. LinkedIn Post Series — content, 6 inputs
-3. Market Intelligence Brief — researcher, 5 inputs
-4. Campaign Messaging Framework — strategist, 6 inputs
-5. SEO Blog Brief — strategist, 5 inputs
-6. Customer Case Study Draft — content, 7 inputs
-7. Email Nurture Sequence — content, 6 inputs
-8. Product Launch Announcement — content, 6 inputs
-
-Each template JSONB contains: `name`, `display_name`, `emoji`, `description`, `department`, `agent_type`, `inputs` (full input definitions with labels, types, placeholders, hints, options), `system_prompt` (full production prompt), `preferred_model`, `token_budget`, `timeout_seconds`, `output_format`, `tags`.
-
-## Part D: Add New Skills to Solutionment
-
-Existing Solutionment skills (17 total) overlap with many pack skills. The following 13 skills are genuinely new and will be inserted directly into the `skills` table for the Solutionment tenant:
-
-**From Presales Excellence (5 new):**
-- RFP Analyzer & Scorer (researcher) — no overlap
-- Competitive Battle Card (researcher) — no overlap
-- Solution Qualification Scorecard (strategist) — no overlap
-- POC & Pilot Plan (strategist) — no overlap
-- Objection Response Builder (strategist) — no overlap
-
-**From Sales Productivity (4 new):**
-- Champion Coaching Guide (strategist) — no overlap
-- Pipeline Review Prep (meeting-prep) — no overlap
-- Sales Negotiation Prep (strategist) — no overlap
-- Win/Loss Analysis (researcher) — no overlap
-
-**From Marketing & Content (4 new):**
-- SEO Blog Brief (strategist) — no overlap
-- Customer Case Study Draft (content) — no overlap
-- Email Nurture Sequence (content) — no overlap
-- Product Launch Announcement (content) — no overlap
-
-**Skipped (11 overlapping):** Discovery Call Prep Coach (≈ Meeting Prep Coach), Executive Proposal Draft (≈ Proposal), Meeting Follow-Up Email (≈ Sales Email), Company Research Brief (≈ Company Research), Personalized Outreach Email (≈ Sales Email), Deal Strategy Session (≈ Deal Strategy), Account Expansion Map (≈ Account Strategy), Thought Leadership Article (exists), LinkedIn Post Series (≈ LinkedIn/Social Posts), Market Intelligence Brief (≈ Market & Industry Trends), Campaign Messaging Framework (≈ Marketing Strategy).
-
-## Part E: Tests
-
-Create an edge function test `supabase/functions/seed-skill-pack/index.test.ts` that:
-- Tests unauthenticated requests are rejected
-- Tests that seeding works with valid pack slugs
-- Tests duplicate skip behavior
-
-## Part F: Help Center Update
-
-Add a new section **"Skill Packs"** to `src/pages/Help.tsx` describing:
-- What skill packs are (curated sets of production-quality skills)
-- The 3 starter packs and their contents
-- How packs are seeded during onboarding
-- How admins can seed packs later via the API
-
-Update the **Onboarding & Setup** section to mention the new production-quality prompts.
-
-## Part G: Telegram Bot Update
-
-Update `/help` and `/start` in `supabase/functions/telegram-bot/index.ts` to mention:
-- Skill Packs with 24 production-quality skills across 3 packs
-- Updated skill counts
-
-## Files Affected
-
-| File | Action |
-|---|---|
-| Database migration | Create: `skill_packs` + `skill_pack_templates` tables |
-| Database insert | Seed 3 packs + 24 templates |
-| Database insert | Add 13 new skills to Solutionment tenant |
-| `supabase/functions/seed-skill-pack/index.ts` | Create: new edge function |
-| `supabase/functions/seed-skill-packs/index.ts` | Keep (legacy, could deprecate later) |
-| `supabase/config.toml` | Add `seed-skill-pack` entry |
-| `supabase/functions/seed-skill-pack/index.test.ts` | Create: edge function test |
-| `src/pages/Help.tsx` | Edit: add Skill Packs section |
-| `supabase/functions/telegram-bot/index.ts` | Edit: update help/start text |
+### Files Changed
+- `supabase/functions/agent-dispatch/index.ts` - add Brave Search integration
+- `supabase/functions/agent-dispatch/index.test.ts` - new test file
+- `src/pages/Help.tsx` - update documentation
 
