@@ -17,7 +17,7 @@ import {
 import { SkillForm } from "@/components/SkillForm";
 import { runSkill, runDeckSkill } from "@/lib/agent-client";
 import { useToast } from "@/hooks/use-toast";
-import { useTenant } from "@/hooks/use-tenant";
+import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };

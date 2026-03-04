@@ -10,7 +10,7 @@ import { agentDefinitions, departmentDefinitions, type Department } from "@/data
 import { ArrowLeft, Copy, BookOpen, RotateCcw, CheckCircle, XCircle, Loader2, Clock, AlertTriangle, FileDown, Presentation } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
-import { useTenant } from "@/hooks/use-tenant";
+import { useTenant } from "@/contexts/TenantContext";
 import { SaveToLibraryDialog } from "@/components/SaveToLibraryDialog";
 
 const statusConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {

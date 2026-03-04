@@ -14,7 +14,7 @@ import { Search, Plus, Trash2, GripVertical, BookOpen, Wrench, Loader2, Check, P
 import { supabase } from "@/integrations/supabase/client";
 import { agentDefinitions, departmentDefinitions, dbRowToSkill, type Department, type AgentType, type SkillInput, type Skill } from "@/data/mock-data";
 import { useToast } from "@/hooks/use-toast";
-import { useTenant } from "@/hooks/use-tenant";
+import { useTenant } from "@/contexts/TenantContext";
 import ReactMarkdown from "react-markdown";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };

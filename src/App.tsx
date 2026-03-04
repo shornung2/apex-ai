@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthGuard } from "@/components/AuthGuard";
+import { TenantProvider } from "@/contexts/TenantContext";
 import Dashboard from "./pages/Dashboard";
 import Department from "./pages/Department";
 import Capabilities from "./pages/Capabilities";
@@ -34,21 +35,23 @@ const App = () => (
               path="/*"
               element={
                 <AuthGuard>
-                  <AppLayout>
-                    <Routes>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/departments/:dept" element={<Department />} />
-                      <Route path="/capabilities" element={<Capabilities />} />
-                      <Route path="/history" element={<History />} />
-                      <Route path="/jobs/:jobId" element={<JobDetail />} />
-                      <Route path="/knowledge" element={<Knowledge />} />
-                      <Route path="/content-library" element={<ContentLibrary />} />
-                      <Route path="/tasks" element={<Tasks />} />
-                      <Route path="/help" element={<Help />} />
-                      <Route path="/settings" element={<SettingsPage />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </AppLayout>
+                  <TenantProvider>
+                    <AppLayout>
+                      <Routes>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/departments/:dept" element={<Department />} />
+                        <Route path="/capabilities" element={<Capabilities />} />
+                        <Route path="/history" element={<History />} />
+                        <Route path="/jobs/:jobId" element={<JobDetail />} />
+                        <Route path="/knowledge" element={<Knowledge />} />
+                        <Route path="/content-library" element={<ContentLibrary />} />
+                        <Route path="/tasks" element={<Tasks />} />
+                        <Route path="/help" element={<Help />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </AppLayout>
+                  </TenantProvider>
                 </AuthGuard>
               }
             />
