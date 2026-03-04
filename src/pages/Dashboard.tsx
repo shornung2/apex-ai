@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Zap, Brain, FileText, TrendingUp, ArrowRight, Briefcase, Megaphone, Loader2, CalendarClock, Clock } from "lucide-react";
+import { Zap, Brain, FileText, TrendingUp, ArrowRight, Briefcase, Megaphone, Loader2, CalendarClock, Clock, X, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,23 @@ export default function Dashboard() {
   const [totalTokens, setTotalTokens] = useState(0);
   const [upcomingTasks, setUpcomingTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showQuickStart, setShowQuickStart] = useState(() => localStorage.getItem("show_quick_start") === "true");
+
+  const quickStartPacks = (() => {
+    try { return JSON.parse(localStorage.getItem("quick_start_packs") || "[]"); } catch { return []; }
+  })();
+
+  const dismissQuickStart = () => {
+    setShowQuickStart(false);
+    localStorage.removeItem("show_quick_start");
+    localStorage.removeItem("quick_start_packs");
+  };
+
+  const suggestedSkills: { name: string; dept: string }[] = [];
+  if (quickStartPacks.includes("presales")) suggestedSkills.push({ name: "RFP Response Drafter", dept: "sales" }, { name: "Discovery Prep", dept: "sales" });
+  if (quickStartPacks.includes("sales")) suggestedSkills.push({ name: "Account Research", dept: "sales" });
+  if (quickStartPacks.includes("marketing")) suggestedSkills.push({ name: "LinkedIn Post", dept: "marketing" });
+  const topSuggestions = suggestedSkills.slice(0, 3);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -56,6 +73,30 @@ export default function Dashboard() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8 max-w-7xl">
+      {/* Quick Start Banner */}
+      {showQuickStart && (
+        <motion.div variants={item} className="relative rounded-2xl p-6 border border-primary/30 bg-primary/5">
+          <button onClick={dismissQuickStart} className="absolute top-3 right-3 text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+          <div className="flex items-start gap-3">
+            <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+            <div>
+              <h3 className="font-semibold">Your workspace is ready! Try a skill:</h3>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {topSuggestions.map((s) => (
+                  <Link key={s.name} to={`/departments/${s.dept}`}>
+                    <Button variant="outline" size="sm" className="gap-1 border-primary/30 hover:border-primary">
+                      {s.name} <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Hero */}
       <motion.div variants={item} className="relative overflow-hidden rounded-2xl p-8 glass-card glow-border">
         <div className="relative z-10">
