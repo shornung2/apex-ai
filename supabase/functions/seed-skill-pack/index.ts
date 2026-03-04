@@ -134,6 +134,8 @@ Deno.serve(async (req) => {
           output_format: template.output_format || "markdown",
           tags: template.tags || [],
           is_system: false,
+          schedulable: template.schedulable === true,
+          web_search_enabled: template.web_search_enabled === true,
         });
 
         existingNames.add(skillName);
