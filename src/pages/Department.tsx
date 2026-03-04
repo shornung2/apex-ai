@@ -32,6 +32,7 @@ export default function Department() {
   const [isRunning, setIsRunning] = useState(false);
   const [deptSkills, setDeptSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [feedbackStats, setFeedbackStats] = useState<Record<string, { total: number; positive: number }>>({});
   const abortRef = useRef<AbortController | null>(null);
 
   const isValidDept = dept && departmentDefinitions[dept as DeptType];
@@ -48,7 +49,26 @@ export default function Department() {
         .select("*")
         .eq("department", department);
       if (data) {
-        setDeptSkills(data.map(dbRowToSkill));
+        const skills = data.map(dbRowToSkill);
+        setDeptSkills(skills);
+        // Fetch feedback stats
+        const skillIds = skills.map(s => s.id);
+        if (skillIds.length > 0) {
+          const { data: jobs } = await supabase
+            .from("agent_jobs")
+            .select("skill_id, feedback_rating")
+            .in("skill_id", skillIds)
+            .not("feedback_rating", "is", null);
+          if (jobs) {
+            const stats: Record<string, { total: number; positive: number }> = {};
+            for (const j of jobs) {
+              if (!stats[j.skill_id]) stats[j.skill_id] = { total: 0, positive: 0 };
+              stats[j.skill_id].total++;
+              if (j.feedback_rating === 1) stats[j.skill_id].positive++;
+            }
+            setFeedbackStats(stats);
+          }
+        }
       }
       setLoading(false);
     };
@@ -175,6 +195,11 @@ export default function Department() {
                         <div>
                           <h3 className="text-sm font-semibold">{skill.displayName || skill.name}</h3>
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{skill.description}</p>
+                          {feedbackStats[skill.id]?.total >= 5 && (
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              ⭐ {Math.round((feedbackStats[skill.id].positive / feedbackStats[skill.id].total) * 100)}% positive ({feedbackStats[skill.id].total} ratings)
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-[10px] bg-muted/50 border-border/50 text-muted-foreground">
