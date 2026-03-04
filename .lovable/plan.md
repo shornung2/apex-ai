@@ -1,72 +1,85 @@
 
 
-# Output Quality Feedback
+# Onboarding Logo Fix, Comprehensive Tests, and Documentation Update
 
-## Summary
+## 1. Enlarge Apex AI Logo on Onboarding Welcome Screen
 
-Add thumbs up/down feedback to completed job outputs, show quality badges on skill cards, and ensure the Super Admin Quality tab works with existing columns.
+In `src/components/OnboardingWizard.tsx` line 241, change `h-12` to `h-24 w-24 object-contain` so the logo is prominently visible on the welcome step.
 
-## Database Changes
+## 2. Comprehensive Test Suite
 
-The `feedback_rating` and `feedback_note` columns already exist on `agent_jobs`. A migration is needed only to add a validation trigger constraining `feedback_rating` to `1` or `-1`.
+Create new test files covering the major untested areas of the application. All tests use vitest + @testing-library/react with mocked Supabase.
 
-```sql
-CREATE OR REPLACE FUNCTION validate_feedback_rating()
-RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-  IF NEW.feedback_rating IS NOT NULL AND NEW.feedback_rating NOT IN (1, -1) THEN
-    RAISE EXCEPTION 'feedback_rating must be 1 or -1';
-  END IF;
-  RETURN NEW;
-END;
-$$;
+### New Test Files
 
-CREATE TRIGGER trg_validate_feedback_rating
-BEFORE INSERT OR UPDATE ON public.agent_jobs
-FOR EACH ROW EXECUTE FUNCTION validate_feedback_rating();
-```
+**`src/components/__tests__/OnboardingWizard.test.tsx`**
+- Renders step indicator with 4 steps
+- Shows welcome screen with "Welcome to Apex AI" heading
+- Navigates to step 2 on "Get Started" click
+- Shows company name, industry, and use case fields on step 2
+- Shows skill pack cards on step 3
+- Auto-selects packs based on use case
+- Shows upload area on step 4
+- Shows "Skip this step" on step 4
 
-## Frontend Changes
+**`src/components/__tests__/Dashboard.test.tsx`**
+- Renders stat cards (Total Runs, Tokens Used, Knowledge Base, Scheduled Tasks)
+- Renders Recent Activity section
+- Shows Quick Start banner when localStorage flag is set
+- Dismisses Quick Start banner on click
 
-### 1. JobDetail.tsx — Feedback UI
+**`src/components/__tests__/JobDetail.test.tsx`**
+- Renders loading state
+- Shows job details when loaded
+- Shows feedback section for completed jobs (ThumbsUp/ThumbsDown buttons)
+- Disables feedback buttons after rating is set
+- Shows textarea on thumbs-down click
 
-After the output card (when `status === 'complete'`), add a feedback section:
+**`src/components/__tests__/Settings.test.tsx`**
+- Renders Settings page with tabs
+- Shows Usage & Billing tab content
+- Renders appearance theme options
 
-- "Was this output useful?" label with ThumbsUp / ThumbsDown icon buttons
-- If `job.feedback_rating` is already set: show the selected button highlighted, both disabled
-- On thumbs-down: reveal a textarea "What could be improved?" with a "Submit Feedback" button
-- On any save: `supabase.from('agent_jobs').update({ feedback_rating, feedback_note }).eq('id', jobId)`
-- Toast: "Thanks — your feedback helps us improve Apex AI."
+**`src/components/__tests__/AppLayout.test.tsx`**
+- Renders sidebar navigation
+- Shows onboarding wizard when onboardingComplete is false
 
-### 2. Capabilities.tsx — Quality badge on skill cards
+**`src/components/__tests__/Department.test.tsx`**
+- Renders department heading
+- Shows skill cards
+- Renders quality badges when stats available
 
-In the skill library grid, for each skill card, query aggregate feedback stats. Use a single batch query after skills load:
+After creating all tests, execute them and log results. Any failures become remediation items in the plan.
 
-```sql
-SELECT skill_id, 
-  COUNT(*) as total, 
-  SUM(CASE WHEN feedback_rating = 1 THEN 1 ELSE 0 END) as positive
-FROM agent_jobs 
-WHERE feedback_rating IS NOT NULL AND skill_id = ANY($skillIds)
-GROUP BY skill_id
-```
+## 3. Update Help Center Content
 
-On cards where `total >= 5`, show `⭐ {pct}% positive ({total} ratings)` as small muted text.
+Add/update help sections in `src/pages/Help.tsx`:
 
-### 3. Department.tsx — Same quality badge
+- **New section: "Onboarding & Setup"** — describes the 4-step wizard (welcome, team info, skill packs, document upload)
+- **New section: "Usage & Billing"** — describes the stat cards, usage trend chart, activity table, and token budget warnings in Settings
+- **New section: "Output Quality Feedback"** — describes thumbs up/down on job results, quality badges on skill cards
+- **Update "Settings" section** — add mention of Usage & Billing tab, user invitations
+- **Update "Dashboard / Overview" section** — mention the Quick Start banner after onboarding
 
-Same pattern: after loading department skills, fetch feedback stats and display on skill cards.
+## 4. Update Telegram Bot
 
-### 4. SuperAdmin Quality tab
+Update `supabase/functions/telegram-bot/index.ts`:
 
-Already correctly queries `feedback_rating = -1` via the `admin_list_all_agent_jobs` RPC. No changes needed.
+- Update `/help` command text to mention new features: onboarding wizard (web-only), usage tracking, output feedback
+- Update `/start` welcome message to mention feedback and usage tracking
+- Add a `/usage` command that queries `usage_events` for the current month and returns a summary (jobs run, tokens used, estimated cost) — simple text response
 
 ## Files Affected
 
 | File | Action |
 |---|---|
-| Database migration | Create: feedback validation trigger |
-| `src/pages/JobDetail.tsx` | Edit: add feedback row after output |
-| `src/pages/Capabilities.tsx` | Edit: add quality badge to skill cards |
-| `src/pages/Department.tsx` | Edit: add quality badge to skill cards |
+| `src/components/OnboardingWizard.tsx` | Edit: enlarge logo |
+| `src/components/__tests__/OnboardingWizard.test.tsx` | Create |
+| `src/components/__tests__/Dashboard.test.tsx` | Create |
+| `src/components/__tests__/JobDetail.test.tsx` | Create |
+| `src/components/__tests__/Settings.test.tsx` | Create |
+| `src/components/__tests__/AppLayout.test.tsx` | Create |
+| `src/components/__tests__/Department.test.tsx` | Create |
+| `src/pages/Help.tsx` | Edit: add 3 new sections, update 2 existing |
+| `supabase/functions/telegram-bot/index.ts` | Edit: update help/start text, add /usage command |
 
