@@ -21,7 +21,6 @@ import NotFound from "./pages/NotFound";
 import Tasks from "./pages/Tasks";
 import Auth from "./pages/Auth";
 import SuperAdmin from "./pages/SuperAdmin";
-import { Navigate } from "react-router-dom";
 
 const queryClient = new QueryClient();
 
