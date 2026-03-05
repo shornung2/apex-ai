@@ -14,14 +14,21 @@ Apex AI is a platform that puts AI agents to work across your Sales, Marketing, 
 
 ### How it works
 1. **Departments** organize skills by business function (Sales, Marketing, Talent).
-2. **Skills** are pre-built or custom AI tasks (e.g. "Company Research", "Proposal Draft", "New Employee Onboarding").
+2. **Skills** are pre-built or custom AI tasks (e.g. "Company Research", "Proposal Draft", "Career Coach").
 3. **Agents** execute skills — Researcher, Strategist, Content Writer, and Coach.
 4. **Jobs** are individual runs of a skill. You fill in the inputs, click Run, and the agent produces an output.
 
 ### Navigation
 - The **sidebar** on the left gives you access to every area: Overview, Departments (Sales, Marketing, Talent), Capabilities, Tasks, Knowledge Base, Content Library, History, Help, and Settings.
 - Click any department to see its available skills and run them.
-- Use the **Overview** dashboard for a quick snapshot of activity, token usage, and upcoming scheduled tasks.`,
+- Use the **Overview** dashboard for a quick snapshot of activity, token usage, and upcoming scheduled tasks.
+- If you have an active **Onboarding** program assigned to you, a dedicated "My Journey" link appears in the sidebar under Onboarding.
+
+### Need Help? Ask Alex
+- **Alex** is your AI assistant, available on every page via the chat icon in the bottom-right corner.
+- Alex knows every feature and function of Apex AI and can answer your questions instantly.
+- Alex is also available on **Telegram** — just send any message (not a command) and Alex responds.
+- In the **Skill Builder**, activate "Build with Alex" mode for AI-powered skill creation assistance.`,
   },
   {
     id: "dashboard",
@@ -77,7 +84,7 @@ Apex AI is a platform that puts AI agents to work across your Sales, Marketing, 
   {
     id: "coach-agent",
     title: "Coach Agent & Skills",
-    content: `The **Coach** agent is a versatile coaching and preparation engine that powers Meeting Preparation and Career Coaching skills.
+    content: `The **Coach** agent is a versatile coaching and preparation engine that powers Meeting Preparation, Career Coaching, and the Onboarding module.
 
 ### Meeting Prep Coach
 Pre-meeting coaching, discovery agendas, talk tracks, and objection handling guides — so every rep shows up sharp, regardless of their experience level. Available in both **Sales** and **Talent** departments.
@@ -89,11 +96,15 @@ Personalized career development coaching for existing employees.
 - Inputs: Employee name, current role, career goals, strengths, development areas, timeframe.
 - Output: Personalized development plan, skill gap analysis, recommended learning path, coaching conversation guides, and milestone checkpoints.
 
-### Structured Onboarding System
-Employee onboarding is now powered by the dedicated **Onboarding** module in the Talent department. Navigate to **Talent > Onboarding** in the sidebar to access Success Profiles, Programs, Assignments, and the Learner Journey.
+### Onboarding Coach
+The Coach agent also powers the **Onboarding module's** interactive experiences:
+- **Checkpoints** — AI-evaluated knowledge assessments at each phase of onboarding.
+- **Elevator Pitch Role-Play** — practice and refine your company pitch with real-time AI feedback.
+- **Capstone Role-Play** — a comprehensive scenario where you present and defend company capabilities.
+- The Coach evaluates performance against the Success Profile rubrics and provides actionable feedback.
 
 ### Business Outcomes
-- Reduce time-to-productivity by **25–50%** — develop people against the competencies that matter.
+- Reduce time-to-productivity by **25-50%** — develop people against the competencies that matter.
 - Scale quality as you grow — AI coaching scales infinitely, maintaining consistency across 5 or 500 people.
 - Cut early-stage turnover — structured programs with AI support create engagement that prevents 6-month attrition.
 - Prove ROI with real data — readiness scores, gap analysis, and benchmarks give leadership quantified evidence.`,
@@ -274,28 +285,25 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
   {
     id: "workspace-admin",
     title: "Workspace Admin",
-    content: `The Workspace Admin page is available only to **workspace administrators** and **super admins**.
+    content: `The Workspace Admin page is available only to **workspace administrators** and **super admins**. It is organized into two sections: **AI & Platform** and **Onboarding Administration**.
 
-### Team & Workspace
-- Manage workspace details, team member roles, and invite new users.
+### AI & Platform Section
 
-### Agent Configuration
-- Enable or disable specific agent types across departments (Researcher, Strategist, Content Writer, Coach).
-- **When an agent is disabled**, all skills using that agent type are blocked from execution.
-- Useful for controlling which capabilities are available to your team.
+**Agents** — Enable or disable specific agent types across departments (Researcher, Strategist, Content Writer, Coach). When an agent is disabled, all skills using that agent type are blocked from execution.
 
-### API Keys
-- **AI Gateway** — Connected via Lovable AI. Always active.
-- **OpenRouter Integration** — Enable and configure additional AI models.
+**API Keys** — AI Gateway (always active via Lovable AI) and OpenRouter Integration for additional AI models.
 
-### Integrations
-- **Telegram Bot** — Enable or disable the Telegram integration for your workspace.
-- Telegram is **disabled by default** for new workspaces.
+**Integrations** — Telegram Bot: enable or disable the Telegram integration for your workspace. Telegram is disabled by default for new workspaces.
 
-### Usage & Billing
-- **Stat cards** show agent jobs run, decks generated, total tokens, and estimated cost.
-- A **daily token usage chart** visualizes your consumption over the last 30 days.
-- **Token budget warnings** appear when you approach or exceed your monthly limit.
+**Usage & Billing** — Stat cards show agent jobs run, decks generated, total tokens, and estimated cost. A daily token usage chart visualizes your consumption over the last 30 days. Token budget warnings appear when you approach or exceed your monthly limit.
+
+### Onboarding Administration Section
+
+**Success Profiles** — Create and manage role competency profiles that define what readiness looks like for each role.
+
+**Onboarding Programs** — Build structured programs with phased content, checkpoints, and role-play scenarios linked to Success Profiles.
+
+**Onboarding Assignments** — Assign users to onboarding programs. Each user can have only one active assignment at a time. Use the "Assign to Program" button to select a program and then assign a user.
 
 ### Multi-Tenant Access
 - Access is determined by your email domain.
@@ -305,7 +313,7 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
   {
     id: "telegram-bot",
     title: "Telegram Bot Integration",
-    content: `Run any Apex AI skill directly from Telegram — same agents, same skills, just a chat interface. You can also chat with Alex, your AI assistant, and view your scheduled tasks.
+    content: `Run any Apex AI skill directly from Telegram — same agents, same skills, just a chat interface. You can also chat with Alex, your AI assistant, view your scheduled tasks, and access your onboarding journey.
 
 **Important:** The Telegram integration is **disabled by default**. A workspace administrator must enable it in **Workspace Admin > Integrations** before the bot will respond to commands.
 
@@ -340,6 +348,14 @@ Coach agent skills — Meeting Prep and Career Coaching — are fully accessible
 3. Once all inputs are collected, the bot dispatches the job to the agent.
 4. The agent's output is sent back as a Telegram message.
 
+### Onboarding Journey on Telegram
+
+If you have an active onboarding program assigned to you, you can access your onboarding journey directly from Telegram. This makes it easy to engage with your onboarding content on the go:
+- View your current phase and progress.
+- Complete checkpoint assessments.
+- Access learning materials and resources.
+- Receive notifications about upcoming deadlines and milestones.
+
 ### Chatting with Alex on Telegram
 
 - Just **type any message** (not a command) and Alex will respond.
@@ -347,7 +363,7 @@ Coach agent skills — Meeting Prep and Career Coaching — are fully accessible
 - Send \`/clear\` to reset your conversation history.
 
 ### Tips & Troubleshooting
-- **Bot not responding?** Check that the bot token is correct.
+- **Bot not responding?** Check that the bot token is correct and the integration is enabled in Workspace Admin.
 - **Getting errors?** Make sure the skill name matches when using \`/run\`.
 - **Results too long?** They're automatically split — no action needed.
 - **Multiple skills?** You can run skills back-to-back.`,
@@ -355,19 +371,21 @@ Coach agent skills — Meeting Prep and Career Coaching — are fully accessible
   {
     id: "alex-assistant",
     title: "Alex AI Assistant",
-    content: `Alex is your general-purpose AI assistant, available in the web app, the Skill Builder, and on Telegram.
+    content: `Alex is your general-purpose AI assistant, available in the web app, the Skill Builder, and on Telegram. Alex is the definitive expert on all Apex AI features and functionality.
 
 ### What Alex Can Do
-- **Answer questions about the platform** — how to create skills, navigate departments, use the Knowledge Base, etc.
+- **Answer questions about the platform** — how to create skills, navigate departments, use the Knowledge Base, manage onboarding, and more.
 - **Build skills with you** — in the Skill Builder's "Build with Alex" mode.
 - **Provide grounded answers** — Alex searches your Knowledge Base so responses reflect your organization's own documents.
 - **Process file attachments** — upload a document directly in chat and Alex will use its content.
+- **Explain Solutionment** — Alex knows the Solutionment ecosystem, including the Solutioneer Academy, the Solution Maturity Assessment (SMA), and our services.
 - **General assistance** — answer business questions, brainstorm ideas, draft content.
 
 ### Using Alex in the Web App
 1. Click the **chat icon** in the bottom-right corner of any page.
 2. Type your question and press Send.
 3. Alex streams responses in real-time with Markdown formatting.
+4. Alex can help with anything — from "How do I create a skill?" to "What is the Onboarding module?"
 
 ### Build with Alex (Skill Builder)
 1. Open the **Skill Builder**.
@@ -377,12 +395,13 @@ Coach agent skills — Meeting Prep and Career Coaching — are fully accessible
 
 ### File Attachments in Alex Chat
 1. Click the **paperclip icon** next to the text input.
-2. Select a file — supported formats: PDF, DOCX, PPTX, TXT, MD, CSV (max 10 MB).
+2. Select a file — supported formats: PDF, DOCX, PPTX, TXT, MD, CSV (max 20 MB).
 3. Type your question and send — Alex receives the document content as context.
 
 ### Using Alex on Telegram
 - Just **type any message** (not a command) and Alex will respond.
-- Send \`/clear\` to reset your conversation history.`,
+- Send \`/clear\` to reset your conversation history.
+- Alex on Telegram has the same knowledge and capabilities as Alex in the web app.`,
   },
   {
     id: "scheduled-tasks",
@@ -474,8 +493,8 @@ Skills with **web search enabled** fetch live results before generating a respon
 - **Duplicate detection** prevents the same skill from being added twice.`,
   },
   {
-    id: "onboarding",
-    title: "Onboarding & Setup",
+    id: "onboarding-setup",
+    title: "Workspace Onboarding & Setup",
     content: `When you first sign in, the Onboarding Wizard guides you through setting up your workspace in 4 steps.
 
 ### Step 1: Welcome
@@ -496,6 +515,66 @@ Skills with **web search enabled** fetch live results before generating a respon
 ### After Onboarding
 - A **Quick Start banner** appears on the Dashboard suggesting skills to try based on your selected packs.
 - Dismiss it anytime by clicking the X.`,
+  },
+  {
+    id: "onboarding-module",
+    title: "Onboarding Module (Role-Readiness Acceleration)",
+    content: `The Onboarding module is a structured, multi-phase system designed to accelerate new hire role-readiness using Solutionment's **Role-Readiness Acceleration** methodology: Teach Me, Show Me, Let Me Show You.
+
+### Key Components
+
+**Success Profiles** define the competencies, knowledge areas, and behaviors required for a role. Each profile includes:
+- Role name and description.
+- Competency items organized by category (Knowledge, Skills, Behaviors).
+- Rubric criteria for evaluating readiness at each level.
+- Phase configurations (Immerse, Observe, Demonstrate) with duration settings.
+- Elevator pitch topic and capstone scenario description for role-play exercises.
+- AI-assisted generation: admins can describe a role and have AI draft a complete profile.
+
+**Onboarding Programs** map a Success Profile to curated learning content:
+- Phase-by-phase content assignments (reading materials, videos, activities).
+- Checkpoint questions at the end of each phase for knowledge validation.
+- Optional checkpoint gating — learners must pass a checkpoint before advancing.
+- Knowledge Base document linking for grounding materials.
+
+**Onboarding Assignments** enroll a specific user into a program:
+- Admins assign users to programs from **Workspace Admin > Onboarding Assignments**.
+- Each user can only have **one active assignment** at a time.
+- Phase deadlines are set during assignment for accountability.
+
+### The Learner Journey (My Journey)
+
+When assigned to a program, a "My Journey" link appears in the sidebar under Onboarding. The learner experience includes:
+
+1. **Phase Navigation** — Progress through Immerse, Observe, and Demonstrate phases.
+2. **Learning Content** — Read assigned materials, watch videos, complete activities.
+3. **Notebook** — A personal digital notebook for taking notes, reflections, and recording learnings during each phase.
+4. **Checkpoints** — AI-evaluated knowledge assessments at the end of each phase. The Coach agent scores responses against the Success Profile rubrics and provides detailed feedback.
+5. **Role-Play Sessions** — Interactive simulations powered by the Coach agent:
+   - **Elevator Pitch** — Practice presenting your company's value proposition. The AI plays a prospect and evaluates your delivery.
+   - **Capstone Role-Play** — A comprehensive scenario where you present and defend company capabilities in a realistic business situation.
+6. **Progress Tracking** — Visual progress indicators show completion status for each phase.
+
+### Accessing Onboarding via Telegram
+
+If you have an active onboarding assignment, you can engage with your onboarding journey through **Telegram**:
+- Access learning materials and content on the go.
+- Complete checkpoint assessments conversationally.
+- Review your progress and upcoming deadlines.
+- This makes it easy to stay on track with your onboarding even when you're away from your desk.
+
+### Administration
+
+Admins manage the onboarding system from **Workspace Admin**, which has three dedicated tabs:
+- **Success Profiles** — Create and manage role competency profiles.
+- **Onboarding Programs** — Build programs with phased content and checkpoints.
+- **Onboarding Assignments** — Assign users to programs and monitor progress.
+
+### Business Outcomes
+- Reduce time-to-productivity by **25-50%** through structured, competency-based development.
+- Scale onboarding quality across any team size with AI-powered coaching.
+- Cut early-stage turnover through engaging, well-structured programs.
+- Prove ROI with quantified readiness scores and gap analysis.`,
   },
   {
     id: "usage-billing",
