@@ -135,7 +135,8 @@ async function handleStart(chatId: number, firstName?: string) {
   await sendMessage(
     chatId,
     `👋 <b>Welcome${name ? `, ${escapeHtml(name)}` : ""}!</b>\n\n` +
-      `I'm your <b>Apex AI Assistant</b> with <b>24 production-quality skills</b> across 3 packs: Presales Excellence, Sales Productivity, and Marketing & Content.\n\n` +
+      `I'm your <b>Apex AI Assistant</b> with production-quality skills across 4 packs: Presales Excellence, Sales Productivity, Marketing & Content, and Talent & Coaching.\n\n` +
+      `<b>🏋️ New!</b> The <b>Coach</b> agent now powers Meeting Prep, New Employee Onboarding, and Career Coaching skills.\n\n` +
       `<b>Commands:</b>\n` +
       `/skills — Browse available skills\n` +
       `/tasks — View your scheduled tasks\n` +
@@ -165,18 +166,25 @@ async function handleHelp(chatId: number) {
       `2. Tap a skill to select it\n` +
       `3. I'll ask for each input one at a time\n` +
       `4. Once complete, I'll run the agent and send you the result\n\n` +
+      `<b>Departments:</b>\n` +
+      `💼 <b>Sales</b> — Deal strategy, proposals, meeting prep, outreach\n` +
+      `📢 <b>Marketing</b> — Content, SEO, campaigns, thought leadership\n` +
+      `🎓 <b>Talent</b> — Onboarding, career coaching, meeting prep\n\n` +
       `<b>Skill Packs:</b>\n` +
-      `📋 <b>Presales Excellence</b> — 8 production-quality skills (RFP analysis, discovery prep, battle cards, proposals, and more)\n` +
-      `💼 <b>Sales Productivity</b> — 8 skills (research, outreach, deal strategy, negotiation, pipeline review)\n` +
-      `📢 <b>Marketing & Content</b> — 8 skills (thought leadership, LinkedIn, SEO, case studies, launches)\n\n` +
+      `📋 <b>Presales Excellence</b> — 12 skills (RFP analysis, discovery prep, battle cards, proposals)\n` +
+      `💼 <b>Sales Productivity</b> — 10 skills (research, outreach, deal strategy, meeting prep)\n` +
+      `📢 <b>Marketing & Content</b> — 8 skills (thought leadership, LinkedIn, SEO, case studies)\n` +
+      `🎓 <b>Talent & Coaching</b> — 3 skills (onboarding, career coaching, meeting prep)\n\n` +
+      `<b>🏋️ Coach Agent Skills:</b>\n` +
+      `🎯 <b>Meeting Prep Coach</b> — Pre-meeting coaching, agendas, talk tracks\n` +
+      `🚀 <b>New Employee Onboarding</b> — AI-powered 90-day onboarding plans\n` +
+      `📈 <b>Career Coach</b> — Development plans, skill gap analysis, coaching guides\n\n` +
       `<b>Features:</b>\n` +
-      `📊 <b>Usage tracking</b> — use /usage to see your monthly token consumption and estimated costs.\n` +
-      `👍👎 <b>Output feedback</b> — rate job results in the web app to help improve quality.\n` +
-      `🧙 <b>Onboarding wizard</b> — new users are guided through workspace setup in the web app.\n\n` +
-      `Deck generation: Skills with PowerPoint output automatically generate .pptx files and send you a download link.\n` +
+      `📊 <b>Usage tracking</b> — use /usage to see your monthly token consumption.\n` +
+      `👍👎 <b>Output feedback</b> — rate job results in the web app.\n` +
+      `🧙 <b>Onboarding wizard</b> — new users are guided through workspace setup.\n\n` +
+      `Deck generation: Skills with PowerPoint output automatically generate .pptx files.\n` +
       `Use /tasks to see your automated scheduled tasks.\n\n` +
-      `<b>Build with Alex (Web App):</b>\n` +
-      `In the web app's Skill Builder, click "Build with Alex" to get AI-assisted help creating skills and writing system prompts.\n\n` +
       `Or just <b>type any message</b> to chat with Alex, your AI assistant!`
   );
 }
