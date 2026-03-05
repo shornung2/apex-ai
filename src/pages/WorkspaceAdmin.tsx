@@ -350,7 +350,155 @@ export default function WorkspaceAdmin() {
           </TabsContent>
 
           <TabsContent value="api">
-// ... keep existing code (api, integrations, billing tab contents - lines ~344-498)
+            <div className="space-y-4">
+              <Card className="glass-card">
+                <CardHeader><CardTitle className="text-lg">API Keys & Integrations</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">API keys are securely stored and never exposed in the client.</p>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <div>
+                      <p className="text-sm font-medium">AI Gateway</p>
+                      <p className="text-xs text-muted-foreground">Connected via Lovable AI</p>
+                    </div>
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Active</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">OpenRouter</CardTitle>
+                    {loadingSettings ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Switch checked={openrouterEnabled} onCheckedChange={toggleOpenRouter} />}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Connect your OpenRouter account to access additional AI models.</p>
+                  {openrouterEnabled && (
+                    <>
+                      <div className="space-y-2 p-3 rounded-lg bg-muted/30">
+                        <Label className="text-sm">API Key</Label>
+                        <div className="flex items-center gap-2">
+                          {keyValid === null && loadingCatalog ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : keyValid ? <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Key configured</Badge> : <Badge className="bg-destructive/20 text-destructive border-destructive/30">Key not configured</Badge>}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Your OpenRouter API key is securely stored as a backend secret. Get your key from{" "}
+                          <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai/keys</a>.
+                        </p>
+                      </div>
+
+                      {selectedModels.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Selected Models ({selectedModels.length}/5)</Label>
+                          <div className="space-y-1.5">
+                            {selectedModels.map((m) => (
+                              <div key={m.id} className="flex items-center gap-2 text-sm bg-primary/10 border border-primary/20 rounded-md px-3 py-2">
+                                <CheckCircle className="h-3 w-3 text-primary shrink-0" />
+                                <span className="font-mono text-xs flex-1 truncate">{m.id}</span>
+                                <span className="text-xs text-muted-foreground shrink-0">{m.name}</span>
+                                <button onClick={() => toggleModelSelection(m)} className="text-muted-foreground hover:text-foreground shrink-0 text-xs">Remove</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {keyValid && (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Browse Models</Label>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Search models..." className="pl-9 bg-muted/50 border-border/50 h-8 text-xs" />
+                          </div>
+                          {loadingCatalog ? (
+                            <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                          ) : (
+                            <ScrollArea className="h-[300px] rounded-md border border-border/50 bg-muted/20">
+                              <div className="p-1">
+                                {filteredCatalog.map((model) => {
+                                  const isSelected = selectedModels.some((m) => m.id === model.id);
+                                  return (
+                                    <button key={model.id} onClick={() => toggleModelSelection(model)} className={cn("w-full flex items-start gap-3 px-3 py-2.5 rounded-md text-left transition-colors text-xs", isSelected ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/50")}>
+                                      <Checkbox checked={isSelected} className="pointer-events-none mt-0.5" />
+                                      <div className="flex-1 min-w-0 space-y-1">
+                                        <div className="flex items-center gap-2">
+                                          <p className="font-mono truncate flex-1">{model.id}</p>
+                                          {model.contextLength && <Badge variant="outline" className="text-[9px] px-1.5 py-0 shrink-0">{formatContext(model.contextLength)} ctx</Badge>}
+                                        </div>
+                                        {model.description && <p className="text-[10px] text-muted-foreground line-clamp-1">{model.description}</p>}
+                                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                          <span>In: {formatCost(model.promptPrice)}/1M</span>
+                                          <span>Out: {formatCost(model.completionPrice)}/1M</span>
+                                        </div>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                                {filteredCatalog.length === 0 && <p className="text-xs text-muted-foreground text-center py-8">{catalogSearch ? "No models match your search" : "No models available"}</p>}
+                              </div>
+                            </ScrollArea>
+                          )}
+                          <p className="text-[10px] text-muted-foreground">{catalogModels.length} models available · Select up to 5</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="integrations">
+            <Card className="glass-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Telegram Bot
+                  </CardTitle>
+                  {loadingSettings ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Switch checked={telegramEnabled} onCheckedChange={toggleTelegram} />}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">Run Apex AI skills and chat with Alex directly from Telegram.</p>
+                {telegramEnabled ? (
+                  <div className="space-y-4">
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Enabled</Badge>
+                    <div className="p-4 rounded-lg bg-muted/30 space-y-3">
+                      <h4 className="text-sm font-semibold">Setup Instructions</h4>
+                      <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                        <li>Open <strong>Telegram</strong> and search for <strong>@BotFather</strong>.</li>
+                        <li>Send <code className="px-1 py-0.5 rounded bg-muted text-foreground text-xs">/newbot</code> to BotFather.</li>
+                        <li>Choose a <strong>name</strong> for your bot (e.g. "My Apex AI Bot").</li>
+                        <li>Choose a <strong>username</strong> ending in "bot" (e.g. <code className="px-1 py-0.5 rounded bg-muted text-foreground text-xs">my_apex_ai_bot</code>).</li>
+                        <li>BotFather will give you a <strong>Bot Token</strong> like <code className="px-1 py-0.5 rounded bg-muted text-foreground text-xs">123456789:ABCdefGHI...</code>.</li>
+                        <li>Contact your <strong>Solutionment administrator</strong> to add the token to your workspace configuration.</li>
+                        <li>Once configured, the webhook registers automatically.</li>
+                        <li><strong>Test it</strong> — send <code className="px-1 py-0.5 rounded bg-muted text-foreground text-xs">/start</code> to your bot in Telegram.</li>
+                      </ol>
+                    </div>
+                    <div className="p-4 rounded-lg bg-muted/30 space-y-2">
+                      <h4 className="text-sm font-semibold">Available Commands</h4>
+                      <div className="grid grid-cols-2 gap-1.5 text-xs text-muted-foreground">
+                        <span><code className="text-foreground">/start</code> — Welcome message</span>
+                        <span><code className="text-foreground">/skills</code> — Browse all skills</span>
+                        <span><code className="text-foreground">/run &lt;name&gt;</code> — Run a skill</span>
+                        <span><code className="text-foreground">/tasks</code> — View scheduled tasks</span>
+                        <span><code className="text-foreground">/usage</code> — Monthly usage summary</span>
+                        <span><code className="text-foreground">/cancel</code> — Cancel current input</span>
+                        <span><code className="text-foreground">/clear</code> — Reset Alex history</span>
+                        <span><code className="text-foreground">/help</code> — Show help</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Free-text messages are routed to Alex. Skills with PowerPoint output generate .pptx decks automatically.</p>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-lg bg-muted/20 border border-border/50">
+                    <p className="text-sm text-muted-foreground">Telegram integration is disabled. Enable it to allow your team to run skills via Telegram.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="billing">
