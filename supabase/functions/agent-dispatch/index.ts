@@ -539,6 +539,24 @@ serve(async (req) => {
             console.error("Usage event insert failed:", ue);
           }
 
+          // 9. Update coaching session if applicable
+          if (sessionId && fullOutput) {
+            try {
+              const now = new Date().toISOString();
+              const newMessages = [
+                ...sessionMessages,
+                { role: "user", content: filledTemplate, timestamp: now },
+                { role: "assistant", content: fullOutput, timestamp: now },
+              ];
+              await supabase.from("coaching_sessions").update({
+                messages: newMessages,
+                updated_at: now,
+              }).eq("id", sessionId);
+            } catch (se) {
+              console.error("Session update failed:", se);
+            }
+          }
+
           controller.enqueue(new TextEncoder().encode(`data: [DONE]\n\n`));
           controller.close();
         } catch (err) {
