@@ -160,7 +160,7 @@ export default function ProgramBuilder() {
         name: programName.trim(),
         success_profile_id: selectedProfileId,
         enforce_checkpoint_gating: enforceGating,
-        phase_content: phaseContent,
+        phase_content: JSON.parse(JSON.stringify(phaseContent)),
       };
 
       if (isEdit && id) {
