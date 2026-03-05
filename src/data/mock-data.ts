@@ -109,7 +109,7 @@ export const departmentDefinitions: Record<Department, { name: string; descripti
   },
   talent: {
     name: "Talent",
-    description: "Employee onboarding, career coaching, and meeting preparation — accelerating readiness and performance using AI-powered coaching.",
+    description: "Employee onboarding and career coaching — accelerating readiness and performance using AI-powered coaching.",
     emoji: "🎓",
   },
 };
