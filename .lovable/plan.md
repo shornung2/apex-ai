@@ -1,84 +1,153 @@
 
 
-## Plan: Rename Meeting Prep to Coach, Add Talent Department, New Skills, and Update All References
+# Skill Pack Infrastructure, Production Seed, and Documentation Update
 
-### Summary
+## Summary
 
-Rename the "Meeting Prep" agent to "Coach" and expand its scope. Add a new "Talent" department. Create two new skills (New Employee Onboarding, Career Coaching). Keep Meeting Prep skill in Sales. Remove Pipeline Review from Sales. Update Help, About page, Telegram bot, and all related code.
+Create the `skill_packs` and `skill_pack_templates` tables, replace the old `seed-skill-packs` edge function with a new `seed-skill-pack` function that reads from the templates table, seed the 3 packs (24 total skills) with full production-quality definitions from the uploaded MD file, add the 13 non-overlapping skills to the Solutionment tenant, write tests, and update Help + Telegram.
 
-### Changes Required
+## Part A: Database — Two New Tables
 
-#### 1. Update `src/data/mock-data.ts` — Core type and agent definitions
-- Rename `AgentType` value `"meeting-prep"` to `"coach"` (or keep the key as `"coach"`)
-- Add `"talent"` to the `Department` type union
-- Update the agent definition: rename "Meeting Prep" to "Coach", change emoji to `🏋️`, update description to cover meeting prep, onboarding, and career coaching
-- Add `talent` to `departmentDefinitions` with name "Talent", description about coaching, onboarding, and career development
-- Update `departmentAgents`: add `talent: ["coach", "content", "strategist"]`, update `sales` to use `"coach"` instead of `"meeting-prep"`
-- Update `dbRowToSkill` to map legacy `"meeting-prep"` agent_type values to `"coach"`
+Migration to create:
 
-#### 2. Update `src/components/AppSidebar.tsx` — Add Talent department to sidebar
-- Add `{ title: "Talent", url: "/departments/talent", icon: GraduationCap }` (or similar icon) to `departmentItems`
+```sql
+CREATE TABLE public.skill_packs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT,
+  target_segment TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-#### 3. Update `src/pages/Capabilities.tsx` — Agent model defaults
-- Change `"meeting-prep"` key to `"coach"` in `AGENT_DEFAULT_MODELS`
+CREATE TABLE public.skill_pack_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pack_id UUID NOT NULL REFERENCES public.skill_packs(id) ON DELETE CASCADE,
+  skill_template JSONB NOT NULL,
+  display_order INT DEFAULT 0
+);
 
-#### 4. Update `src/pages/Help.tsx` — Complete rewrite of help content
-- Replace all "Meeting Prep" agent references with "Coach"
-- Add Talent department to department listings
-- Document the three Coach skills: Meeting Prep, New Employee Onboarding, Career Coaching
-- Update skill packs section (remove Pipeline Review, add new skills info)
-- Update scheduled tasks section
-- Update departments section to list Sales, Marketing, and Talent
-- Reference the onboarding methodology (Teach Me → Show Me → Let Me Show You, Success Profiles, AI coaching simulations, Check Ride evaluations) from the Solutionment marketing content
+ALTER TABLE public.skill_packs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.skill_pack_templates ENABLE ROW LEVEL SECURITY;
 
-#### 5. Update `public/about.html` — About page
-- Replace "Meeting Prep" agent references with "Coach"
-- Update agent card: rename to Coach, update description to include coaching, onboarding, career development
-- Update agent tags to include Onboarding, Career Coaching alongside Meeting Prep
-- Add Talent department mention where departments are listed
-- Update the use case about Discovery Call to also mention Onboarding and Career Coaching use cases
+CREATE POLICY "packs_readable" ON public.skill_packs FOR SELECT TO authenticated USING (true);
+CREATE POLICY "templates_readable" ON public.skill_pack_templates FOR SELECT TO authenticated USING (true);
+```
 
-#### 6. Update `supabase/functions/telegram-bot/index.ts` — Telegram bot
-- Update `/start` and `/help` messages to reference Coach agent and Talent department
-- Remove Pipeline Review references
-- Add mention of Coach skills (Meeting Prep, Onboarding, Career Coaching)
-- Update skill packs description in help text
+## Part B: New Edge Function — `seed-skill-pack`
 
-#### 7. Database migration — Add new skills and update existing ones
-- Update any existing skills in the DB with `agent_type = 'meeting-prep'` to `'coach'`
-- The two new skills (New Employee Onboarding, Career Coaching) will be created by users via the Skill Builder or seeded via skill packs — no migration needed for skill content since skills are tenant-scoped
-- Note: Existing tenant skills with `agent_type = 'meeting-prep'` should be migrated to `'coach'` via a DB migration
+Replace the existing `supabase/functions/seed-skill-packs/index.ts` with a new `supabase/functions/seed-skill-pack/index.ts` that:
 
-#### 8. Update `supabase/functions/seed-skill-packs/index.ts`
-- Update pipeline-review skill to be excluded or update its department
-- Add coach agent_type references where meeting-prep was used
+- Accepts `{ packSlugs: string[] }`
+- Verifies JWT, looks up caller's `tenant_id` and `role` from `user_profiles`
+- Requires `admin` or `super_admin` role
+- For each slug: fetches `skill_pack_templates` rows for that pack
+- For each template: checks if a skill with the same `name` already exists for this tenant — skips duplicates
+- Inserts into `skills` with `tenant_id`, `is_system = false`, all fields from the template JSONB
+- Returns `{ seeded, skipped, packs }`
 
-#### 9. Update `src/components/OnboardingWizard.tsx`
-- Update Sales Productivity Pack description to remove "pipeline reviews" mention
-- Add Talent/Coaching pack or update descriptions
+Add to `supabase/config.toml`:
+```
+[functions.seed-skill-pack]
+verify_jwt = true
+```
 
-#### 10. Update test files
-- `src/components/__tests__/Department.test.tsx` — no changes needed (uses generic dept param)
-- `src/components/__tests__/SkillForm.test.tsx` — update `agentType: "meeting-prep"` to `"coach"`
+## Part C: Seed the 3 Packs with Production Templates
 
-#### 11. Update `public/_redirects`
-- Already has `/about /about.html 200` — no changes needed
+Use the database insert tool to populate `skill_packs` (3 rows) and `skill_pack_templates` (24 rows) with the full production-quality skill definitions from the uploaded MD file.
 
-### New Skill Definitions (for seed or documentation)
+### Pack 1: Presales Excellence (8 skills)
+1. RFP Analyzer & Scorer — researcher, 9 inputs, ~250-line system prompt
+2. Discovery Call Prep Coach — meeting-prep, 5 inputs
+3. Competitive Battle Card — researcher, 5 inputs
+4. Executive Proposal Draft — content, 7 inputs
+5. Solution Qualification Scorecard — strategist, 6 inputs
+6. Meeting Follow-Up Email — content, 6 inputs
+7. POC & Pilot Plan — strategist, 7 inputs
+8. Objection Response Builder — strategist, 5 inputs
 
-**New Employee Onboarding Coach** (`talent` department, `coach` agent):
-- Based on Solutionment's Role-Readiness Acceleration methodology
-- Inputs: Employee name, role/title, department, start date, success profile/competencies, 90-day objectives, prior experience summary
-- Produces: Personalized onboarding plan using Teach Me → Show Me → Let Me Show You framework, week-by-week milestones, AI coaching simulation scenarios, readiness check-ride criteria
+### Pack 2: Sales Productivity (8 skills)
+1. Company Research Brief — researcher, 5 inputs
+2. Personalized Outreach Email — content, 6 inputs
+3. Deal Strategy Session — strategist, 6 inputs
+4. Champion Coaching Guide — strategist, 6 inputs
+5. Pipeline Review Prep — meeting-prep, 5 inputs
+6. Sales Negotiation Prep — strategist, 6 inputs
+7. Account Expansion Map — strategist, 6 inputs
+8. Win/Loss Analysis — researcher, 6 inputs
 
-**Career Coach** (`talent` department, `coach` agent):
-- Inputs: Employee name, current role, career goals, strengths, development areas, timeframe
-- Produces: Personalized development plan, skill gap analysis, recommended learning path, coaching conversation guides, milestone checkpoints
+### Pack 3: Marketing & Content (8 skills)
+1. Thought Leadership Article — content, 6 inputs
+2. LinkedIn Post Series — content, 6 inputs
+3. Market Intelligence Brief — researcher, 5 inputs
+4. Campaign Messaging Framework — strategist, 6 inputs
+5. SEO Blog Brief — strategist, 5 inputs
+6. Customer Case Study Draft — content, 7 inputs
+7. Email Nurture Sequence — content, 6 inputs
+8. Product Launch Announcement — content, 6 inputs
 
-**Meeting Prep** stays in both Sales (existing) and Talent departments.
+Each template JSONB contains: `name`, `display_name`, `emoji`, `description`, `department`, `agent_type`, `inputs` (full input definitions with labels, types, placeholders, hints, options), `system_prompt` (full production prompt), `preferred_model`, `token_budget`, `timeout_seconds`, `output_format`, `tags`.
 
-### Technical Notes
-- The `agent_type` column in the `skills` and `agent_jobs` tables stores string values. A migration will update `'meeting-prep'` → `'coach'` in both tables.
-- The `department` column will need `'talent'` as a valid value — no enum constraint exists, it's free text.
-- The `dbRowToSkill` function will map legacy values for backward compatibility.
+## Part D: Add New Skills to Solutionment
+
+Existing Solutionment skills (17 total) overlap with many pack skills. The following 13 skills are genuinely new and will be inserted directly into the `skills` table for the Solutionment tenant:
+
+**From Presales Excellence (5 new):**
+- RFP Analyzer & Scorer (researcher) — no overlap
+- Competitive Battle Card (researcher) — no overlap
+- Solution Qualification Scorecard (strategist) — no overlap
+- POC & Pilot Plan (strategist) — no overlap
+- Objection Response Builder (strategist) — no overlap
+
+**From Sales Productivity (4 new):**
+- Champion Coaching Guide (strategist) — no overlap
+- Pipeline Review Prep (meeting-prep) — no overlap
+- Sales Negotiation Prep (strategist) — no overlap
+- Win/Loss Analysis (researcher) — no overlap
+
+**From Marketing & Content (4 new):**
+- SEO Blog Brief (strategist) — no overlap
+- Customer Case Study Draft (content) — no overlap
+- Email Nurture Sequence (content) — no overlap
+- Product Launch Announcement (content) — no overlap
+
+**Skipped (11 overlapping):** Discovery Call Prep Coach (≈ Meeting Prep Coach), Executive Proposal Draft (≈ Proposal), Meeting Follow-Up Email (≈ Sales Email), Company Research Brief (≈ Company Research), Personalized Outreach Email (≈ Sales Email), Deal Strategy Session (≈ Deal Strategy), Account Expansion Map (≈ Account Strategy), Thought Leadership Article (exists), LinkedIn Post Series (≈ LinkedIn/Social Posts), Market Intelligence Brief (≈ Market & Industry Trends), Campaign Messaging Framework (≈ Marketing Strategy).
+
+## Part E: Tests
+
+Create an edge function test `supabase/functions/seed-skill-pack/index.test.ts` that:
+- Tests unauthenticated requests are rejected
+- Tests that seeding works with valid pack slugs
+- Tests duplicate skip behavior
+
+## Part F: Help Center Update
+
+Add a new section **"Skill Packs"** to `src/pages/Help.tsx` describing:
+- What skill packs are (curated sets of production-quality skills)
+- The 3 starter packs and their contents
+- How packs are seeded during onboarding
+- How admins can seed packs later via the API
+
+Update the **Onboarding & Setup** section to mention the new production-quality prompts.
+
+## Part G: Telegram Bot Update
+
+Update `/help` and `/start` in `supabase/functions/telegram-bot/index.ts` to mention:
+- Skill Packs with 24 production-quality skills across 3 packs
+- Updated skill counts
+
+## Files Affected
+
+| File | Action |
+|---|---|
+| Database migration | Create: `skill_packs` + `skill_pack_templates` tables |
+| Database insert | Seed 3 packs + 24 templates |
+| Database insert | Add 13 new skills to Solutionment tenant |
+| `supabase/functions/seed-skill-pack/index.ts` | Create: new edge function |
+| `supabase/functions/seed-skill-packs/index.ts` | Keep (legacy, could deprecate later) |
+| `supabase/config.toml` | Add `seed-skill-pack` entry |
+| `supabase/functions/seed-skill-pack/index.test.ts` | Create: edge function test |
+| `src/pages/Help.tsx` | Edit: add Skill Packs section |
+| `supabase/functions/telegram-bot/index.ts` | Edit: update help/start text |
 

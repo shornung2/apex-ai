@@ -27,6 +27,7 @@ const USE_CASES = [
   { value: "presales", label: "Presales Excellence" },
   { value: "sales", label: "Sales Productivity" },
   { value: "marketing", label: "Marketing & Content" },
+  { value: "talent", label: "Talent & Coaching" },
   { value: "all", label: "All of the Above" },
 ];
 
@@ -43,7 +44,7 @@ const PACKS = [
     emoji: "💼",
     title: "Sales Productivity Pack",
     description:
-      "10 skills for account research, personalized outreach, deal strategy, champion coaching, pipeline reviews, and win/loss analysis.",
+      "10 skills for account research, personalized outreach, deal strategy, champion coaching, meeting prep, and win/loss analysis.",
   },
   {
     slug: "marketing",
@@ -51,6 +52,13 @@ const PACKS = [
     title: "Marketing & Content Pack",
     description:
       "8 skills for thought leadership, LinkedIn content, market intelligence, campaign messaging, SEO briefs, and email nurture sequences.",
+  },
+  {
+    slug: "talent",
+    emoji: "🎓",
+    title: "Talent & Coaching Pack",
+    description:
+      "3 skills for AI-powered employee onboarding, career coaching, and meeting preparation — built on Solutionment's Role-Readiness Acceleration methodology.",
   },
 ];
 
@@ -112,7 +120,8 @@ export function OnboardingWizard() {
     if (val === "presales") setSelectedPacks(["presales"]);
     else if (val === "sales") setSelectedPacks(["sales"]);
     else if (val === "marketing") setSelectedPacks(["marketing"]);
-    else setSelectedPacks(["presales", "sales", "marketing"]);
+    else if (val === "talent") setSelectedPacks(["talent"]);
+    else setSelectedPacks(["presales", "sales", "marketing", "talent"]);
   };
 
   const togglePack = (slug: string) => {
