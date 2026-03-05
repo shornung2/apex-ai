@@ -37,9 +37,10 @@ interface SkillFormProps {
   skill: Skill;
   onSubmit: (data: Record<string, string>) => void;
   isRunning?: boolean;
+  sessionId?: string | null;
 }
 
-export function SkillForm({ skill, onSubmit, isRunning = false }: SkillFormProps) {
+export function SkillForm({ skill, onSubmit, isRunning = false, sessionId }: SkillFormProps) {
   const { toast } = useToast();
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<Record<string, string>>();
   const [fileStates, setFileStates] = useState<Record<string, { name: string; uploading: boolean }>>({});
@@ -129,6 +130,9 @@ export function SkillForm({ skill, onSubmit, isRunning = false }: SkillFormProps
       .join("\n\n---\n\n");
     if (contextTexts) {
       data._attached_context = contextTexts;
+    }
+    if (sessionId) {
+      data._session_id = sessionId;
     }
     onSubmit(data);
   };

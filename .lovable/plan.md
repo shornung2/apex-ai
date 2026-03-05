@@ -1,150 +1,153 @@
 
 
-## Plan: World-Class Onboarding and Career Coach Skills with Conversation Memory
+# Skill Pack Infrastructure, Production Seed, and Documentation Update
 
-### Summary
+## Summary
 
-Transform the two Talent department skills into rich, multi-session coaching experiences with persistent memory. This requires a new database table for session continuity, updates to the agent-dispatch edge function to load conversation history, updated skill definitions in the database with comprehensive inputs and system prompts, and UI changes to support session awareness.
+Create the `skill_packs` and `skill_pack_templates` tables, replace the old `seed-skill-packs` edge function with a new `seed-skill-pack` function that reads from the templates table, seed the 3 packs (24 total skills) with full production-quality definitions from the uploaded MD file, add the 13 non-overlapping skills to the Solutionment tenant, write tests, and update Help + Telegram.
 
----
+## Part A: Database — Two New Tables
 
-### 1. New Database Table: `coaching_sessions`
+Migration to create:
 
-Create a table to persist conversation threads across sessions for onboarding and career coaching.
+```sql
+CREATE TABLE public.skill_packs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT,
+  target_segment TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
+CREATE TABLE public.skill_pack_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pack_id UUID NOT NULL REFERENCES public.skill_packs(id) ON DELETE CASCADE,
+  skill_template JSONB NOT NULL,
+  display_order INT DEFAULT 0
+);
+
+ALTER TABLE public.skill_packs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.skill_pack_templates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "packs_readable" ON public.skill_packs FOR SELECT TO authenticated USING (true);
+CREATE POLICY "templates_readable" ON public.skill_pack_templates FOR SELECT TO authenticated USING (true);
 ```
-coaching_sessions
-  id            uuid PK
-  tenant_id     uuid (RLS scoped)
-  user_id       uuid (references auth.users)
-  skill_id      uuid (references skills)
-  skill_name    text
-  title         text (e.g. "Onboarding: Jane Smith - Sales Engineer")
-  status        text (active / completed / paused)
-  session_data  jsonb (structured progress: phase, milestones completed, goals, etc.)
-  messages      jsonb[] (array of {role, content, timestamp} for conversation history)
-  created_at    timestamptz
-  updated_at    timestamptz
+
+## Part B: New Edge Function — `seed-skill-pack`
+
+Replace the existing `supabase/functions/seed-skill-packs/index.ts` with a new `supabase/functions/seed-skill-pack/index.ts` that:
+
+- Accepts `{ packSlugs: string[] }`
+- Verifies JWT, looks up caller's `tenant_id` and `role` from `user_profiles`
+- Requires `admin` or `super_admin` role
+- For each slug: fetches `skill_pack_templates` rows for that pack
+- For each template: checks if a skill with the same `name` already exists for this tenant — skips duplicates
+- Inserts into `skills` with `tenant_id`, `is_system = false`, all fields from the template JSONB
+- Returns `{ seeded, skipped, packs }`
+
+Add to `supabase/config.toml`:
+```
+[functions.seed-skill-pack]
+verify_jwt = true
 ```
 
-RLS: tenant-scoped using `get_my_tenant_id()` for all CRUD.
+## Part C: Seed the 3 Packs with Production Templates
 
-Enable realtime so the UI can subscribe to updates.
+Use the database insert tool to populate `skill_packs` (3 rows) and `skill_pack_templates` (24 rows) with the full production-quality skill definitions from the uploaded MD file.
 
----
+### Pack 1: Presales Excellence (8 skills)
+1. RFP Analyzer & Scorer — researcher, 9 inputs, ~250-line system prompt
+2. Discovery Call Prep Coach — meeting-prep, 5 inputs
+3. Competitive Battle Card — researcher, 5 inputs
+4. Executive Proposal Draft — content, 7 inputs
+5. Solution Qualification Scorecard — strategist, 6 inputs
+6. Meeting Follow-Up Email — content, 6 inputs
+7. POC & Pilot Plan — strategist, 7 inputs
+8. Objection Response Builder — strategist, 5 inputs
 
-### 2. Update `agent-dispatch` Edge Function
+### Pack 2: Sales Productivity (8 skills)
+1. Company Research Brief — researcher, 5 inputs
+2. Personalized Outreach Email — content, 6 inputs
+3. Deal Strategy Session — strategist, 6 inputs
+4. Champion Coaching Guide — strategist, 6 inputs
+5. Pipeline Review Prep — meeting-prep, 5 inputs
+6. Sales Negotiation Prep — strategist, 6 inputs
+7. Account Expansion Map — strategist, 6 inputs
+8. Win/Loss Analysis — researcher, 6 inputs
 
-When a skill execution includes a `sessionId` in the inputs:
-- Load the coaching session's prior `messages` and `session_data` from the DB
-- Inject conversation history into the AI messages array (not just system prompt) so the model has full conversational context
-- After completion, append the new user message and assistant response to the session's `messages` array and update `session_data` with any progress markers
-- If no `sessionId` is provided but the skill is a coaching/onboarding skill, create a new session automatically
+### Pack 3: Marketing & Content (8 skills)
+1. Thought Leadership Article — content, 6 inputs
+2. LinkedIn Post Series — content, 6 inputs
+3. Market Intelligence Brief — researcher, 5 inputs
+4. Campaign Messaging Framework — strategist, 6 inputs
+5. SEO Blog Brief — strategist, 5 inputs
+6. Customer Case Study Draft — content, 7 inputs
+7. Email Nurture Sequence — content, 6 inputs
+8. Product Launch Announcement — content, 6 inputs
 
-Key changes to the dispatch flow:
-- Before building the AI messages, check for `inputs._session_id`
-- If present, load prior messages and prepend them to the conversation
-- After streaming completes, update the session record with the new exchange
-- Strip `_session_id` from the stored job inputs (similar to `_attached_context`)
+Each template JSONB contains: `name`, `display_name`, `emoji`, `description`, `department`, `agent_type`, `inputs` (full input definitions with labels, types, placeholders, hints, options), `system_prompt` (full production prompt), `preferred_model`, `token_budget`, `timeout_seconds`, `output_format`, `tags`.
 
----
+## Part D: Add New Skills to Solutionment
 
-### 3. Update Skill Definitions in Database
+Existing Solutionment skills (17 total) overlap with many pack skills. The following 13 skills are genuinely new and will be inserted directly into the `skills` table for the Solutionment tenant:
 
-**New Employee Onboarding Coach** - update the existing DB record with:
+**From Presales Excellence (5 new):**
+- RFP Analyzer & Scorer (researcher) — no overlap
+- Competitive Battle Card (researcher) — no overlap
+- Solution Qualification Scorecard (strategist) — no overlap
+- POC & Pilot Plan (strategist) — no overlap
+- Objection Response Builder (strategist) — no overlap
 
-**Inputs:**
-- Employee Name (text, required)
-- Role / Title (text, required)
-- Department (select: Sales, Marketing, Talent, Engineering, Operations, Other)
-- Start Date (text, required)
-- Manager Name (text)
-- Success Profile / Key Competencies (textarea, required - "What does success look like in this role at 30/60/90 days?")
-- Prior Experience Summary (textarea - relevant background)
-- 90-Day Objectives (textarea, required)
-- Onboarding Phase (select: Orientation, Teach Me, Show Me, Let Me Show You, Capstone Role Play, Ongoing)
+**From Sales Productivity (4 new):**
+- Champion Coaching Guide (strategist) — no overlap
+- Pipeline Review Prep (meeting-prep) — no overlap
+- Sales Negotiation Prep (strategist) — no overlap
+- Win/Loss Analysis (researcher) — no overlap
 
-**System Prompt:** A comprehensive prompt that:
-- Implements the "Teach Me, Show Me, Let Me Show You" three-phase methodology
-- Phase 1 (Teach Me): Foundational knowledge transfer covering company capabilities, services, products, culture, differentiators, value propositions, and market positioning. Draws heavily from the knowledge base.
-- Phase 2 (Show Me): Guided demonstrations, worked examples, scenario walkthroughs. The coach walks through real situations showing how knowledge applies.
-- Phase 3 (Let Me Show You): The employee demonstrates mastery through practice exercises, knowledge checks, and skill demonstrations.
-- Capstone: A structured role-play exercise where the employee presents and defends their understanding of company capabilities, differentiators, services, products, and culture in a simulated client/stakeholder meeting. The coach plays the role of a skeptical but fair evaluator.
-- Uses Success Profiles to tailor the experience
-- Tracks progress across sessions with explicit milestone markers
-- References the knowledge base extensively for company-specific grounding
-- Generates week-by-week milestones and readiness check-ride criteria
+**From Marketing & Content (4 new):**
+- SEO Blog Brief (strategist) — no overlap
+- Customer Case Study Draft (content) — no overlap
+- Email Nurture Sequence (content) — no overlap
+- Product Launch Announcement (content) — no overlap
 
-**Career Coach** - update the existing DB record with:
+**Skipped (11 overlapping):** Discovery Call Prep Coach (≈ Meeting Prep Coach), Executive Proposal Draft (≈ Proposal), Meeting Follow-Up Email (≈ Sales Email), Company Research Brief (≈ Company Research), Personalized Outreach Email (≈ Sales Email), Deal Strategy Session (≈ Deal Strategy), Account Expansion Map (≈ Account Strategy), Thought Leadership Article (exists), LinkedIn Post Series (≈ LinkedIn/Social Posts), Market Intelligence Brief (≈ Market & Industry Trends), Campaign Messaging Framework (≈ Marketing Strategy).
 
-**Inputs:**
-- Employee Name (text, required)
-- Current Role / Title (text, required)
-- Department (text, required)
-- Career Aspirations / Goals (textarea, required)
-- Current Strengths (textarea)
-- Development Areas / Gaps (textarea, required)
-- Timeframe for Goals (select: 3 months, 6 months, 1 year, 2+ years)
-- Industry / Domain (text - for web search relevance)
-- Coaching Focus (multi-select: Skill Development, Leadership Growth, Career Transition, Performance Improvement, Work-Life Balance)
+## Part E: Tests
 
-**System Prompt:** A comprehensive prompt that:
-- Implements the GROW model (Goal, Reality, Options, Will) as the primary coaching framework, established by Sir John Whitmore and widely recognized as the gold standard in executive coaching
-- Supplements with elements from Marshall Goldsmith's stakeholder-centered coaching methodology
-- Understands company-specific career paths, role expectations, and development resources from the knowledge base
-- Incorporates industry-relevant trends, certifications, and skill demands via web search
-- Creates personalized development plans with SMART goals
-- Provides coaching conversation guides and reflection exercises
-- Tracks progress against milestones across sessions
-- Offers 360-style self-assessment prompts
+Create an edge function test `supabase/functions/seed-skill-pack/index.test.ts` that:
+- Tests unauthenticated requests are rejected
+- Tests that seeding works with valid pack slugs
+- Tests duplicate skip behavior
 
-**Web search enabled:** Yes (for industry-relevant career development information)
+## Part F: Help Center Update
 
----
+Add a new section **"Skill Packs"** to `src/pages/Help.tsx` describing:
+- What skill packs are (curated sets of production-quality skills)
+- The 3 starter packs and their contents
+- How packs are seeded during onboarding
+- How admins can seed packs later via the API
 
-### 4. UI Changes: Session Continuity
+Update the **Onboarding & Setup** section to mention the new production-quality prompts.
 
-**Department page (`Department.tsx`):**
-- When a coaching/onboarding skill is selected, check for existing active sessions for the current user
-- If active sessions exist, show a choice: "Continue existing session" or "Start new session"
-- Display session metadata (last activity date, current phase/progress)
+## Part G: Telegram Bot Update
 
-**SkillForm component:**
-- Add a hidden `_session_id` field that gets populated when continuing a session
-- When continuing, pre-populate some inputs from the session data and show a "Session context" indicator
+Update `/help` and `/start` in `supabase/functions/telegram-bot/index.ts` to mention:
+- Skill Packs with 24 production-quality skills across 3 packs
+- Updated skill counts
 
-**JobDetail page:**
-- After a coaching job completes, show a "Continue this coaching session" button that links back to the skill with the session context
+## Files Affected
 
----
-
-### 5. Files to Create/Modify
-
-| File | Change |
-|------|--------|
-| `supabase/migrations/` (new) | Create `coaching_sessions` table with RLS |
-| `supabase/functions/agent-dispatch/index.ts` | Add session loading/saving logic, add `coach` persona |
-| `src/pages/Department.tsx` | Add session picker for coaching skills |
-| `src/components/SkillForm.tsx` | Support `_session_id` hidden field |
-| `src/pages/JobDetail.tsx` | Add "Continue session" button for coaching jobs |
-| DB data update | Update the two existing talent skills with new inputs, system prompts, and web_search_enabled |
-
-### 6. Agent Persona Update
-
-Add a dedicated `coach` persona in `agent-dispatch` AGENT_PERSONAS that covers both onboarding and career coaching use cases, emphasizing:
-- Conversational, supportive but challenging coaching style
-- Session-aware behavior (referencing prior conversations)
-- Progress tracking and milestone acknowledgment
-- The "Teach Me, Show Me, Let Me Show You" methodology for onboarding
-- The GROW model for career coaching
-- Role-play facilitation capabilities
-
----
-
-### Technical Notes
-
-- Session history is injected as prior conversation messages (not system prompt text) to leverage the model's native conversational memory
-- Sessions are capped at a reasonable message count (e.g., last 20 exchanges) to stay within token limits, with older context summarized
-- The `session_data` JSONB field stores structured progress (current phase, completed milestones, assessment scores) that persists independently of message history
-- Web search for career coach uses the existing Brave Search integration already in agent-dispatch
+| File | Action |
+|---|---|
+| Database migration | Create: `skill_packs` + `skill_pack_templates` tables |
+| Database insert | Seed 3 packs + 24 templates |
+| Database insert | Add 13 new skills to Solutionment tenant |
+| `supabase/functions/seed-skill-pack/index.ts` | Create: new edge function |
+| `supabase/functions/seed-skill-packs/index.ts` | Keep (legacy, could deprecate later) |
+| `supabase/config.toml` | Add `seed-skill-pack` entry |
+| `supabase/functions/seed-skill-pack/index.test.ts` | Create: edge function test |
+| `src/pages/Help.tsx` | Edit: add Skill Packs section |
+| `supabase/functions/telegram-bot/index.ts` | Edit: update help/start text |
 

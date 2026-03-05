@@ -136,6 +136,27 @@ Produce comprehensive meeting preparation materials that give the meeting partic
 6. **Anticipated Objections & Responses** (conversational, not scripted)
 7. **Competitive Positioning Notes** (if applicable)
 8. **Follow-Up Plan** (next steps to propose at meeting close)` + SHARED_OUTPUT_RULES,
+
+  coach: `You are an elite coaching professional operating within the Apex AI platform. You serve as both an onboarding coach (using the Role-Readiness Acceleration methodology) and a career development coach (using the GROW model).
+
+## Your Core Mandate
+Deliver transformative, multi-session coaching experiences that produce measurable outcomes. You are session-aware and always reference prior conversations, progress, and commitments.
+
+## Coaching Standards
+- **Session continuity**: Always acknowledge prior sessions, reference past discussions, and track progress against milestones
+- **Socratic method**: Ask powerful questions 70% of the time; provide direct guidance 30%
+- **Accountability**: Every session ends with specific commitments and action items
+- **Honest feedback**: Be direct but constructive; never let mediocrity slide
+- **Celebrate progress**: Acknowledge genuine effort and improvement with specific praise
+- **Structured approach**: Use clear frameworks (Teach Me/Show Me/Let Me Show You for onboarding; GROW for career coaching)
+- **Knowledge-grounded**: Reference company-specific information from the knowledge base extensively
+
+## Output Structure
+Adapt to the coaching context, but always include:
+1. **Session Summary** (what was covered, key insights)
+2. **Progress Update** (milestones, readiness scores, development plan status)
+3. **Action Items** (specific, time-bound commitments)
+4. **Next Session Preview** (what to prepare for)` + SHARED_OUTPUT_RULES,
 };
 
 const WEB_SEARCH_CAVEAT = `
@@ -216,6 +237,28 @@ serve(async (req) => {
     if (inputs._attached_context) {
       attachedContext = inputs._attached_context;
       delete inputs._attached_context;
+    }
+
+    // 0c. Extract session ID for coaching continuity
+    let sessionId: string | null = null;
+    let sessionMessages: Array<{role: string; content: string}> = [];
+    if (inputs._session_id) {
+      sessionId = inputs._session_id;
+      delete inputs._session_id;
+
+      // Load prior session messages
+      const { data: session } = await supabase
+        .from("coaching_sessions")
+        .select("messages, session_data")
+        .eq("id", sessionId)
+        .single();
+
+      if (session?.messages && Array.isArray(session.messages)) {
+        // Cap at last 20 exchanges (40 messages) to stay within token limits
+        const allMsgs = session.messages as Array<{role: string; content: string; timestamp?: string}>;
+        const capped = allMsgs.slice(-40);
+        sessionMessages = capped.map(m => ({ role: m.role, content: m.content }));
+      }
     }
 
     // Context length guard: truncate if too large
@@ -399,6 +442,8 @@ serve(async (req) => {
         model: selectedModel,
         messages: [
           { role: "system", content: finalSystemPrompt },
+          // Inject prior coaching session messages for continuity
+          ...sessionMessages,
           { role: "user", content: filledTemplate },
         ],
         stream: true,
@@ -492,6 +537,24 @@ serve(async (req) => {
             });
           } catch (ue) {
             console.error("Usage event insert failed:", ue);
+          }
+
+          // 9. Update coaching session if applicable
+          if (sessionId && fullOutput) {
+            try {
+              const now = new Date().toISOString();
+              const newMessages = [
+                ...sessionMessages,
+                { role: "user", content: filledTemplate, timestamp: now },
+                { role: "assistant", content: fullOutput, timestamp: now },
+              ];
+              await supabase.from("coaching_sessions").update({
+                messages: newMessages,
+                updated_at: now,
+              }).eq("id", sessionId);
+            } catch (se) {
+              console.error("Session update failed:", se);
+            }
           }
 
           controller.enqueue(new TextEncoder().encode(`data: [DONE]\n\n`));

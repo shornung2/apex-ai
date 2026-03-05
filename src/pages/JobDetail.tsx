@@ -254,6 +254,25 @@ export default function JobDetail() {
         </motion.div>
       )}
 
+      {/* Continue coaching session */}
+      {job.status === "complete" && (job.department === "talent") && (
+        <motion.div variants={item}>
+          <Card className="glass-card border-primary/20">
+            <CardContent className="p-5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Continue Coaching Session</p>
+                <p className="text-xs text-muted-foreground">Pick up where you left off in your next session</p>
+              </div>
+              <Link to={`/departments/talent`}>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <RotateCcw className="h-3.5 w-3.5" /> Continue
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {/* Feedback */}
       {job.status === "complete" && (
         <FeedbackSection jobId={job.id} initialRating={job.feedback_rating} initialNote={job.feedback_note} />
