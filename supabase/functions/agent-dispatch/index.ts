@@ -485,6 +485,7 @@ serve(async (req) => {
         controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ jobId })}\n\n`));
 
         let buffer = "";
+        let jobFinalized = false;
         try {
           while (true) {
             const { done, value } = await reader.read();
@@ -525,6 +526,8 @@ serve(async (req) => {
             completed_at: new Date().toISOString(),
           }).eq("id", jobId);
 
+          jobFinalized = true;
+
           // 8. Insert usage event
           try {
             await supabase.from("usage_events").insert({
@@ -557,12 +560,19 @@ serve(async (req) => {
             }
           }
 
-          controller.enqueue(new TextEncoder().encode(`data: [DONE]\n\n`));
-          controller.close();
+          // 10. Send done signal and close stream (client may have disconnected)
+          try {
+            controller.enqueue(new TextEncoder().encode(`data: [DONE]\n\n`));
+            controller.close();
+          } catch (streamCloseErr) {
+            console.warn("Stream close after completion (client likely disconnected):", streamCloseErr);
+          }
         } catch (err) {
           console.error("Stream error:", err);
-          await supabase.from("agent_jobs").update({ status: "failed" }).eq("id", jobId);
-          controller.error(err);
+          if (!jobFinalized) {
+            await supabase.from("agent_jobs").update({ status: "failed" }).eq("id", jobId);
+          }
+          try { controller.error(err); } catch { /* already closed */ }
         }
       },
     });
