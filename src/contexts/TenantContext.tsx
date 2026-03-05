@@ -16,6 +16,7 @@ interface TenantContextValue {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   onboardingComplete: boolean;
+  hasActiveAssignment: boolean;
   isLoading: boolean;
 }
 
@@ -28,11 +29,12 @@ const TenantContext = createContext<TenantContextValue>({
   isAdmin: false,
   isSuperAdmin: false,
   onboardingComplete: false,
+  hasActiveAssignment: false,
   isLoading: true,
 });
 
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading: loadingProfile } = useQuery({
     queryKey: ["my-profile"],
     queryFn: async () => {
       const {
@@ -52,6 +54,26 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     staleTime: 5 * 60 * 1000,
   });
 
+  const userId = profile?.tenant_id ?? null; // just for query key dependency
+
+  const { data: hasActiveAssignment = false, isLoading: loadingAssignment } = useQuery({
+    queryKey: ["my-active-assignment", userId],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+      const { data, error } = await supabase
+        .from("onboarding_assignments")
+        .select("id")
+        .eq("user_id", user.id)
+        .in("status", ["active", "paused"])
+        .limit(1);
+      if (error) return false;
+      return (data?.length ?? 0) > 0;
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const isLoading = loadingProfile || loadingAssignment;
   const tenant = profile?.tenants as { name: string; plan: string; status: string } | null;
 
   const value: TenantContextValue = {
@@ -63,6 +85,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     isAdmin: profile?.role === "admin" || profile?.role === "super_admin",
     isSuperAdmin: profile?.role === "super_admin",
     onboardingComplete: profile?.onboarding_complete ?? false,
+    hasActiveAssignment,
     isLoading,
   };
 

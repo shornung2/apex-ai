@@ -115,6 +115,23 @@ export default function AssignUserDialog({
     if (!foundUser || !tenantId) return;
     setAssigning(true);
     try {
+      // Check for existing active assignment
+      const { data: existing } = await supabase
+        .from("onboarding_assignments")
+        .select("id")
+        .eq("user_id", foundUser.id)
+        .in("status", ["active", "paused"])
+        .limit(1);
+      if (existing && existing.length > 0) {
+        toast({
+          title: "Cannot assign",
+          description: "This user already has an active onboarding program. Only one active program can be assigned at a time.",
+          variant: "destructive",
+        });
+        setAssigning(false);
+        return;
+      }
+
       const phaseDeadlinesArr = PHASES.map((p) => ({
         phase: p,
         dueDate: deadlines[p].toISOString(),

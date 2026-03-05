@@ -14,9 +14,6 @@ import {
   LogOut,
   Shield,
   Building2,
-  UserCheck,
-  ListChecks,
-  Route,
   Compass,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -49,10 +46,7 @@ const departmentItems = [
   { title: "Talent", url: "/departments/talent", icon: GraduationCap },
 ];
 
-const onboardingItems = [
-  { title: "Success Profiles", url: "/talent/onboarding/profiles", icon: UserCheck },
-  { title: "Programs", url: "/talent/onboarding/programs", icon: ListChecks },
-  { title: "Assignments", url: "/talent/onboarding/assignments", icon: Route },
+const onboardingLearnerItems = [
   { title: "My Journey", url: "/talent/onboarding/my-journey", icon: Compass },
 ];
 
@@ -74,7 +68,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAdmin, isSuperAdmin } = useTenant();
+  const { isAdmin, isSuperAdmin, hasActiveAssignment } = useTenant();
   const deptOpen = location.pathname.startsWith("/departments");
 
   const handleSignOut = async () => {
@@ -140,23 +134,18 @@ export function AppSidebar() {
           </Collapsible>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <Collapsible defaultOpen={location.pathname.startsWith("/talent/onboarding")}>
-            <CollapsibleTrigger className="w-full">
-              <SidebarGroupLabel className="text-foreground/70 text-[10px] uppercase tracking-widest cursor-pointer flex items-center justify-between pr-2">
-                Onboarding
-                {!collapsed && <ChevronDown className="h-3 w-3" />}
-              </SidebarGroupLabel>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {onboardingItems.map((item) => renderNavItem(item))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </SidebarGroup>
+        {hasActiveAssignment && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-foreground/70 text-[10px] uppercase tracking-widest">
+              Onboarding
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {onboardingLearnerItems.map((item) => renderNavItem(item))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-foreground/70 text-[10px] uppercase tracking-widest">

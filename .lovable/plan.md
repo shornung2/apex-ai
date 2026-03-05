@@ -1,46 +1,153 @@
 
 
-## Plan: Reorganize Onboarding Admin into Workspace Admin + Conditional Sidebar
+# Skill Pack Infrastructure, Production Seed, and Documentation Update
 
-### Overview
-Move the three admin-facing onboarding surfaces (Success Profiles, Programs, Assignments) into the Workspace Admin page as new tabs. Make the sidebar "Onboarding" section conditional — only shown to users who have an active assignment, displaying just "My Journey". Add an "Assign Program" button to the Assignments tab.
+## Summary
 
-### Files to Modify
+Create the `skill_packs` and `skill_pack_templates` tables, replace the old `seed-skill-packs` edge function with a new `seed-skill-pack` function that reads from the templates table, seed the 3 packs (24 total skills) with full production-quality definitions from the uploaded MD file, add the 13 non-overlapping skills to the Solutionment tenant, write tests, and update Help + Telegram.
 
-| File | Change |
-|------|--------|
-| `src/components/AppSidebar.tsx` | Remove Success Profiles, Programs, Assignments from sidebar. Make Onboarding section conditional based on whether current user has an active assignment. |
-| `src/pages/WorkspaceAdmin.tsx` | Add three new tabs: "Success Profiles", "Programs", "Onboarding" (assignments). Embed the existing page components or inline the content. |
-| `src/pages/onboarding/AdminDashboard.tsx` | Add a prominent "Assign Program" button that opens a dialog where admin selects a program first, then assigns users. Add validation: only 1 active assignment per user. |
-| `src/contexts/TenantContext.tsx` | Add `hasActiveAssignment: boolean` to context, queried from `onboarding_assignments` for the current user. |
-| `src/App.tsx` | Keep routes as-is (they still work), but the sidebar controls visibility. |
+## Part A: Database — Two New Tables
 
-### Implementation Details
+Migration to create:
 
-**TenantContext Enhancement**: Add a second query to check if the current user has any active/paused assignment in `onboarding_assignments`. Expose `hasActiveAssignment: boolean` on the context.
+```sql
+CREATE TABLE public.skill_packs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT,
+  target_segment TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-**Sidebar Changes**:
-- Remove the entire "Onboarding" collapsible section with its 4 items (Success Profiles, Programs, Assignments, My Journey)
-- Add a new conditional section: if `hasActiveAssignment` is true, show an "Onboarding" group with just "My Journey" link
-- Admin items (Success Profiles, Programs, Assignments) move to Workspace Admin
+CREATE TABLE public.skill_pack_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pack_id UUID NOT NULL REFERENCES public.skill_packs(id) ON DELETE CASCADE,
+  skill_template JSONB NOT NULL,
+  display_order INT DEFAULT 0
+);
 
-**Workspace Admin Tabs**: Add 3 new tabs to the existing tab bar:
-- "Profiles" — renders `SuccessProfileList` inline (or a lightweight wrapper that embeds it)
-- "Programs" — renders `ProgramList` inline
-- "Onboarding" — renders `AdminDashboard` inline
+ALTER TABLE public.skill_packs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.skill_pack_templates ENABLE ROW LEVEL SECURITY;
 
-Since these are full page components, we'll render them directly inside the tab content areas. The existing route-based pages will still work for direct navigation and sub-routes (e.g., `/talent/onboarding/profiles/new`).
+CREATE POLICY "packs_readable" ON public.skill_packs FOR SELECT TO authenticated USING (true);
+CREATE POLICY "templates_readable" ON public.skill_pack_templates FOR SELECT TO authenticated USING (true);
+```
 
-**Assignment Flow Enhancement** (AdminDashboard):
-- Add "Assign to Program" button at the top of the page
-- Opens a new dialog: Step 1 — select a program from a dropdown. Step 2 — reuses the existing `AssignUserDialog` flow (find user, set dates, confirm)
-- Before assigning, check if the user already has an active assignment. If so, show a warning: "This user already has an active onboarding program. Only one active program can be assigned at a time."
-- This prevents duplicate active assignments
+## Part B: New Edge Function — `seed-skill-pack`
 
-**Improvement Recommendations** (included in implementation):
-1. **Duplicate assignment guard**: Query `onboarding_assignments` for the selected user before confirming — block if `status = 'active'` already exists
-2. **Invalidate sidebar state**: After assigning, invalidate the `hasActiveAssignment` query so the learner's sidebar updates on their next load
+Replace the existing `supabase/functions/seed-skill-packs/index.ts` with a new `supabase/functions/seed-skill-pack/index.ts` that:
 
-### No Database Changes Needed
-All tables and RLS policies already exist.
+- Accepts `{ packSlugs: string[] }`
+- Verifies JWT, looks up caller's `tenant_id` and `role` from `user_profiles`
+- Requires `admin` or `super_admin` role
+- For each slug: fetches `skill_pack_templates` rows for that pack
+- For each template: checks if a skill with the same `name` already exists for this tenant — skips duplicates
+- Inserts into `skills` with `tenant_id`, `is_system = false`, all fields from the template JSONB
+- Returns `{ seeded, skipped, packs }`
+
+Add to `supabase/config.toml`:
+```
+[functions.seed-skill-pack]
+verify_jwt = true
+```
+
+## Part C: Seed the 3 Packs with Production Templates
+
+Use the database insert tool to populate `skill_packs` (3 rows) and `skill_pack_templates` (24 rows) with the full production-quality skill definitions from the uploaded MD file.
+
+### Pack 1: Presales Excellence (8 skills)
+1. RFP Analyzer & Scorer — researcher, 9 inputs, ~250-line system prompt
+2. Discovery Call Prep Coach — meeting-prep, 5 inputs
+3. Competitive Battle Card — researcher, 5 inputs
+4. Executive Proposal Draft — content, 7 inputs
+5. Solution Qualification Scorecard — strategist, 6 inputs
+6. Meeting Follow-Up Email — content, 6 inputs
+7. POC & Pilot Plan — strategist, 7 inputs
+8. Objection Response Builder — strategist, 5 inputs
+
+### Pack 2: Sales Productivity (8 skills)
+1. Company Research Brief — researcher, 5 inputs
+2. Personalized Outreach Email — content, 6 inputs
+3. Deal Strategy Session — strategist, 6 inputs
+4. Champion Coaching Guide — strategist, 6 inputs
+5. Pipeline Review Prep — meeting-prep, 5 inputs
+6. Sales Negotiation Prep — strategist, 6 inputs
+7. Account Expansion Map — strategist, 6 inputs
+8. Win/Loss Analysis — researcher, 6 inputs
+
+### Pack 3: Marketing & Content (8 skills)
+1. Thought Leadership Article — content, 6 inputs
+2. LinkedIn Post Series — content, 6 inputs
+3. Market Intelligence Brief — researcher, 5 inputs
+4. Campaign Messaging Framework — strategist, 6 inputs
+5. SEO Blog Brief — strategist, 5 inputs
+6. Customer Case Study Draft — content, 7 inputs
+7. Email Nurture Sequence — content, 6 inputs
+8. Product Launch Announcement — content, 6 inputs
+
+Each template JSONB contains: `name`, `display_name`, `emoji`, `description`, `department`, `agent_type`, `inputs` (full input definitions with labels, types, placeholders, hints, options), `system_prompt` (full production prompt), `preferred_model`, `token_budget`, `timeout_seconds`, `output_format`, `tags`.
+
+## Part D: Add New Skills to Solutionment
+
+Existing Solutionment skills (17 total) overlap with many pack skills. The following 13 skills are genuinely new and will be inserted directly into the `skills` table for the Solutionment tenant:
+
+**From Presales Excellence (5 new):**
+- RFP Analyzer & Scorer (researcher) — no overlap
+- Competitive Battle Card (researcher) — no overlap
+- Solution Qualification Scorecard (strategist) — no overlap
+- POC & Pilot Plan (strategist) — no overlap
+- Objection Response Builder (strategist) — no overlap
+
+**From Sales Productivity (4 new):**
+- Champion Coaching Guide (strategist) — no overlap
+- Pipeline Review Prep (meeting-prep) — no overlap
+- Sales Negotiation Prep (strategist) — no overlap
+- Win/Loss Analysis (researcher) — no overlap
+
+**From Marketing & Content (4 new):**
+- SEO Blog Brief (strategist) — no overlap
+- Customer Case Study Draft (content) — no overlap
+- Email Nurture Sequence (content) — no overlap
+- Product Launch Announcement (content) — no overlap
+
+**Skipped (11 overlapping):** Discovery Call Prep Coach (≈ Meeting Prep Coach), Executive Proposal Draft (≈ Proposal), Meeting Follow-Up Email (≈ Sales Email), Company Research Brief (≈ Company Research), Personalized Outreach Email (≈ Sales Email), Deal Strategy Session (≈ Deal Strategy), Account Expansion Map (≈ Account Strategy), Thought Leadership Article (exists), LinkedIn Post Series (≈ LinkedIn/Social Posts), Market Intelligence Brief (≈ Market & Industry Trends), Campaign Messaging Framework (≈ Marketing Strategy).
+
+## Part E: Tests
+
+Create an edge function test `supabase/functions/seed-skill-pack/index.test.ts` that:
+- Tests unauthenticated requests are rejected
+- Tests that seeding works with valid pack slugs
+- Tests duplicate skip behavior
+
+## Part F: Help Center Update
+
+Add a new section **"Skill Packs"** to `src/pages/Help.tsx` describing:
+- What skill packs are (curated sets of production-quality skills)
+- The 3 starter packs and their contents
+- How packs are seeded during onboarding
+- How admins can seed packs later via the API
+
+Update the **Onboarding & Setup** section to mention the new production-quality prompts.
+
+## Part G: Telegram Bot Update
+
+Update `/help` and `/start` in `supabase/functions/telegram-bot/index.ts` to mention:
+- Skill Packs with 24 production-quality skills across 3 packs
+- Updated skill counts
+
+## Files Affected
+
+| File | Action |
+|---|---|
+| Database migration | Create: `skill_packs` + `skill_pack_templates` tables |
+| Database insert | Seed 3 packs + 24 templates |
+| Database insert | Add 13 new skills to Solutionment tenant |
+| `supabase/functions/seed-skill-pack/index.ts` | Create: new edge function |
+| `supabase/functions/seed-skill-packs/index.ts` | Keep (legacy, could deprecate later) |
+| `supabase/config.toml` | Add `seed-skill-pack` entry |
+| `supabase/functions/seed-skill-pack/index.test.ts` | Create: edge function test |
+| `src/pages/Help.tsx` | Edit: add Skill Packs section |
+| `supabase/functions/telegram-bot/index.ts` | Edit: update help/start text |
 
