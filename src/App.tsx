@@ -33,7 +33,6 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="/about" element={<>{(() => { window.location.href = '/about.html'; return null; })()}</>} />
             <Route
               path="/*"
               element={
