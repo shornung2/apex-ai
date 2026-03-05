@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users, CheckCircle2, AlertTriangle, BarChart3, Search, Eye, MessageSquare } from "lucide-react";
+import { Loader2, Users, CheckCircle2, AlertTriangle, BarChart3, Search, Eye, MessageSquare, UserPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AssignUserDialog from "@/components/onboarding/AssignUserDialog";
 import type { OnboardingPhase, PhaseConfig } from "@/types/onboarding";
@@ -70,8 +70,9 @@ export default function AdminDashboard() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reviewSession, setReviewSession] = useState<RoleplaySession | null>(null);
 
-  // Reassign dialog
+  // Reassign / Assign dialog
   const [reassignFor, setReassignFor] = useState<{ programId: string; programName: string; roleName: string; phaseConfigs: PhaseConfig[] } | null>(null);
+  const [showAssignPicker, setShowAssignPicker] = useState(false);
 
   // Data queries
   const { data: assignments = [], isLoading: loadingAssignments } = useQuery({
@@ -221,11 +222,16 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6 max-w-7xl">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Onboarding Assignments</h1>
-        <p className="text-sm text-muted-foreground">
-          {uniquePrograms.size} active program{uniquePrograms.size !== 1 ? "s" : ""} · {activeCount} learner{activeCount !== 1 ? "s" : ""} in progress
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Onboarding Assignments</h1>
+          <p className="text-sm text-muted-foreground">
+            {uniquePrograms.size} active program{uniquePrograms.size !== 1 ? "s" : ""} · {activeCount} learner{activeCount !== 1 ? "s" : ""} in progress
+          </p>
+        </div>
+        <Button onClick={() => setShowAssignPicker(true)}>
+          <UserPlus className="h-4 w-4 mr-2" /> Assign to Program
+        </Button>
       </div>
 
       {/* Stat Cards */}
@@ -460,13 +466,52 @@ export default function AdminDashboard() {
       {reassignFor && (
         <AssignUserDialog
           open={!!reassignFor}
-          onOpenChange={(o) => !o && setReassignFor(null)}
+          onOpenChange={(o) => { if (!o) { setReassignFor(null); queryClient.invalidateQueries({ queryKey: ["admin-assignments"] }); queryClient.invalidateQueries({ queryKey: ["my-active-assignment"] }); } }}
           programId={reassignFor.programId}
           programName={reassignFor.programName}
           profileRoleName={reassignFor.roleName}
           phaseConfigs={reassignFor.phaseConfigs}
         />
       )}
+
+      {/* Assign Program Picker */}
+      <Dialog open={showAssignPicker} onOpenChange={setShowAssignPicker}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select a Program</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {programs.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No programs available. Create one first.</p>
+            ) : (
+              programs.map((p) => {
+                const prof = profileMap.get(p.success_profile_id);
+                return (
+                  <button
+                    key={p.id}
+                    className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+                    onClick={() => {
+                      setShowAssignPicker(false);
+                      setReassignFor({
+                        programId: p.id,
+                        programName: p.name,
+                        roleName: prof?.role_name ?? "—",
+                        phaseConfigs: (prof?.phase_configs as any) ?? [],
+                      });
+                    }}
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{p.name}</p>
+                      {prof && <p className="text-xs text-muted-foreground">{prof.role_name}</p>}
+                    </div>
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
