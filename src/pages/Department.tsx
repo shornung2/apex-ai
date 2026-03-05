@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
-const COACHING_SKILL_NAMES = ["new-employee-onboarding", "career-coaching"];
+const COACHING_SKILL_NAMES = ["career-coaching"];
 
 interface CoachingSession {
   id: string;
@@ -132,7 +132,7 @@ export default function Department() {
         user_id: user.id,
         skill_id: pendingSkill.id,
         skill_name: pendingSkill.name,
-        title: `${pendingSkill.name === 'new-employee-onboarding' ? 'Onboarding Coaching Session' : pendingSkill.name === 'career-coach' ? 'Career Coaching Session' : pendingSkill.displayName} — ${new Date().toLocaleDateString()}`,
+        title: `${pendingSkill.name === 'career-coaching' ? 'Career Coaching Session' : pendingSkill.displayName} — ${new Date().toLocaleDateString()}`,
         status: "active",
         session_data: {},
         messages: [],

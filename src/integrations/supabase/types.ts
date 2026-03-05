@@ -395,6 +395,283 @@ export type Database = {
           },
         ]
       }
+      onboarding_assignments: {
+        Row: {
+          current_phase: string
+          id: string
+          phase_completed_at: Json
+          phase_deadlines: Json
+          program_id: string
+          started_at: string
+          status: string
+          tenant_id: string
+          user_display_name: string
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          current_phase?: string
+          id?: string
+          phase_completed_at?: Json
+          phase_deadlines?: Json
+          program_id: string
+          started_at?: string
+          status?: string
+          tenant_id: string
+          user_display_name?: string
+          user_email?: string
+          user_id: string
+        }
+        Update: {
+          current_phase?: string
+          id?: string
+          phase_completed_at?: Json
+          phase_deadlines?: Json
+          program_id?: string
+          started_at?: string
+          status?: string
+          tenant_id?: string
+          user_display_name?: string
+          user_email?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_assignments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_checkpoint_responses: {
+        Row: {
+          agent_feedback: string
+          agent_score: number
+          assignment_id: string
+          evaluated_at: string
+          id: string
+          phase: string
+          program_id: string
+          question: string
+          question_id: string
+          tenant_id: string
+          user_response: string
+        }
+        Insert: {
+          agent_feedback?: string
+          agent_score?: number
+          assignment_id: string
+          evaluated_at?: string
+          id?: string
+          phase: string
+          program_id: string
+          question: string
+          question_id: string
+          tenant_id: string
+          user_response?: string
+        }
+        Update: {
+          agent_feedback?: string
+          agent_score?: number
+          assignment_id?: string
+          evaluated_at?: string
+          id?: string
+          phase?: string
+          program_id?: string
+          question?: string
+          question_id?: string
+          tenant_id?: string
+          user_response?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_checkpoint_responses_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_checkpoint_responses_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_checkpoint_responses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_notebook_entries: {
+        Row: {
+          assignment_id: string
+          content: string
+          created_at: string
+          entry_type: string
+          id: string
+          phase: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assignment_id: string
+          content?: string
+          created_at?: string
+          entry_type?: string
+          id?: string
+          phase: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assignment_id?: string
+          content?: string
+          created_at?: string
+          entry_type?: string
+          id?: string
+          phase?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_notebook_entries_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_notebook_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_programs: {
+        Row: {
+          created_at: string
+          enforce_checkpoint_gating: boolean
+          id: string
+          name: string
+          phase_content: Json
+          success_profile_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          enforce_checkpoint_gating?: boolean
+          id?: string
+          name: string
+          phase_content?: Json
+          success_profile_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          enforce_checkpoint_gating?: boolean
+          id?: string
+          name?: string
+          phase_content?: Json
+          success_profile_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_programs_success_profile_id_fkey"
+            columns: ["success_profile_id"]
+            isOneToOne: false
+            referencedRelation: "success_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_programs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_roleplay_sessions: {
+        Row: {
+          assignment_id: string
+          completed_at: string | null
+          conversation_history: Json
+          id: string
+          is_complete: boolean
+          overall_score: number | null
+          rubric_scores: Json | null
+          session_type: string
+          started_at: string
+          summary_feedback: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          assignment_id: string
+          completed_at?: string | null
+          conversation_history?: Json
+          id?: string
+          is_complete?: boolean
+          overall_score?: number | null
+          rubric_scores?: Json | null
+          session_type?: string
+          started_at?: string
+          summary_feedback?: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          assignment_id?: string
+          completed_at?: string | null
+          conversation_history?: Json
+          id?: string
+          is_complete?: boolean
+          overall_score?: number | null
+          rubric_scores?: Json | null
+          session_type?: string
+          started_at?: string
+          summary_feedback?: string | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_roleplay_sessions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_roleplay_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_tasks: {
         Row: {
           agent_type: string
@@ -623,6 +900,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "skills_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      success_profiles: {
+        Row: {
+          capstone_scenario_description: string
+          created_at: string
+          department: string
+          elevator_pitch_topic: string
+          id: string
+          is_template: boolean
+          items: Json
+          phase_configs: Json
+          role_description: string
+          role_name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          capstone_scenario_description?: string
+          created_at?: string
+          department?: string
+          elevator_pitch_topic?: string
+          id?: string
+          is_template?: boolean
+          items?: Json
+          phase_configs?: Json
+          role_description?: string
+          role_name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          capstone_scenario_description?: string
+          created_at?: string
+          department?: string
+          elevator_pitch_topic?: string
+          id?: string
+          is_template?: boolean
+          items?: Json
+          phase_configs?: Json
+          role_description?: string
+          role_name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "success_profiles_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

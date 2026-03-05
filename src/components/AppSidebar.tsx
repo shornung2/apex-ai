@@ -14,6 +14,10 @@ import {
   LogOut,
   Shield,
   Building2,
+  UserCheck,
+  ListChecks,
+  Route,
+  Compass,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useTenant } from "@/contexts/TenantContext";
@@ -43,6 +47,13 @@ const departmentItems = [
   { title: "Sales", url: "/departments/sales", icon: Briefcase },
   { title: "Marketing", url: "/departments/marketing", icon: Megaphone },
   { title: "Talent", url: "/departments/talent", icon: GraduationCap },
+];
+
+const onboardingItems = [
+  { title: "Success Profiles", url: "/talent/onboarding/profiles", icon: UserCheck },
+  { title: "Programs", url: "/talent/onboarding/programs", icon: ListChecks },
+  { title: "Assignments", url: "/talent/onboarding/assignments", icon: Route },
+  { title: "My Journey", url: "/talent/onboarding/my-journey", icon: Compass },
 ];
 
 const toolItems = [
@@ -123,6 +134,24 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {departmentItems.map((item) => renderNavItem(item))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <Collapsible defaultOpen={location.pathname.startsWith("/talent/onboarding")}>
+            <CollapsibleTrigger className="w-full">
+              <SidebarGroupLabel className="text-foreground/70 text-[10px] uppercase tracking-widest cursor-pointer flex items-center justify-between pr-2">
+                Onboarding
+                {!collapsed && <ChevronDown className="h-3 w-3" />}
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {onboardingItems.map((item) => renderNavItem(item))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </CollapsibleContent>
