@@ -1,153 +1,54 @@
 
 
-# Skill Pack Infrastructure, Production Seed, and Documentation Update
+## Plan: Build Learner Journey View
 
-## Summary
+### Overview
+Build a rich, guided learner-facing page at `/talent/onboarding/my-journey` that shows the new hire's onboarding progress, current phase tasks, assigned reading, and role-play sessions. This is one large page component with no new database changes needed.
 
-Create the `skill_packs` and `skill_pack_templates` tables, replace the old `seed-skill-packs` edge function with a new `seed-skill-pack` function that reads from the templates table, seed the 3 packs (24 total skills) with full production-quality definitions from the uploaded MD file, add the 13 non-overlapping skills to the Solutionment tenant, write tests, and update Help + Telegram.
+### Files to Create
 
-## Part A: Database — Two New Tables
+| File | Purpose |
+|------|---------|
+| `src/pages/onboarding/LearnerJourney.tsx` | Full rewrite — main journey page |
 
-Migration to create:
+### Files to Modify
+None beyond the journey page itself. All routes already exist.
 
-```sql
-CREATE TABLE public.skill_packs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  slug TEXT NOT NULL UNIQUE,
-  description TEXT,
-  target_segment TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+### Implementation Details
 
-CREATE TABLE public.skill_pack_templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  pack_id UUID NOT NULL REFERENCES public.skill_packs(id) ON DELETE CASCADE,
-  skill_template JSONB NOT NULL,
-  display_order INT DEFAULT 0
-);
+**Data Loading**: On mount, get current user via `supabase.auth.getUser()`, then query `onboarding_assignments` where `user_id = user.id` and `status = 'active'`. If none found, show empty state. If found, fetch the linked `onboarding_programs` (with `success_profiles` join) by `program_id`, plus `onboarding_notebook_entries`, `onboarding_checkpoint_responses`, and `onboarding_roleplay_sessions` filtered by `assignment_id`.
 
-ALTER TABLE public.skill_packs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.skill_pack_templates ENABLE ROW LEVEL SECURITY;
+**Layout Structure**:
 
-CREATE POLICY "packs_readable" ON public.skill_packs FOR SELECT TO authenticated USING (true);
-CREATE POLICY "templates_readable" ON public.skill_pack_templates FOR SELECT TO authenticated USING (true);
-```
+1. **Welcome Header**: "Welcome, [first name]" with program name and start date subtitle. Generous spacing, larger text.
 
-## Part B: New Edge Function — `seed-skill-pack`
+2. **Phase Progress Stepper**: Horizontal 3-step stepper (Immerse → Observe → Demonstrate). Each step shows phase name, icon/color (blue/amber/green), deadline ("Due [date]" or "Overdue" in red), checkmark + completion date for completed phases. Clicking a completed phase shows a popover with checkpoint avg score and notebook entry count.
 
-Replace the existing `supabase/functions/seed-skill-packs/index.ts` with a new `supabase/functions/seed-skill-pack/index.ts` that:
+3. **Current Phase Panel**: A prominent card containing:
+   - Phase name with icon and color
+   - Objectives list from the Success Profile's phaseConfig ("By the end of this phase, you should be able to:")
+   - **Assigned Reading**: List of KB docs from program's phaseContent for this phase, queried by ID from `knowledge_documents`. Each shows title + "View" link (navigates to `/knowledge` or opens doc).
+   - **Phase Tasks**: Phase-specific task cards:
+     - Immerse: Checkpoint task only
+     - Observe: "Record observation" (link to notebook), "3 notebook entries" progress, checkpoint task
+     - Demonstrate: Elevator Pitch card (shows topic, session count, best score, "Enter Practice Session" button), Capstone Prep card (shows scenario brief, practice count, best score, "Practice the Capstone" button)
+   - Task completion indicators pulled from DB data (checkpoint responses exist? notebook entry count? roleplay sessions with scores?)
 
-- Accepts `{ packSlugs: string[] }`
-- Verifies JWT, looks up caller's `tenant_id` and `role` from `user_profiles`
-- Requires `admin` or `super_admin` role
-- For each slug: fetches `skill_pack_templates` rows for that pack
-- For each template: checks if a skill with the same `name` already exists for this tenant — skips duplicates
-- Inserts into `skills` with `tenant_id`, `is_system = false`, all fields from the template JSONB
-- Returns `{ seeded, skipped, packs }`
+4. **Sidebar/Bottom Strip**: Days remaining in phase (or "Phase overdue"), quick link to Notebook, overall completion % (phases completed / 3).
 
-Add to `supabase/config.toml`:
-```
-[functions.seed-skill-pack]
-verify_jwt = true
-```
+5. **Phase Advancement Banner**: Shown when all tasks in current phase are complete. If `enforceCheckpointGating` is true, verify all checkpoint questions answered with scores >= threshold. Banner has "Mark Phase Complete & Advance" button that updates `current_phase` and `phase_completed_at` in `onboarding_assignments`.
 
-## Part C: Seed the 3 Packs with Production Templates
+6. **Completion Screen**: When all 3 phases done, update status to "completed" and show congratulations with summary stats (checkpoint scores, notebook count, roleplay best scores).
 
-Use the database insert tool to populate `skill_packs` (3 rows) and `skill_pack_templates` (24 rows) with the full production-quality skill definitions from the uploaded MD file.
+### Technical Notes
 
-### Pack 1: Presales Excellence (8 skills)
-1. RFP Analyzer & Scorer — researcher, 9 inputs, ~250-line system prompt
-2. Discovery Call Prep Coach — meeting-prep, 5 inputs
-3. Competitive Battle Card — researcher, 5 inputs
-4. Executive Proposal Draft — content, 7 inputs
-5. Solution Qualification Scorecard — strategist, 6 inputs
-6. Meeting Follow-Up Email — content, 6 inputs
-7. POC & Pilot Plan — strategist, 7 inputs
-8. Objection Response Builder — strategist, 5 inputs
-
-### Pack 2: Sales Productivity (8 skills)
-1. Company Research Brief — researcher, 5 inputs
-2. Personalized Outreach Email — content, 6 inputs
-3. Deal Strategy Session — strategist, 6 inputs
-4. Champion Coaching Guide — strategist, 6 inputs
-5. Pipeline Review Prep — meeting-prep, 5 inputs
-6. Sales Negotiation Prep — strategist, 6 inputs
-7. Account Expansion Map — strategist, 6 inputs
-8. Win/Loss Analysis — researcher, 6 inputs
-
-### Pack 3: Marketing & Content (8 skills)
-1. Thought Leadership Article — content, 6 inputs
-2. LinkedIn Post Series — content, 6 inputs
-3. Market Intelligence Brief — researcher, 5 inputs
-4. Campaign Messaging Framework — strategist, 6 inputs
-5. SEO Blog Brief — strategist, 5 inputs
-6. Customer Case Study Draft — content, 7 inputs
-7. Email Nurture Sequence — content, 6 inputs
-8. Product Launch Announcement — content, 6 inputs
-
-Each template JSONB contains: `name`, `display_name`, `emoji`, `description`, `department`, `agent_type`, `inputs` (full input definitions with labels, types, placeholders, hints, options), `system_prompt` (full production prompt), `preferred_model`, `token_budget`, `timeout_seconds`, `output_format`, `tags`.
-
-## Part D: Add New Skills to Solutionment
-
-Existing Solutionment skills (17 total) overlap with many pack skills. The following 13 skills are genuinely new and will be inserted directly into the `skills` table for the Solutionment tenant:
-
-**From Presales Excellence (5 new):**
-- RFP Analyzer & Scorer (researcher) — no overlap
-- Competitive Battle Card (researcher) — no overlap
-- Solution Qualification Scorecard (strategist) — no overlap
-- POC & Pilot Plan (strategist) — no overlap
-- Objection Response Builder (strategist) — no overlap
-
-**From Sales Productivity (4 new):**
-- Champion Coaching Guide (strategist) — no overlap
-- Pipeline Review Prep (meeting-prep) — no overlap
-- Sales Negotiation Prep (strategist) — no overlap
-- Win/Loss Analysis (researcher) — no overlap
-
-**From Marketing & Content (4 new):**
-- SEO Blog Brief (strategist) — no overlap
-- Customer Case Study Draft (content) — no overlap
-- Email Nurture Sequence (content) — no overlap
-- Product Launch Announcement (content) — no overlap
-
-**Skipped (11 overlapping):** Discovery Call Prep Coach (≈ Meeting Prep Coach), Executive Proposal Draft (≈ Proposal), Meeting Follow-Up Email (≈ Sales Email), Company Research Brief (≈ Company Research), Personalized Outreach Email (≈ Sales Email), Deal Strategy Session (≈ Deal Strategy), Account Expansion Map (≈ Account Strategy), Thought Leadership Article (exists), LinkedIn Post Series (≈ LinkedIn/Social Posts), Market Intelligence Brief (≈ Market & Industry Trends), Campaign Messaging Framework (≈ Marketing Strategy).
-
-## Part E: Tests
-
-Create an edge function test `supabase/functions/seed-skill-pack/index.test.ts` that:
-- Tests unauthenticated requests are rejected
-- Tests that seeding works with valid pack slugs
-- Tests duplicate skip behavior
-
-## Part F: Help Center Update
-
-Add a new section **"Skill Packs"** to `src/pages/Help.tsx` describing:
-- What skill packs are (curated sets of production-quality skills)
-- The 3 starter packs and their contents
-- How packs are seeded during onboarding
-- How admins can seed packs later via the API
-
-Update the **Onboarding & Setup** section to mention the new production-quality prompts.
-
-## Part G: Telegram Bot Update
-
-Update `/help` and `/start` in `supabase/functions/telegram-bot/index.ts` to mention:
-- Skill Packs with 24 production-quality skills across 3 packs
-- Updated skill counts
-
-## Files Affected
-
-| File | Action |
-|---|---|
-| Database migration | Create: `skill_packs` + `skill_pack_templates` tables |
-| Database insert | Seed 3 packs + 24 templates |
-| Database insert | Add 13 new skills to Solutionment tenant |
-| `supabase/functions/seed-skill-pack/index.ts` | Create: new edge function |
-| `supabase/functions/seed-skill-packs/index.ts` | Keep (legacy, could deprecate later) |
-| `supabase/config.toml` | Add `seed-skill-pack` entry |
-| `supabase/functions/seed-skill-pack/index.test.ts` | Create: edge function test |
-| `src/pages/Help.tsx` | Edit: add Skill Packs section |
-| `supabase/functions/telegram-bot/index.ts` | Edit: update help/start text |
+- Use `useTenant()` for tenant context but get user ID from `supabase.auth.getUser()` for the assignment query
+- All DB queries use existing tables with RLS — no migration needed
+- Phase deadlines and completed dates come from JSONB fields on the assignment
+- KB doc titles fetched separately via `knowledge_documents` table filtered by IDs from `phaseContent.assignedKbDocumentIds`
+- Checkpoint completion determined by counting `onboarding_checkpoint_responses` matching the assignment + phase vs total questions in the program's phaseContent
+- Roleplay stats from `onboarding_roleplay_sessions` filtered by assignment + session type
+- Use Tooltip/Popover from existing UI components for completed phase summaries
+- Use framer-motion for subtle entrance animations to give the "companion" feel
+- Responsive: sidebar becomes bottom strip on mobile via `use-mobile` hook
 
