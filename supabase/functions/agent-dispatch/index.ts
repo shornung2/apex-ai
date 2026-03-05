@@ -526,7 +526,7 @@ serve(async (req) => {
             completed_at: new Date().toISOString(),
           }).eq("id", jobId);
 
-          let jobFinalized = true;
+          jobFinalized = true;
 
           // 8. Insert usage event
           try {
