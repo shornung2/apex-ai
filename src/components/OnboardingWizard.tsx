@@ -27,6 +27,7 @@ const USE_CASES = [
   { value: "presales", label: "Presales Excellence" },
   { value: "sales", label: "Sales Productivity" },
   { value: "marketing", label: "Marketing & Content" },
+  { value: "talent", label: "Talent & Coaching" },
   { value: "all", label: "All of the Above" },
 ];
 
@@ -119,7 +120,8 @@ export function OnboardingWizard() {
     if (val === "presales") setSelectedPacks(["presales"]);
     else if (val === "sales") setSelectedPacks(["sales"]);
     else if (val === "marketing") setSelectedPacks(["marketing"]);
-    else setSelectedPacks(["presales", "sales", "marketing"]);
+    else if (val === "talent") setSelectedPacks(["talent"]);
+    else setSelectedPacks(["presales", "sales", "marketing", "talent"]);
   };
 
   const togglePack = (slug: string) => {
