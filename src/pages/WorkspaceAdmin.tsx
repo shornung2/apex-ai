@@ -307,24 +307,14 @@ export default function WorkspaceAdmin() {
       </motion.div>
 
       <motion.div variants={item}>
+        <h2 className="text-lg font-semibold mb-3">AI & Platform</h2>
         <Tabs defaultValue="agents" className="space-y-6">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">AI & Platform</p>
-            <TabsList className="bg-muted/50 flex-wrap">
-              <TabsTrigger value="agents" className="gap-1.5"><Bot className="h-3.5 w-3.5" /> Agents</TabsTrigger>
-              <TabsTrigger value="api" className="gap-1.5"><Key className="h-3.5 w-3.5" /> API Keys</TabsTrigger>
-              <TabsTrigger value="integrations" className="gap-1.5"><MessageCircle className="h-3.5 w-3.5" /> Integrations</TabsTrigger>
-              <TabsTrigger value="billing" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Usage & Billing</TabsTrigger>
-            </TabsList>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">Onboarding Administration</p>
-            <TabsList className="bg-muted/50 flex-wrap">
-              <TabsTrigger value="profiles" className="gap-1.5"><UserCheck className="h-3.5 w-3.5" /> Success Profiles</TabsTrigger>
-              <TabsTrigger value="programs" className="gap-1.5"><ListChecks className="h-3.5 w-3.5" /> Onboarding Programs</TabsTrigger>
-              <TabsTrigger value="onboarding" className="gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> Onboarding Assignments</TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="bg-muted/50 flex-wrap">
+            <TabsTrigger value="agents" className="gap-1.5"><Bot className="h-3.5 w-3.5" /> Agents</TabsTrigger>
+            <TabsTrigger value="api" className="gap-1.5"><Key className="h-3.5 w-3.5" /> API Keys</TabsTrigger>
+            <TabsTrigger value="integrations" className="gap-1.5"><MessageCircle className="h-3.5 w-3.5" /> Integrations</TabsTrigger>
+            <TabsTrigger value="billing" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Usage & Billing</TabsTrigger>
+          </TabsList>
 
           <TabsContent value="agents">
             <Card className="glass-card">
@@ -504,6 +494,17 @@ export default function WorkspaceAdmin() {
           <TabsContent value="billing">
             <UsageBillingSection tenantId={tenantId} />
           </TabsContent>
+        </Tabs>
+      </motion.div>
+
+      <motion.div variants={item}>
+        <h2 className="text-lg font-semibold mb-3">Onboarding Administration</h2>
+        <Tabs defaultValue="profiles" className="space-y-6">
+          <TabsList className="bg-muted/50 flex-wrap">
+            <TabsTrigger value="profiles" className="gap-1.5"><UserCheck className="h-3.5 w-3.5" /> Success Profiles</TabsTrigger>
+            <TabsTrigger value="programs" className="gap-1.5"><ListChecks className="h-3.5 w-3.5" /> Onboarding Programs</TabsTrigger>
+            <TabsTrigger value="assignments" className="gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> Onboarding Assignments</TabsTrigger>
+          </TabsList>
 
           <TabsContent value="profiles">
             <SuccessProfileList />
@@ -513,7 +514,7 @@ export default function WorkspaceAdmin() {
             <ProgramList />
           </TabsContent>
 
-          <TabsContent value="onboarding">
+          <TabsContent value="assignments">
             <AdminDashboard />
           </TabsContent>
         </Tabs>
