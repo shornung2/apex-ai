@@ -485,6 +485,7 @@ serve(async (req) => {
         controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ jobId })}\n\n`));
 
         let buffer = "";
+        let jobFinalized = false;
         try {
           while (true) {
             const { done, value } = await reader.read();
