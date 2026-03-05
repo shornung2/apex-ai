@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { motion } from "framer-motion";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
@@ -582,9 +583,27 @@ export default function Capabilities() {
                     <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={resetBuilder}>
                       <X className="h-3 w-3" /> Cancel
                     </Button>
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-destructive" onClick={() => { deleteSkill(editingSkillId); resetBuilder(); }}>
-                      <Trash2 className="h-3 w-3" /> Delete
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="gap-1 text-xs text-destructive">
+                          <Trash2 className="h-3 w-3" /> Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this skill?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. The skill and its configuration will be permanently removed.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { deleteSkill(editingSkillId); resetBuilder(); }}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </>
                 )}
               </div>
