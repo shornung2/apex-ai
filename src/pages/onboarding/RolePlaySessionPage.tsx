@@ -595,7 +595,7 @@ GENERAL COACHING GUIDELINES FOR ALL SESSIONS:
                     ? "bg-primary text-primary-foreground rounded-br-md"
                     : "bg-muted rounded-bl-md"
                 }`}>
-                  <ReactMarkdown className="prose prose-sm dark:prose-invert max-w-none [&>p]:m-0">{msg.content}</ReactMarkdown>
+                  <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:m-0"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
                 </div>
               </div>
             ))}
@@ -692,7 +692,7 @@ GENERAL COACHING GUIDELINES FOR ALL SESSIONS:
                   ? "bg-primary text-primary-foreground rounded-br-md"
                   : "bg-muted rounded-bl-md"
               }`}>
-                <ReactMarkdown className="prose prose-sm dark:prose-invert max-w-none [&>p]:m-0">{msg.content}</ReactMarkdown>
+                <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:m-0"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
               </div>
             </motion.div>
           ))}
