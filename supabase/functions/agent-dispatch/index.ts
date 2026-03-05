@@ -442,6 +442,8 @@ serve(async (req) => {
         model: selectedModel,
         messages: [
           { role: "system", content: finalSystemPrompt },
+          // Inject prior coaching session messages for continuity
+          ...sessionMessages,
           { role: "user", content: filledTemplate },
         ],
         stream: true,
