@@ -5,6 +5,7 @@ import {
   Settings,
   Briefcase,
   Megaphone,
+  GraduationCap,
   Sparkles,
   ChevronDown,
   FolderOpen,
@@ -41,6 +42,7 @@ const topItems = [
 const departmentItems = [
   { title: "Sales", url: "/departments/sales", icon: Briefcase },
   { title: "Marketing", url: "/departments/marketing", icon: Megaphone },
+  { title: "Talent", url: "/departments/talent", icon: GraduationCap },
 ];
 
 const toolItems = [

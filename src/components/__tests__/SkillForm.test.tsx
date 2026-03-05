@@ -42,7 +42,7 @@ const fileSkill: Skill = {
   displayName: "File Skill",
   description: "A skill with file input",
   department: "sales",
-  agentType: "meeting-prep",
+  agentType: "coach",
   emoji: "📎",
   inputs: [
     { label: "Company Name", type: "text", required: true, placeholder: "Enter company" },

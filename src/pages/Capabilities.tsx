@@ -48,7 +48,7 @@ const AGENT_DEFAULT_MODELS: Record<string, string> = {
   researcher: "google/gemini-2.5-pro",
   strategist: "google/gemini-3-flash-preview",
   content: "google/gemini-3-flash-preview",
-  "meeting-prep": "google/gemini-3-flash-preview",
+  coach: "google/gemini-3-flash-preview",
 };
 
 interface OpenRouterModel {

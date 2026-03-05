@@ -1,7 +1,7 @@
 // Department + Skill-driven architecture
 
-export type Department = "sales" | "marketing";
-export type AgentType = "researcher" | "strategist" | "content" | "meeting-prep";
+export type Department = "sales" | "marketing" | "talent";
+export type AgentType = "researcher" | "strategist" | "content" | "coach";
 export type JobStatus = "queued" | "running" | "complete" | "failed" | "retrying";
 
 export type SkillInput = {
@@ -88,10 +88,10 @@ export const agentDefinitions: AgentDefinition[] = [
     description: "Polished written materials — proposals, emails, social posts, and more.",
   },
   {
-    type: "meeting-prep",
-    name: "Meeting Prep",
-    emoji: "🎯",
-    description: "Pre-meeting coaching, agendas, and talk tracks for sales conversations.",
+    type: "coach",
+    name: "Coach",
+    emoji: "🏋️",
+    description: "Meeting preparation, new employee onboarding, and career coaching — accelerating readiness and performance.",
   },
 ];
 
@@ -107,12 +107,18 @@ export const departmentDefinitions: Record<Department, { name: string; descripti
     description: "Market intelligence, content creation, thought leadership, and brand strategy skills.",
     emoji: "📣",
   },
+  talent: {
+    name: "Talent",
+    description: "Employee onboarding, career coaching, and meeting preparation — accelerating readiness and performance using AI-powered coaching.",
+    emoji: "🎓",
+  },
 };
 
 // Which agents are available in each department
 export const departmentAgents: Record<Department, AgentType[]> = {
   marketing: ["researcher", "strategist", "content"],
-  sales: ["meeting-prep", "content", "strategist"],
+  sales: ["coach", "content", "strategist"],
+  talent: ["coach", "content", "strategist"],
 };
 
 // Helper to normalize DB skill row to Skill type
@@ -124,7 +130,7 @@ export function dbRowToSkill(row: any): Skill {
     displayName: row.display_name || row.name,
     description: row.description || "",
     department: (row.department || "marketing").toLowerCase() as Department,
-    agentType: (row.agent_type || "researcher").toLowerCase().replace(" ", "-") as AgentType,
+    agentType: ((raw) => { const v = (raw || "researcher").toLowerCase().replace(" ", "-"); return v === "meeting-prep" ? "coach" : v; })(row.agent_type) as AgentType,
     emoji: row.emoji || "⚡",
     inputs: inputs.map((inp: any) => ({
       ...inp,
