@@ -45,7 +45,6 @@ const marketingSkills = [
 ];
 
 const talentSkills = [
-  { name: "new-employee-onboarding", display_name: "New Employee Onboarding Coach", emoji: "🚀", description: "AI-powered onboarding using the Teach Me → Show Me → Let Me Show You methodology. Generates personalized 90-day onboarding plans, milestones, coaching simulations, and readiness check-ride criteria based on Success Profiles.", department: "talent", agent_type: "coach" },
   { name: "career-coaching", display_name: "Career Coach", emoji: "📈", description: "Personalized career development coaching — skill gap analysis, learning paths, coaching conversation guides, and milestone checkpoints for employee growth.", department: "talent", agent_type: "coach" },
 ];
 
