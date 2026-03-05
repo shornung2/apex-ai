@@ -19,7 +19,7 @@ const statusColors: Record<string, string> = {
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
-const deptIcons: Record<string, React.ElementType> = { sales: Briefcase, marketing: Megaphone };
+const deptIcons: Record<string, React.ElementType> = { sales: Briefcase, marketing: Megaphone, talent: GraduationCap };
 
 export default function Dashboard() {
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
