@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.seed-skill-packs]
 verify_jwt = false
+
+[functions.evaluate-checkpoint]
+verify_jwt = false
