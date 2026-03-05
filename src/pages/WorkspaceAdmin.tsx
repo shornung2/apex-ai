@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Key, Bot, DollarSign, Zap, FileText, AlertTriangle, TrendingUp, MessageCircle, Loader2, Search, CheckCircle } from "lucide-react";
+import { Key, Bot, DollarSign, Zap, FileText, AlertTriangle, TrendingUp, MessageCircle, Loader2, Search, CheckCircle, UserCheck, ListChecks, ClipboardList } from "lucide-react";
 import { agentDefinitions } from "@/data/mock-data";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,9 @@ import { useTenant } from "@/contexts/TenantContext";
 import TeamWorkspaceSection from "@/components/TeamWorkspaceSection";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Navigate } from "react-router-dom";
+import SuccessProfileList from "@/pages/onboarding/SuccessProfileList";
+import ProgramList from "@/pages/onboarding/ProgramList";
+import AdminDashboard from "@/pages/onboarding/AdminDashboard";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -305,11 +308,14 @@ export default function WorkspaceAdmin() {
 
       <motion.div variants={item}>
         <Tabs defaultValue="agents" className="space-y-6">
-          <TabsList className="bg-muted/50">
+          <TabsList className="bg-muted/50 flex-wrap">
             <TabsTrigger value="agents" className="gap-1.5"><Bot className="h-3.5 w-3.5" /> Agents</TabsTrigger>
             <TabsTrigger value="api" className="gap-1.5"><Key className="h-3.5 w-3.5" /> API Keys</TabsTrigger>
             <TabsTrigger value="integrations" className="gap-1.5"><MessageCircle className="h-3.5 w-3.5" /> Integrations</TabsTrigger>
             <TabsTrigger value="billing" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Usage & Billing</TabsTrigger>
+            <TabsTrigger value="profiles" className="gap-1.5"><UserCheck className="h-3.5 w-3.5" /> Success Profiles</TabsTrigger>
+            <TabsTrigger value="programs" className="gap-1.5"><ListChecks className="h-3.5 w-3.5" /> Programs</TabsTrigger>
+            <TabsTrigger value="onboarding" className="gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> Onboarding</TabsTrigger>
           </TabsList>
 
           <TabsContent value="agents">
@@ -489,6 +495,18 @@ export default function WorkspaceAdmin() {
 
           <TabsContent value="billing">
             <UsageBillingSection tenantId={tenantId} />
+          </TabsContent>
+
+          <TabsContent value="profiles">
+            <SuccessProfileList />
+          </TabsContent>
+
+          <TabsContent value="programs">
+            <ProgramList />
+          </TabsContent>
+
+          <TabsContent value="onboarding">
+            <AdminDashboard />
           </TabsContent>
         </Tabs>
       </motion.div>

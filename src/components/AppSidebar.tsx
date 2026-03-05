@@ -14,9 +14,6 @@ import {
   LogOut,
   Shield,
   Building2,
-  UserCheck,
-  ListChecks,
-  Route,
   Compass,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
