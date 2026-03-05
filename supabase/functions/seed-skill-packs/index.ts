@@ -25,7 +25,7 @@ const salesSkills = [
   { name: "personalized-outreach", display_name: "Personalized Outreach", emoji: "✉️", description: "Craft personalized outreach emails and messages for prospects.", department: "sales", agent_type: "writer" },
   { name: "deal-strategy", display_name: "Deal Strategy", emoji: "♟️", description: "Develop deal strategies with stakeholder mapping and action plans.", department: "sales", agent_type: "researcher" },
   { name: "champion-coach", display_name: "Champion Coach", emoji: "🤝", description: "Create coaching plans to enable your internal champion at the prospect.", department: "sales", agent_type: "writer" },
-  { name: "pipeline-review", display_name: "Pipeline Review", emoji: "📈", description: "Analyze pipeline health and generate insights for deal progression.", department: "sales", agent_type: "researcher" },
+  { name: "meeting-prep-coach", display_name: "Meeting Prep Coach", emoji: "🎯", description: "Pre-meeting coaching, discovery agendas, talk tracks, and objection handling guides.", department: "sales", agent_type: "coach" },
   { name: "win-loss-analysis", display_name: "Win/Loss Analysis", emoji: "📋", description: "Analyze won and lost deals to identify patterns and improvement areas.", department: "sales", agent_type: "researcher" },
   { name: "territory-plan", display_name: "Territory Plan", emoji: "🗺️", description: "Build territory plans with account prioritization and coverage strategies.", department: "sales", agent_type: "writer" },
   { name: "proposal-builder", display_name: "Proposal Builder", emoji: "📄", description: "Generate structured proposals with custom sections and pricing.", department: "sales", agent_type: "writer" },
@@ -44,10 +44,17 @@ const marketingSkills = [
   { name: "social-calendar", display_name: "Social Calendar", emoji: "📅", description: "Plan social media content calendars with themes and post ideas.", department: "marketing", agent_type: "writer" },
 ];
 
+const talentSkills = [
+  { name: "meeting-prep-coach", display_name: "Meeting Prep Coach", emoji: "🎯", description: "Pre-meeting coaching, discovery agendas, talk tracks, and objection handling guides for any meeting type.", department: "talent", agent_type: "coach" },
+  { name: "new-employee-onboarding", display_name: "New Employee Onboarding Coach", emoji: "🚀", description: "AI-powered onboarding using the Teach Me → Show Me → Let Me Show You methodology. Generates personalized 90-day onboarding plans, milestones, coaching simulations, and readiness check-ride criteria based on Success Profiles.", department: "talent", agent_type: "coach" },
+  { name: "career-coaching", display_name: "Career Coach", emoji: "📈", description: "Personalized career development coaching — skill gap analysis, learning paths, coaching conversation guides, and milestone checkpoints for employee growth.", department: "talent", agent_type: "coach" },
+];
+
 const packMap: Record<string, typeof presalesSkills> = {
   presales: presalesSkills,
   sales: salesSkills,
   marketing: marketingSkills,
+  talent: talentSkills,
 };
 
 Deno.serve(async (req) => {
