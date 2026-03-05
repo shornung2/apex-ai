@@ -1,0 +1,2562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apex AI — The AI Operating System for Revenue Teams</title>
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&family=Lato:wght@300;400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ===========================
+   RESET & BASE
+=========================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0c1623;
+  --bg2:       #0f1e30;
+  --bg3:       #122034;
+  --orange:    #f4af40;
+  --orange2:   #e09828;
+  --orange-dim: rgba(244,175,64,0.15);
+  --blue:      #35495e;
+  --teal:      #2a7fb5;
+  --white:     #ffffff;
+  --muted:     #7a9ab5;
+  --muted2:    #4e6a80;
+  --card:      rgba(255,255,255,0.04);
+  --card2:     rgba(255,255,255,0.07);
+  --border:    rgba(255,255,255,0.08);
+  --border2:   rgba(244,175,64,0.2);
+  --radius:    12px;
+  --radius-lg: 20px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'Lato', sans-serif;
+  font-weight: 400;
+  line-height: 1.65;
+  overflow-x: hidden;
+}
+
+/* ===========================
+   SCROLL PROGRESS
+=========================== */
+#scroll-bar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--orange), #ff7e2a);
+  z-index: 9999;
+  width: 0%;
+  transition: width 0.05s linear;
+}
+
+/* ===========================
+   NAV
+=========================== */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 0 40px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(12,22,35,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.3s;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.nav-logo-text {
+  font-family: 'Play', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--white);
+  letter-spacing: -0.01em;
+}
+.nav-logo-text span { color: var(--orange); }
+.nav-by {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nav-links {
+  display: flex;
+  gap: 2px;
+}
+.nav-links a {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 20px;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+.nav-links a:hover, .nav-links a.active {
+  color: var(--white);
+  background: var(--card2);
+}
+
+.nav-cta {
+  background: var(--orange);
+  color: #0c1623 !important;
+  font-weight: 600 !important;
+  padding: 8px 20px !important;
+  border-radius: 20px !important;
+}
+.nav-cta:hover { background: var(--orange2) !important; color: #0c1623 !important; }
+
+/* ===========================
+   HERO
+=========================== */
+#hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 120px 40px 80px;
+  overflow: hidden;
+}
+
+canvas#hero-canvas {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--orange-dim);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 32px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeUp 0.7s 0.2s forwards;
+}
+.hero-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--orange);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.hero-headline {
+  font-family: 'Play', sans-serif;
+  font-size: clamp(28px, 4vw, 52px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0;
+  max-width: 860px;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeUp 0.8s 0.4s forwards;
+}
+.hero-headline em {
+  font-style: normal;
+  color: var(--orange);
+  position: relative;
+}
+
+.hero-sub {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--muted);
+  max-width: 640px;
+  margin: 28px auto 0;
+  line-height: 1.7;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeUp 0.7s 0.6s forwards;
+}
+
+.hero-ctas {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 44px;
+  flex-wrap: wrap;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeUp 0.7s 0.8s forwards;
+}
+
+.btn-primary {
+  background: var(--orange);
+  color: #0c1623;
+  font-family: 'Lato', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 14px 32px;
+  border-radius: 8px;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+  box-shadow: 0 8px 32px rgba(244,175,64,0.25);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(244,175,64,0.35); }
+
+.btn-ghost {
+  background: var(--card2);
+  color: var(--white);
+  font-family: 'Lato', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 14px 32px;
+  border-radius: 8px;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+}
+.btn-ghost:hover { background: var(--card); border-color: rgba(255,255,255,0.15); }
+
+.hero-stats {
+  display: flex;
+  gap: 60px;
+  justify-content: center;
+  margin-top: 72px;
+  opacity: 0;
+  animation: fadeUp 0.7s 1s forwards;
+}
+.hero-stat-num {
+  font-family: 'Play', sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: -0.01em;
+}
+.hero-stat-num span { color: var(--orange); }
+.hero-stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.hero-scroll-hint {
+  position: absolute;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  animation: fadeUp 0.5s 1.5s forwards;
+}
+.hero-scroll-hint span {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted2);
+}
+.scroll-arrow {
+  width: 20px; height: 20px;
+  border-right: 1.5px solid var(--muted2);
+  border-bottom: 1.5px solid var(--muted2);
+  transform: rotate(45deg);
+  animation: bounceDown 1.5s infinite;
+}
+
+/* ===========================
+   SECTION BASE
+=========================== */
+section {
+  padding: 100px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.full-width-section {
+  max-width: none;
+  padding: 100px 0;
+}
+
+.section-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--orange);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-eyebrow::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: var(--orange);
+}
+
+.section-title {
+  font-family: 'Play', sans-serif;
+  font-size: clamp(24px, 2.8vw, 38px);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0;
+  margin-bottom: 20px;
+}
+.section-title em {
+  font-style: normal;
+  color: var(--orange);
+}
+
+.section-desc {
+  font-size: 17px;
+  color: var(--muted);
+  max-width: 600px;
+  line-height: 1.75;
+}
+
+/* Reveal animation */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-5 { transition-delay: 0.5s; }
+
+/* ===========================
+   DIVIDER
+=========================== */
+.section-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 0;
+}
+
+/* ===========================
+   WHAT IS AI OS
+=========================== */
+#aios {
+  /* layout handled by inner grid div */
+}
+
+.aios-visual {
+  position: relative;
+}
+
+.os-ring-wrap {
+  position: relative;
+  width: 340px;
+  height: 340px;
+  margin: 0 auto;
+}
+
+.os-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+.os-ring-outer { animation: spinSlow 20s linear infinite; }
+.os-ring-mid { inset: 30px; animation: spinSlow 15s linear infinite reverse; }
+.os-ring-inner { inset: 60px; animation: spinSlow 10s linear infinite; }
+
+.os-ring-outer::before {
+  content: '';
+  position: absolute;
+  top: -3px; left: 50%;
+  width: 6px; height: 6px;
+  background: var(--orange);
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+.os-ring-mid::before {
+  content: '';
+  position: absolute;
+  bottom: -3px; left: 30%;
+  width: 5px; height: 5px;
+  background: var(--teal);
+  border-radius: 50%;
+}
+.os-ring-inner::before {
+  content: '';
+  position: absolute;
+  top: 30%; right: -3px;
+  width: 5px; height: 5px;
+  background: var(--orange);
+  border-radius: 50%;
+}
+
+.os-core {
+  position: absolute;
+  inset: 90px;
+  background: linear-gradient(135deg, rgba(244,175,64,0.12), rgba(42,127,181,0.08));
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.os-core-label {
+  font-family: 'Play', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--orange);
+  line-height: 1.5;
+}
+.os-core-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+  letter-spacing: 0.08em;
+}
+
+.aios-points {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.aios-point {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+.aios-icon {
+  width: 44px;
+  height: 44px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.aios-point:hover .aios-icon {
+  border-color: var(--border2);
+  background: var(--orange-dim);
+}
+.aios-point-title {
+  font-family: 'Play', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+.aios-point-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ===========================
+   ARCHITECTURE
+=========================== */
+#architecture {
+  background: var(--bg2);
+  padding: 100px 0;
+}
+.arch-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+.arch-diagram {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 60px;
+}
+
+.arch-layer {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: stretch;
+  cursor: pointer;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+.arch-layer:hover { transform: scale(1.005); }
+.arch-layer.active .arch-layer-fill { background: rgba(244,175,64,0.08); border-color: var(--border2); }
+.arch-layer.active .arch-layer-label { background: rgba(244,175,64,0.15); }
+
+.arch-layer-label {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 10px 0 0 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 12px;
+  text-align: center;
+  transition: background 0.2s;
+  gap: 8px;
+}
+.arch-layer-icon { font-size: 24px; }
+.arch-layer-name {
+  font-family: 'Play', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--white);
+  text-transform: uppercase;
+}
+
+.arch-layer-fill {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  padding: 20px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.arch-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.arch-chip {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.arch-layer.active .arch-chip {
+  background: rgba(244,175,64,0.08);
+  border-color: rgba(244,175,64,0.25);
+  color: var(--white);
+}
+
+.arch-layer-desc {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 320px;
+  text-align: right;
+  line-height: 1.5;
+}
+
+.arch-detail {
+  margin-top: 32px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 28px 32px;
+  display: none;
+}
+.arch-detail.visible { display: block; animation: fadeDown 0.3s ease; }
+.arch-detail-title {
+  font-family: 'Play', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+.arch-detail-title span { color: var(--orange); }
+.arch-detail-body {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 720px;
+}
+
+/* ===========================
+   AGENTS
+=========================== */
+#agents {}
+.agents-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 48px;
+  gap: 40px;
+}
+
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.agent-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s;
+  overflow: hidden;
+}
+.agent-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--orange), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.agent-card:hover {
+  border-color: var(--border2);
+  background: var(--card2);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.agent-card:hover::before { opacity: 1; }
+
+.agent-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted2);
+  margin-bottom: 16px;
+}
+.agent-icon {
+  font-size: 36px;
+  margin-bottom: 16px;
+  display: block;
+}
+.agent-name {
+  font-family: 'Play', sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+.agent-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.agent-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.agent-tag {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* Alex card - special */
+.alex-section {
+  margin-top: 40px;
+  background: linear-gradient(120deg, rgba(244,175,64,0.06), rgba(42,127,181,0.04));
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 36px 40px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 40px;
+  align-items: center;
+}
+.alex-avatar {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--orange), var(--orange2));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+}
+.alex-title {
+  font-family: 'Play', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+.alex-title span { color: var(--orange); }
+.alex-desc {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.65;
+  max-width: 560px;
+}
+.alex-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+.alex-feat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--white);
+  background: var(--card2);
+  border: 1px solid var(--border);
+  padding: 7px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.alex-feat::before {
+  content: '✓';
+  color: var(--orange);
+  font-weight: 700;
+}
+
+/* ===========================
+   SKILLS
+=========================== */
+#skills {
+  background: var(--bg2);
+  padding: 100px 0;
+}
+.skills-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+.skills-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin-top: 60px;
+}
+
+.skill-builder-card {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  position: relative;
+  overflow: hidden;
+}
+.skill-builder-card::after {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(244,175,64,0.08), transparent 70%);
+  pointer-events: none;
+}
+.skill-builder-title {
+  font-family: 'Play', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+.skill-builder-title em {
+  font-style: normal;
+  color: var(--orange);
+}
+.skill-builder-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+.skill-builder-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.skill-step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.skill-step-num {
+  width: 28px; height: 28px;
+  background: var(--orange-dim);
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.skill-step-text {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.skill-step-text strong { color: var(--white); font-weight: 600; }
+
+.skill-packs-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+}
+.skill-packs-title {
+  font-family: 'Play', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+.skill-packs-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.packs-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.pack-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: all 0.2s;
+  cursor: default;
+}
+.pack-item:hover {
+  border-color: var(--border2);
+  background: var(--card2);
+}
+.pack-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 3px;
+}
+.pack-name::before {
+  content: '▸ ';
+  color: var(--orange);
+}
+.pack-desc {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ===========================
+   DATA LAYER
+=========================== */
+#data {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+.data-visual {
+  position: relative;
+}
+
+.data-layers-viz {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.data-layer-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 20px;
+  cursor: default;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.data-layer-bar:hover {
+  border-color: var(--border2);
+  background: var(--card2);
+}
+.data-layer-bar::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--orange);
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.data-layer-bar:hover::before { opacity: 1; }
+.data-layer-icon { font-size: 20px; flex-shrink: 0; }
+.data-layer-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--white);
+}
+.data-layer-detail {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.data-layer-fill-bar {
+  margin-left: auto;
+  width: 80px;
+  height: 4px;
+  background: var(--card2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.data-layer-fill-bar::after {
+  content: '';
+  display: block;
+  height: 100%;
+  background: var(--orange);
+  border-radius: 2px;
+  width: var(--pct);
+}
+
+.data-points {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.data-point-title {
+  font-family: 'Play', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.data-point-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ===========================
+   ANY MODEL
+=========================== */
+#models {
+  background: var(--bg2);
+  padding: 100px 0;
+  text-align: center;
+}
+.models-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+.model-logos {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 56px;
+}
+.model-logo {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 28px;
+  font-family: 'Play', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.model-logo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(244,175,64,0.05), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.model-logo:hover {
+  border-color: var(--border2);
+  color: var(--white);
+  transform: translateY(-3px);
+}
+.model-logo:hover::before { opacity: 1; }
+
+.model-message {
+  margin-top: 56px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 40px;
+  text-align: left;
+}
+.model-msg-item {}
+.model-msg-title {
+  font-family: 'Play', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--white);
+}
+.model-msg-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ===========================
+   ACCESS EVERYWHERE
+=========================== */
+#access {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.access-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.access-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 28px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  transition: all 0.25s;
+}
+.access-card:hover {
+  border-color: var(--border2);
+  background: var(--card2);
+  transform: translateX(6px);
+}
+.access-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.access-name {
+  font-family: 'Play', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.access-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.access-visual {
+  position: relative;
+}
+.device-mockup {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  overflow: hidden;
+}
+.device-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.device-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.device-dot:first-child { background: #ff5f57; }
+.device-dot:nth-child(2) { background: #febc2e; }
+.device-dot:nth-child(3) { background: #28c840; }
+.device-url {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chat-msg {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.chat-msg.user {
+  background: rgba(244,175,64,0.15);
+  border: 1px solid var(--border2);
+  color: var(--white);
+  align-self: flex-end;
+  border-radius: 12px 12px 0 12px;
+}
+.chat-msg.alex {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  align-self: flex-start;
+  border-radius: 12px 12px 12px 0;
+}
+.chat-msg.alex strong { color: var(--white); font-weight: 600; }
+.chat-msg.typing { letter-spacing: 2px; color: var(--muted2); }
+
+/* ===========================
+   TASK SCHEDULER
+=========================== */
+#scheduler {
+  background: var(--bg2);
+  padding: 100px 0;
+}
+.scheduler-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+.scheduler-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 60px;
+  margin-top: 60px;
+  align-items: start;
+}
+
+.scheduler-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s;
+}
+.task-item:hover {
+  border-color: var(--border2);
+  background: var(--card2);
+}
+.task-status {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.task-status.running { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.5); animation: pulse 2s infinite; }
+.task-status.scheduled { background: var(--orange); opacity: 0.6; }
+.task-status.done { background: var(--muted2); }
+.task-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--white);
+  flex: 1;
+}
+.task-schedule {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--card);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.scheduler-points {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.scheduler-point-title {
+  font-family: 'Play', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.scheduler-point-title::before {
+  content: '';
+  width: 4px; height: 4px;
+  background: var(--orange);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.scheduler-point-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ===========================
+   PRODUCTIVITY
+=========================== */
+#productivity {
+  text-align: center;
+}
+.productivity-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.productivity-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-top: 64px;
+}
+.metric-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 24px;
+  text-align: center;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.metric-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 20%; right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--orange), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.metric-card:hover {
+  border-color: var(--border2);
+  background: var(--card2);
+  transform: translateY(-6px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.metric-card:hover::after { opacity: 1; }
+.metric-number {
+  font-family: 'Play', sans-serif;
+  font-size: 46px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+.metric-number span { color: var(--orange); }
+.metric-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--white);
+  margin-bottom: 6px;
+}
+.metric-sub {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.use-cases {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 40px;
+  text-align: left;
+}
+.use-case {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  transition: all 0.2s;
+}
+.use-case:hover {
+  border-color: var(--border2);
+  background: var(--card2);
+}
+.use-case-title {
+  font-family: 'Play', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.use-case-title span { font-size: 18px; }
+.use-case-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ===========================
+   WHY SOLUTIONMENT
+=========================== */
+#why {
+  background: var(--bg2);
+  padding: 100px 0;
+}
+.why-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: start;
+}
+
+.why-points {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.why-point {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+.why-point:first-child { padding-top: 0; }
+.why-point:last-child { border-bottom: none; }
+.why-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--orange);
+  opacity: 0.7;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.why-title {
+  font-family: 'Play', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.why-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.why-visual {
+  position: sticky;
+  top: 88px;
+}
+.tiers-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.tiers-header {
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Play', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tier {
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+  cursor: default;
+}
+.tier:last-child { border-bottom: none; }
+.tier:hover { background: rgba(255,255,255,0.02); }
+.tier.featured {
+  background: rgba(244,175,64,0.04);
+  border-color: var(--border2);
+}
+.tier-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--orange);
+  background: var(--orange-dim);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 2px 7px;
+  margin-bottom: 8px;
+}
+.tier-name {
+  font-family: 'Play', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+.tier-price {
+  font-size: 13px;
+  color: var(--orange);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.tier-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* ===========================
+   CTA
+=========================== */
+#cta {
+  padding: 120px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+#cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 100%, rgba(244,175,64,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.cta-title {
+  font-family: 'Play', sans-serif;
+  font-size: clamp(26px, 3.2vw, 44px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.3;
+  max-width: 700px;
+  margin: 0 auto 24px;
+}
+.cta-title em {
+  font-style: normal;
+  color: var(--orange);
+}
+.cta-sub {
+  font-size: 17px;
+  color: var(--muted);
+  max-width: 480px;
+  margin: 0 auto 48px;
+  line-height: 1.7;
+}
+.cta-contact {
+  margin-top: 32px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.cta-contact a {
+  color: var(--orange);
+  text-decoration: none;
+}
+.cta-contact a:hover { text-decoration: underline; }
+
+/* ===========================
+   FOOTER
+=========================== */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.footer-left {
+  font-size: 12px;
+  color: var(--muted2);
+}
+.footer-right {
+  font-size: 12px;
+  color: var(--muted2);
+}
+
+/* ===========================
+   ANIMATIONS
+=========================== */
+@keyframes fadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes spinSlow {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+@keyframes bounceDown {
+  0%, 100% { transform: rotate(45deg) translateY(0); }
+  50% { transform: rotate(45deg) translateY(5px); }
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+@media (max-width: 1024px) {
+  #aios .aios-inner-grid { grid-template-columns: 1fr; }
+  .agents-grid { grid-template-columns: repeat(2, 1fr); }
+  #data { grid-template-columns: 1fr; }
+  #access { grid-template-columns: 1fr; }
+  .productivity-metrics { grid-template-columns: repeat(2, 1fr); }
+  .why-inner { grid-template-columns: 1fr; }
+  .model-message { grid-template-columns: 1fr; }
+  .why-visual { position: relative; top: 0; }
+  .alex-section { grid-template-columns: 1fr; text-align: center; }
+  .alex-features { align-items: center; }
+}
+@media (max-width: 768px) {
+  nav { padding: 0 20px; }
+  .nav-links { display: none; }
+  section { padding: 60px 20px; }
+  #hero { padding: 100px 20px 60px; }
+  .hero-stats { gap: 32px; flex-wrap: wrap; }
+  .skills-layout { grid-template-columns: 1fr; }
+  .use-cases { grid-template-columns: 1fr; }
+  .productivity-metrics { grid-template-columns: repeat(2, 1fr); }
+  .packs-list { grid-template-columns: 1fr; }
+  .arch-layer { grid-template-columns: 100px 1fr; }
+  .arch-layer-desc { display: none; }
+  footer { flex-direction: column; gap: 8px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- SCROLL PROGRESS -->
+<div id="scroll-bar"></div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a class="nav-brand" href="#hero">
+    <div>
+      <div class="nav-by">A Solutionment Product</div>
+      <div class="nav-logo-text">Apex <span>AI</span></div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="#aios">AI OS</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#agents">Agents</a>
+    <a href="#skills">Skills</a>
+    <a href="#scheduler">Automation</a>
+    <a href="#why">Why Us</a>
+    <a href="mailto:sales@solutionment.com?subject=Apex AI Demo Request" class="nav-cta">Book Demo</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero" style="max-width:none; padding: 120px 40px 80px;">
+  <canvas id="hero-canvas"></canvas>
+  <h1 class="hero-headline">The <em>AI Operating System</em><br>for Revenue Teams</h1>
+  <p class="hero-sub">
+    Apex AI is not another AI tool. It's a complete operating system for sales and presales — four specialist agents, extensible skills, autonomous automation, and a data layer that makes every output genuinely yours.
+  </p>
+  <div class="hero-ctas">
+    <a href="mailto:sales@solutionment.com?subject=Apex AI Demo Request" class="btn-primary">Book a Live Demo →</a>
+    <a href="#architecture" class="btn-ghost">Explore the Architecture</a>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="hero-stat-num">4<span>+</span></div>
+      <div class="hero-stat-label">Specialist Agents</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-num"><span>∞</span></div>
+      <div class="hero-stat-label">Custom Skills</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-num">Any<span>.</span></div>
+      <div class="hero-stat-label">AI Model</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-num">24<span>/7</span></div>
+      <div class="hero-stat-label">Autonomous Tasks</div>
+    </div>
+  </div>
+  <div class="hero-scroll-hint">
+    <span>Scroll to Explore</span>
+    <div class="scroll-arrow"></div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- WHAT IS AN AI OS -->
+<section id="aios" style="max-width:1200px; margin:0 auto; padding:100px 40px;">
+  <div class="reveal">
+    <div class="section-eyebrow">The Concept</div>
+    <h2 class="section-title">What is an <em>AI Operating System</em>?</h2>
+    <p class="section-desc" style="margin-bottom:0">
+      Most AI tools give you a chatbox. Apex AI gives your team an operating system — a unified platform that orchestrates multiple intelligent agents, manages context through a shared data layer, and executes complex workflows automatically.
+    </p>
+  </div>
+
+  <div style="height:60px"></div>
+
+  <div class="aios-inner-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:80px; align-items:center;">
+    <div class="aios-visual reveal reveal-delay-1">
+      <div class="os-ring-wrap">
+        <div class="os-ring os-ring-outer"></div>
+        <div class="os-ring os-ring-mid"></div>
+        <div class="os-ring os-ring-inner"></div>
+        <div class="os-core">
+          <div class="os-core-label">Apex AI<br>Core</div>
+          <div class="os-core-sub">Orchestration<br>Engine</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="aios-points reveal reveal-delay-2">
+      <div class="aios-point">
+        <div class="aios-icon">🧠</div>
+        <div>
+          <div class="aios-point-title">Agents are the "Apps"</div>
+          <div class="aios-point-desc">Just like an OS runs applications, Apex AI runs intelligent agents. Each agent is a specialist — focused, skilled, and purpose-built for a specific domain of work.</div>
+        </div>
+      </div>
+      <div class="aios-point">
+        <div class="aios-icon">⚡</div>
+        <div>
+          <div class="aios-point-title">Skills are the Programs</div>
+          <div class="aios-point-desc">Skills are the individual tasks your agents can execute. Pre-built packs get you running immediately. The Skill Builder lets you create any custom skill — no engineering required.</div>
+        </div>
+      </div>
+      <div class="aios-point">
+        <div class="aios-icon">🗄️</div>
+        <div>
+          <div class="aios-point-title">Your Data is the Memory</div>
+          <div class="aios-point-desc">A shared knowledge layer grounds every agent output in your company's own context — product docs, battlecards, proposals, process — making Apex AI uniquely yours.</div>
+        </div>
+      </div>
+      <div class="aios-point">
+        <div class="aios-icon">🔄</div>
+        <div>
+          <div class="aios-point-title">Automation is the Scheduler</div>
+          <div class="aios-point-desc">The task scheduler runs agents autonomously — delivering intelligence, updates, and content to your team on a schedule, without anyone lifting a finger.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ARCHITECTURE -->
+<div id="architecture" class="full-width-section" style="background:var(--bg2);">
+  <div class="arch-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">How It's Built</div>
+      <h2 class="section-title">A Layered <em>Architecture</em><br>Designed for Power &amp; Flexibility</h2>
+      <p class="section-desc">Click any layer to explore. Every layer is independently upgradeable — the model changes, the skills evolve, but your data and processes remain yours.</p>
+    </div>
+
+    <div class="arch-diagram reveal reveal-delay-1" id="arch-diagram">
+
+      <div class="arch-layer" data-layer="access" onclick="activateLayer(this)">
+        <div class="arch-layer-label">
+          <span class="arch-layer-icon">🌐</span>
+          <span class="arch-layer-name">Access</span>
+        </div>
+        <div class="arch-layer-fill">
+          <div class="arch-chips">
+            <span class="arch-chip">Web Application</span>
+            <span class="arch-chip">Telegram Bot</span>
+            <span class="arch-chip">Mobile-Ready</span>
+          </div>
+          <div class="arch-layer-desc">Work from anywhere — browser, phone, or messaging app.</div>
+        </div>
+      </div>
+
+      <div class="arch-layer" data-layer="agents" onclick="activateLayer(this)">
+        <div class="arch-layer-label">
+          <span class="arch-layer-icon">🤖</span>
+          <span class="arch-layer-name">Agents</span>
+        </div>
+        <div class="arch-layer-fill">
+          <div class="arch-chips">
+            <span class="arch-chip">Researcher</span>
+            <span class="arch-chip">Strategist</span>
+            <span class="arch-chip">Content Writer</span>
+            <span class="arch-chip">Meeting Prep</span>
+            <span class="arch-chip">Alex (AI Assistant)</span>
+          </div>
+          <div class="arch-layer-desc">Specialist agents, each purpose-built for a domain.</div>
+        </div>
+      </div>
+
+      <div class="arch-layer" data-layer="orchestration" onclick="activateLayer(this)">
+        <div class="arch-layer-label">
+          <span class="arch-layer-icon">⚡</span>
+          <span class="arch-layer-name">Skills &amp; Orch.</span>
+        </div>
+        <div class="arch-layer-fill">
+          <div class="arch-chips">
+            <span class="arch-chip">Skill Builder</span>
+            <span class="arch-chip">Pre-Built Skill Packs</span>
+            <span class="arch-chip">Task Scheduler</span>
+            <span class="arch-chip">Alex: Build with AI</span>
+          </div>
+          <div class="arch-layer-desc">Define and automate what agents do and when.</div>
+        </div>
+      </div>
+
+      <div class="arch-layer" data-layer="data" onclick="activateLayer(this)">
+        <div class="arch-layer-label">
+          <span class="arch-layer-icon">🗄️</span>
+          <span class="arch-layer-name">Data Layer</span>
+        </div>
+        <div class="arch-layer-fill">
+          <div class="arch-chips">
+            <span class="arch-chip">Knowledge Base</span>
+            <span class="arch-chip">Vector Embeddings</span>
+            <span class="arch-chip">Company Context</span>
+            <span class="arch-chip">Semantic Search</span>
+          </div>
+          <div class="arch-layer-desc">Shared memory that grounds every agent output.</div>
+        </div>
+      </div>
+
+      <div class="arch-layer" data-layer="models" onclick="activateLayer(this)">
+        <div class="arch-layer-label">
+          <span class="arch-layer-icon">🔬</span>
+          <span class="arch-layer-name">Model Layer</span>
+        </div>
+        <div class="arch-layer-fill">
+          <div class="arch-chips">
+            <span class="arch-chip">OpenAI</span>
+            <span class="arch-chip">Anthropic Claude</span>
+            <span class="arch-chip">Google Gemini</span>
+            <span class="arch-chip">Mistral</span>
+            <span class="arch-chip">Any LLM API</span>
+          </div>
+          <div class="arch-layer-desc">Model-agnostic. Swap or combine as needed.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-detail reveal" id="arch-detail">
+      <div class="arch-detail-title" id="arch-detail-title">Select a layer above to learn more</div>
+      <div class="arch-detail-body" id="arch-detail-body">Each layer of the Apex AI architecture is independently designed and upgradeable, giving your organization maximum flexibility as AI technology evolves.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- THE AGENTS -->
+<section id="agents" style="max-width:1200px; margin:0 auto; padding:100px 40px;">
+  <div class="agents-header">
+    <div class="reveal">
+      <div class="section-eyebrow">The Core Engine</div>
+      <h2 class="section-title">Four Agents.<br><em>One Revenue Team.</em></h2>
+    </div>
+    <div class="section-desc reveal reveal-delay-1">
+      Each agent is a specialist, built around a specific domain of sales and presales work. Together, they cover your entire revenue cycle — from first research to signed proposal.
+    </div>
+  </div>
+
+  <div class="agents-grid">
+    <div class="agent-card reveal">
+      <div class="agent-num">Agent 01</div>
+      <span class="agent-icon">🔍</span>
+      <div class="agent-name">Researcher</div>
+      <div class="agent-desc">Deep intelligence on companies, contacts, markets, and competitive landscape. Produces account briefs, news summaries, stakeholder profiles, and competitive analysis — in seconds.</div>
+      <div class="agent-tags">
+        <span class="agent-tag">Account Intel</span>
+        <span class="agent-tag">Competitive</span>
+        <span class="agent-tag">Market Research</span>
+        <span class="agent-tag">Stakeholder Profiles</span>
+      </div>
+    </div>
+
+    <div class="agent-card reveal reveal-delay-1">
+      <div class="agent-num">Agent 02</div>
+      <span class="agent-icon">🧠</span>
+      <div class="agent-name">Strategist</div>
+      <div class="agent-desc">Deal strategy, solution positioning, and win frameworks tailored to each opportunity. Turns your research into a coherent go-forward plan aligned to your sales methodology.</div>
+      <div class="agent-tags">
+        <span class="agent-tag">Deal Strategy</span>
+        <span class="agent-tag">Positioning</span>
+        <span class="agent-tag">Win Planning</span>
+        <span class="agent-tag">Discovery Frameworks</span>
+      </div>
+    </div>
+
+    <div class="agent-card reveal reveal-delay-2">
+      <div class="agent-num">Agent 03</div>
+      <span class="agent-icon">✍️</span>
+      <div class="agent-name">Content Writer</div>
+      <div class="agent-desc">Proposals, RFP responses, executive summaries, emails, and branded PowerPoint decks — generated on demand. Grounded in your knowledge base for contextually accurate outputs.</div>
+      <div class="agent-tags">
+        <span class="agent-tag">Proposals</span>
+        <span class="agent-tag">RFP Response</span>
+        <span class="agent-tag">Decks (.pptx)</span>
+        <span class="agent-tag">Email Sequences</span>
+      </div>
+    </div>
+
+    <div class="agent-card reveal reveal-delay-3">
+      <div class="agent-num">Agent 04</div>
+      <span class="agent-icon">🎯</span>
+      <div class="agent-name">Meeting Prep</div>
+      <div class="agent-desc">Pre-meeting coaching, discovery agendas, talk tracks, and objection handling guides — so every rep shows up sharp, regardless of their experience level.</div>
+      <div class="agent-tags">
+        <span class="agent-tag">Discovery Prep</span>
+        <span class="agent-tag">Agendas</span>
+        <span class="agent-tag">Talk Tracks</span>
+        <span class="agent-tag">Objection Handling</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALEX -->
+  <div class="alex-section reveal reveal-delay-1" style="margin-top:40px;">
+    <div class="alex-avatar">🤖</div>
+    <div>
+      <div class="alex-title">Meet <span>Alex</span> — Your AI Assistant, Everywhere</div>
+      <div class="alex-desc">Alex is the conversational AI woven throughout Apex AI. Ask questions, build new skills in plain language with "Build with Alex," get instant answers from your knowledge base, and access everything through Telegram — so your team can work from any device, anywhere in the world.</div>
+    </div>
+    <div class="alex-features">
+      <div class="alex-feat">Available via Web App</div>
+      <div class="alex-feat">Accessible on Telegram</div>
+      <div class="alex-feat">Builds Skills for You</div>
+      <div class="alex-feat">Answers from Your KB</div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- SKILLS -->
+<div id="skills" style="background:var(--bg2); padding:100px 0;">
+  <div style="max-width:1200px; margin:0 auto; padding:0 40px;">
+    <div class="reveal">
+      <div class="section-eyebrow">Extensibility &amp; Power</div>
+      <h2 class="section-title">Skills: The <em>Building Blocks</em><br>of Your AI Workforce</h2>
+      <p class="section-desc">Every agent executes skills. Skills define exactly what the agent does, how it thinks, and what it produces. Start with pre-built packs — then customize endlessly.</p>
+    </div>
+
+    <div class="skills-layout">
+      <div class="skill-builder-card reveal reveal-delay-1">
+        <div class="skill-builder-title">Skill Builder <em>+ Alex</em></div>
+        <div class="skill-builder-sub">Create any custom AI skill in minutes. Activate "Build with Alex" and describe what you need in plain language — Alex generates a complete, production-ready skill configuration instantly.</div>
+        <div class="skill-builder-steps">
+          <div class="skill-step">
+            <div class="skill-step-num">1</div>
+            <div class="skill-step-text"><strong>Describe your goal.</strong> Tell Alex what you need in plain English — "I want a skill that researches a company and writes a personalized cold email."</div>
+          </div>
+          <div class="skill-step">
+            <div class="skill-step-num">2</div>
+            <div class="skill-step-text"><strong>Alex builds it.</strong> The AI generates the full skill configuration — system prompt, inputs, output structure, and agent assignment — automatically.</div>
+          </div>
+          <div class="skill-step">
+            <div class="skill-step-num">3</div>
+            <div class="skill-step-text"><strong>Review and activate.</strong> You see exactly what was built, can refine it, and activate it immediately. No engineering team required.</div>
+          </div>
+          <div class="skill-step">
+            <div class="skill-step-num">4</div>
+            <div class="skill-step-text"><strong>Schedule or run on demand.</strong> Use it manually or set it on a recurring schedule in the Task Scheduler.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="skill-packs-card reveal reveal-delay-2">
+        <div class="skill-packs-title">Pre-Built Skill Packs</div>
+        <div class="skill-packs-sub">Ready on day one — no configuration required. Built around the workflows that matter most to sales and presales teams.</div>
+        <div class="packs-list">
+          <div class="pack-item">
+            <div class="pack-name">Sales Pack</div>
+            <div class="pack-desc">Prospecting, deal strategy, email sequences, objection handling</div>
+          </div>
+          <div class="pack-item">
+            <div class="pack-name">Presales Pack</div>
+            <div class="pack-desc">Discovery prep, RFP response, demo narratives, technical proposals</div>
+          </div>
+          <div class="pack-item">
+            <div class="pack-name">Competitive Pack</div>
+            <div class="pack-desc">Battle cards, win/loss analysis, competitive positioning briefs</div>
+          </div>
+          <div class="pack-item">
+            <div class="pack-name">Research Pack</div>
+            <div class="pack-desc">Account intel, stakeholder profiles, industry analysis, news digests</div>
+          </div>
+          <div class="pack-item">
+            <div class="pack-name">Content &amp; Deck Pack</div>
+            <div class="pack-desc">Branded .pptx proposals, capability decks, follow-up assets</div>
+          </div>
+          <div class="pack-item">
+            <div class="pack-name">Custom (Yours)</div>
+            <div class="pack-desc">Build any skill specific to your process, methodology, or market</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- DATA LAYER -->
+<section id="data" style="max-width:1200px; margin:0 auto; padding:100px 40px; display:grid; grid-template-columns:1fr 1fr; gap:80px; align-items:center;">
+  <div class="reveal">
+    <div class="section-eyebrow">Grounding &amp; Context</div>
+    <h2 class="section-title">The Data Layer<br>That Makes It <em>Yours</em></h2>
+    <p class="section-desc" style="margin-bottom:36px;">
+      Generic AI gives generic answers. Apex AI is grounded in your company's own knowledge — making every agent output contextually accurate, on-brand, and specific to your business.
+    </p>
+    <div class="data-points">
+      <div>
+        <div class="data-point-title">Upload Your Knowledge Base</div>
+        <div class="data-point-desc">Add product documentation, battlecards, past proposals, brand guidelines, pricing sheets, process docs — anything your team uses to sell and win deals.</div>
+      </div>
+      <div>
+        <div class="data-point-title">Vector-Indexed for Semantic Search</div>
+        <div class="data-point-desc">Documents are chunked and indexed using vector embeddings, enabling deep semantic search. Agents find the right context for every task — not keyword matches, real understanding.</div>
+      </div>
+      <div>
+        <div class="data-point-title">Continuously Improves</div>
+        <div class="data-point-desc">The more you add, the better every agent gets. New products, new battlecards, new methodologies — your AI workforce evolves with your business.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="data-layers-viz reveal reveal-delay-2">
+    <div style="font-family:'Play',sans-serif; font-size:13px; font-weight:700; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:16px; padding-left:20px;">Knowledge Base Contents</div>
+    <div class="data-layer-bar">
+      <span class="data-layer-icon">📋</span>
+      <div>
+        <div class="data-layer-label">Product Documentation</div>
+        <div class="data-layer-detail">Specs, features, use cases, technical details</div>
+      </div>
+      <div class="data-layer-fill-bar" style="--pct:85%"></div>
+    </div>
+    <div class="data-layer-bar">
+      <span class="data-layer-icon">⚔️</span>
+      <div>
+        <div class="data-layer-label">Competitive Battlecards</div>
+        <div class="data-layer-detail">Win/loss intel, competitive positioning</div>
+      </div>
+      <div class="data-layer-fill-bar" style="--pct:72%"></div>
+    </div>
+    <div class="data-layer-bar">
+      <span class="data-layer-icon">📝</span>
+      <div>
+        <div class="data-layer-label">Past Proposals &amp; RFPs</div>
+        <div class="data-layer-detail">Successful response templates and examples</div>
+      </div>
+      <div class="data-layer-fill-bar" style="--pct:60%"></div>
+    </div>
+    <div class="data-layer-bar">
+      <span class="data-layer-icon">🎨</span>
+      <div>
+        <div class="data-layer-label">Brand &amp; Messaging Guidelines</div>
+        <div class="data-layer-detail">Voice, tone, approved language and assets</div>
+      </div>
+      <div class="data-layer-fill-bar" style="--pct:90%"></div>
+    </div>
+    <div class="data-layer-bar">
+      <span class="data-layer-icon">🗺️</span>
+      <div>
+        <div class="data-layer-label">Sales Methodology &amp; Process</div>
+        <div class="data-layer-detail">Playbooks, discovery frameworks, qualification criteria</div>
+      </div>
+      <div class="data-layer-fill-bar" style="--pct:65%"></div>
+    </div>
+    <div class="data-layer-bar">
+      <span class="data-layer-icon">💰</span>
+      <div>
+        <div class="data-layer-label">Pricing &amp; Packaging</div>
+        <div class="data-layer-detail">Current pricing, bundles, commercial terms</div>
+      </div>
+      <div class="data-layer-fill-bar" style="--pct:78%"></div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ANY MODEL -->
+<div id="models" style="background:var(--bg2); padding:100px 0; text-align:center;">
+  <div style="max-width:1200px; margin:0 auto; padding:0 40px;">
+    <div class="reveal" style="display:inline-block; text-align:center;">
+      <div class="section-eyebrow" style="justify-content:center;">Model Agnostic</div>
+      <h2 class="section-title">Run on <em>Any AI Model</em>.<br>Never Locked In.</h2>
+      <p class="section-desc" style="margin:0 auto; text-align:center;">
+        Apex AI abstracts away the model layer entirely. Choose the best model for each task — or let us recommend. As AI evolves, your platform evolves with it, at no disruption to your workflows.
+      </p>
+    </div>
+
+    <div class="model-logos reveal reveal-delay-1">
+      <div class="model-logo">GPT-4o</div>
+      <div class="model-logo">Claude 3.7</div>
+      <div class="model-logo">Gemini 2.0</div>
+      <div class="model-logo">Mistral Large</div>
+      <div class="model-logo">Llama 3.1</div>
+      <div class="model-logo">DeepSeek R1</div>
+      <div class="model-logo">+ Any LLM API</div>
+    </div>
+
+    <div class="model-message reveal reveal-delay-2">
+      <div class="model-msg-item">
+        <div class="model-msg-title">⚡ Best Model Per Task</div>
+        <div class="model-msg-desc">Use a powerful model for complex strategy tasks, a faster model for high-volume research. Skills can specify their own model preferences.</div>
+      </div>
+      <div class="model-msg-item">
+        <div class="model-msg-title">🔒 Future-Proof Investment</div>
+        <div class="model-msg-desc">When the next breakthrough model drops, you're ready. Your skills, data, and workflows are portable — not tethered to a single provider.</div>
+      </div>
+      <div class="model-msg-item">
+        <div class="model-msg-title">🎯 Managed by Solutionment</div>
+        <div class="model-msg-desc">As part of the managed service, Solutionment monitors model performance, recommends switches, and handles the technical complexity so you don't have to.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ACCESS EVERYWHERE -->
+<section id="access" style="max-width:1200px; margin:0 auto; padding:100px 40px; display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center;">
+  <div class="reveal">
+    <div class="section-eyebrow">Anywhere Access</div>
+    <h2 class="section-title">Work Where<br>Your Team <em>Already Works</em></h2>
+    <p class="section-desc" style="margin-bottom:40px;">
+      No friction. No app downloads for every rep. Apex AI meets your team where they are — in a browser, on their phone, or in Telegram.
+    </p>
+    <div class="access-cards">
+      <div class="access-card">
+        <span class="access-icon">🖥️</span>
+        <div>
+          <div class="access-name">Web Application</div>
+          <div class="access-desc">The full Apex AI platform — agents, skill builder, knowledge base, task scheduler, and conversation history — accessible from any browser. No install required.</div>
+        </div>
+      </div>
+      <div class="access-card">
+        <span class="access-icon">✈️</span>
+        <div>
+          <div class="access-name">Telegram Integration</div>
+          <div class="access-desc">Alex and your agents are available directly in Telegram. Your field reps can run research, get meeting prep, or trigger skills from their phone on the way to a meeting.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="access-visual reveal reveal-delay-2">
+    <div class="device-mockup">
+      <div class="device-bar">
+        <div class="device-dot"></div>
+        <div class="device-dot"></div>
+        <div class="device-dot"></div>
+        <div class="device-url">apex.solutionment.com</div>
+      </div>
+      <div class="chat-messages">
+        <div class="chat-msg user">Research Acme Corp and prep me for a discovery call with their CRO tomorrow</div>
+        <div class="chat-msg alex"><strong>On it.</strong> Running Account Intel + Discovery Prep for Acme Corp...</div>
+        <div class="chat-msg alex">✅ <strong>Account Brief complete.</strong> Acme is a 800-person SaaS company, recently raised Series C, and their CRO joined 6 months ago from Salesforce. I found 3 pain points relevant to your solution.</div>
+        <div class="chat-msg alex">📋 <strong>Discovery agenda ready.</strong> I've drafted 8 questions mapped to their likely priorities, plus recommended talk tracks for 2 probable objections.</div>
+        <div class="chat-msg user">Add their competitive situation vs Competitor X</div>
+        <div class="chat-msg alex typing">●●●</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- TASK SCHEDULER -->
+<div id="scheduler" style="background:var(--bg2); padding:100px 0;">
+  <div style="max-width:1200px; margin:0 auto; padding:0 40px;">
+    <div class="reveal">
+      <div class="section-eyebrow">Autonomous AI</div>
+      <h2 class="section-title">The Task Scheduler:<br>AI That <em>Works While You Sleep</em></h2>
+      <p class="section-desc">Set any skill to run automatically on a recurring schedule. Your agents monitor, research, and produce — delivering intelligence to your team without manual effort.</p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1.3fr; gap:60px; margin-top:60px; align-items:start;">
+      <div class="reveal reveal-delay-1">
+        <div style="font-family:'Play',sans-serif; font-size:13px; font-weight:700; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:16px;">Active Scheduled Tasks</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="task-item">
+            <div class="task-status running"></div>
+            <div class="task-name">Competitive Monitor — Competitor X</div>
+            <div class="task-schedule">Daily 07:00</div>
+          </div>
+          <div class="task-item">
+            <div class="task-status running"></div>
+            <div class="task-name">Top 20 Account News Digest</div>
+            <div class="task-schedule">Mon/Wed/Fri</div>
+          </div>
+          <div class="task-item">
+            <div class="task-status scheduled"></div>
+            <div class="task-name">Weekly Pipeline Research Refresh</div>
+            <div class="task-schedule">Sun 20:00</div>
+          </div>
+          <div class="task-item">
+            <div class="task-status scheduled"></div>
+            <div class="task-name">New Lead Enrichment &amp; Brief</div>
+            <div class="task-schedule">On Trigger</div>
+          </div>
+          <div class="task-item">
+            <div class="task-status done"></div>
+            <div class="task-name">Q1 Competitive Landscape Report</div>
+            <div class="task-schedule">Completed</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:28px;" class="reveal reveal-delay-2">
+        <div>
+          <div class="scheduler-point-title" style="font-family:'Play',sans-serif; font-size:17px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:10px;">
+            <span style="color:var(--orange);">⬤</span> Set and Forget Intelligence
+          </div>
+          <div style="font-size:14px; color:var(--muted); line-height:1.65;">Configure competitive monitoring, account news, or market signals to run on any schedule. Your team gets a briefing in their inbox without triggering a single prompt.</div>
+        </div>
+        <div>
+          <div class="scheduler-point-title" style="font-family:'Play',sans-serif; font-size:17px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:10px;">
+            <span style="color:var(--orange);">⬤</span> Scales Across Your Entire Pipeline
+          </div>
+          <div style="font-size:14px; color:var(--muted); line-height:1.65;">A human researcher could monitor 10 accounts. The Task Scheduler monitors your entire pipeline — every account, every day — at no additional cost per account.</div>
+        </div>
+        <div>
+          <div class="scheduler-point-title" style="font-family:'Play',sans-serif; font-size:17px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:10px;">
+            <span style="color:var(--orange);">⬤</span> Trigger-Based Automation
+          </div>
+          <div style="font-size:14px; color:var(--muted); line-height:1.65;">Beyond schedules, tasks can be triggered by events — new lead in CRM, new RFP received, new competitor activity — enabling genuinely reactive intelligence workflows.</div>
+        </div>
+        <div>
+          <div class="scheduler-point-title" style="font-family:'Play',sans-serif; font-size:17px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:10px;">
+            <span style="color:var(--orange);">⬤</span> Full Audit History
+          </div>
+          <div style="font-size:14px; color:var(--muted); line-height:1.65;">Every scheduled job logs its output, token usage, and completion time. Easily review, re-run, or adjust any automated task from the platform.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- PRODUCTIVITY -->
+<section id="productivity" style="max-width:1200px; margin:0 auto; padding:100px 40px; text-align:center;">
+  <div class="reveal">
+    <div class="section-eyebrow" style="justify-content:center;">The Impact</div>
+    <h2 class="section-title">What Apex AI Does<br>for <em>Sales &amp; Presales Teams</em></h2>
+    <p class="section-desc" style="margin:0 auto; text-align:center;">
+      The real value isn't the AI. It's what your team can accomplish when hours of research and content creation become minutes.
+    </p>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:24px; margin-top:64px;">
+    <div class="metric-card reveal">
+      <div class="metric-number"><span>10x</span></div>
+      <div class="metric-label">Faster Account Research</div>
+      <div class="metric-sub">From 3 hours of manual research to 15 minutes of targeted intelligence</div>
+    </div>
+    <div class="metric-card reveal reveal-delay-1">
+      <div class="metric-number"><span>80</span>%</div>
+      <div class="metric-label">Reduction in RFP Time</div>
+      <div class="metric-sub">First drafts in minutes, grounded in your past successful responses</div>
+    </div>
+    <div class="metric-card reveal reveal-delay-2">
+      <div class="metric-number">∞</div>
+      <div class="metric-label">Accounts Monitored</div>
+      <div class="metric-sub">Entire pipeline covered by scheduled agents — not just your top 10</div>
+    </div>
+    <div class="metric-card reveal reveal-delay-3">
+      <div class="metric-number"><span>100</span>%</div>
+      <div class="metric-label">Meeting Ready Rate</div>
+      <div class="metric-sub">Every rep, every call — prepped with personalized intelligence and talk tracks</div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-top:32px; text-align:left;">
+    <div class="use-case reveal">
+      <div class="use-case-title"><span>🔍</span> Account-Based Research</div>
+      <div class="use-case-desc">Before an important meeting, run the Researcher agent on a target account. Get company overview, recent news, stakeholder profiles, and financials — all synthesized and formatted automatically.</div>
+    </div>
+    <div class="use-case reveal reveal-delay-1">
+      <div class="use-case-title"><span>📋</span> RFP &amp; Proposal Response</div>
+      <div class="use-case-desc">Feed in the RFP. The Content Writer agent, grounded in your knowledge base, produces a first draft in minutes — sections, formatting, and language aligned to your winning style.</div>
+    </div>
+    <div class="use-case reveal reveal-delay-2">
+      <div class="use-case-title"><span>⚔️</span> Competitive Intelligence</div>
+      <div class="use-case-desc">The Task Scheduler monitors competitor websites, press releases, and product updates daily. Your team gets a competitive digest every morning — without asking for it.</div>
+    </div>
+    <div class="use-case reveal">
+      <div class="use-case-title"><span>🎯</span> Discovery Call Preparation</div>
+      <div class="use-case-desc">The Meeting Prep agent combines account research with your discovery methodology to produce a customized agenda, key questions, and talk tracks for every rep's next call.</div>
+    </div>
+    <div class="use-case reveal reveal-delay-1">
+      <div class="use-case-title"><span>🧠</span> Deal Strategy Sessions</div>
+      <div class="use-case-desc">The Strategist agent turns deal context into a positioning framework — identifying the champion, economic buyer, technical blockers, and recommended next steps.</div>
+    </div>
+    <div class="use-case reveal reveal-delay-2">
+      <div class="use-case-title"><span>📊</span> Branded Pitch Decks</div>
+      <div class="use-case-desc">Generate a complete, branded PowerPoint capability deck or custom proposal deck — grounded in your knowledge base and formatted to your brand standards.</div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- WHY SOLUTIONMENT -->
+<div id="why" style="background:var(--bg2); padding:100px 0;">
+  <div style="max-width:1200px; margin:0 auto; padding:0 40px; display:grid; grid-template-columns:1fr 1fr; gap:80px; align-items:start;">
+    <div>
+      <div class="reveal">
+        <div class="section-eyebrow">Why Us</div>
+        <h2 class="section-title">Not a Tool.<br>A <em>Managed Partnership</em>.</h2>
+        <p class="section-desc" style="margin-bottom:48px;">
+          Apex AI is delivered as a managed service by Solutionment — the team that literally wrote the methodology for presales excellence. You're not buying software. You're buying outcomes.
+        </p>
+      </div>
+
+      <div class="why-points">
+        <div class="why-point reveal">
+          <div class="why-num">01</div>
+          <div>
+            <div class="why-title">Built by Revenue Experts</div>
+            <div class="why-desc">Solutionment's presales methodology is embedded into every agent, skill pack, and workflow configuration. This isn't generic AI — it's expert practice at scale.</div>
+          </div>
+        </div>
+        <div class="why-point reveal reveal-delay-1">
+          <div class="why-num">02</div>
+          <div>
+            <div class="why-title">Managed, Not Just Deployed</div>
+            <div class="why-desc">We configure, tune, and continuously improve the platform for your team's specific context. You get outcomes — not another tool to figure out alone.</div>
+          </div>
+        </div>
+        <div class="why-point reveal reveal-delay-2">
+          <div class="why-num">03</div>
+          <div>
+            <div class="why-title">Fast Time to Value</div>
+            <div class="why-desc">Pre-built skill packs and guided onboarding mean your team is productive in hours, not months. Day one looks very different from day one with generic AI tools.</div>
+          </div>
+        </div>
+        <div class="why-point reveal reveal-delay-3">
+          <div class="why-num">04</div>
+          <div>
+            <div class="why-title">Defensible, Compounding Value</div>
+            <div class="why-desc">As your knowledge base grows, your agents get sharper. As your team builds custom skills, your competitive moat deepens. The platform gets more valuable every month.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal reveal-delay-2">
+      <div style="position:sticky; top:88px;">
+        <div class="tiers-card">
+          <div class="tiers-header">Service Tiers</div>
+          <div class="tier">
+            <div class="tier-name">Apex AI Starter</div>
+            <div class="tier-price">Platform + Pre-built Packs — From $2K setup</div>
+            <div class="tier-desc">Platform access, pre-built presales skill packs, and an onboarding session to get your team running immediately.</div>
+          </div>
+          <div class="tier featured">
+            <div class="tier-badge">Most Popular</div>
+            <div class="tier-name">Apex AI Managed</div>
+            <div class="tier-price">Full managed service — From $5K/mo</div>
+            <div class="tier-desc">Everything in Starter, plus Solutionment configures and manages the platform, builds custom skills for your team, and provides monthly strategic reviews.</div>
+          </div>
+          <div class="tier">
+            <div class="tier-name">Apex AI Enterprise</div>
+            <div class="tier-price">Managed + embedded consulting</div>
+            <div class="tier-desc">Full managed service plus embedded presales transformation consulting, Academy cohorts, and strategic AI advisory for large revenue organizations.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- CTA -->
+<section id="cta" style="max-width:none; padding:120px 40px; text-align:center; position:relative; overflow:hidden;">
+  <div style="position:absolute; inset:0; background:radial-gradient(ellipse at 50% 100%, rgba(244,175,64,0.08) 0%, transparent 60%); pointer-events:none;"></div>
+  <div class="reveal">
+    <div class="section-eyebrow" style="justify-content:center;">Next Steps</div>
+    <h2 style="font-family:'Play',sans-serif; font-size:clamp(34px,4.5vw,58px); font-weight:800; letter-spacing:-0.01em; line-height:1.18; max-width:680px; margin:0 auto 24px;">
+      See Your Agents<br>Go to <em style="font-style:normal; color:var(--orange);">Work.</em>
+    </h2>
+    <p style="font-size:17px; color:var(--muted); max-width:480px; margin:0 auto 48px; line-height:1.7;">
+      Book a live demo and we'll show you Apex AI working against your actual accounts, your actual deals, and your actual workflows.
+    </p>
+    <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+      <a href="mailto:sales@solutionment.com" class="btn-primary">Book a Live Demo →</a>
+      <a href="https://solutionment.com" class="btn-ghost" target="_blank">Visit Solutionment.com</a>
+    </div>
+    <div style="margin-top:32px; font-size:14px; color:var(--muted);">
+      <a href="mailto:sales@solutionment.com" style="color:var(--orange); text-decoration:none;">sales@solutionment.com</a>
+      &nbsp;·&nbsp;
+      <a href="https://solutionment.com" style="color:var(--orange); text-decoration:none;" target="_blank">solutionment.com</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer style="border-top:1px solid var(--border); padding:32px 40px; display:flex; align-items:center; justify-content:space-between; max-width:1200px; margin:0 auto;">
+  <div style="font-size:12px; color:var(--muted2);">
+    <span style="font-family:'Play',sans-serif; font-weight:700; color:var(--muted); margin-right:12px;">Apex AI</span>
+    © 2026 Solutionment. All rights reserved.
+  </div>
+  <div style="font-size:12px; color:var(--muted2);">
+    The AI Operating System for Revenue Teams
+  </div>
+</footer>
+
+<script>
+/* ==================
+   SCROLL PROGRESS
+================== */
+const scrollBar = document.getElementById('scroll-bar');
+window.addEventListener('scroll', () => {
+  const pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+  scrollBar.style.width = pct + '%';
+});
+
+/* ==================
+   NAV ACTIVE STATES
+================== */
+const sections = document.querySelectorAll('section[id], div[id]');
+const navLinks = document.querySelectorAll('.nav-links a[href^="#"]');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      navLinks.forEach(a => {
+        a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-40% 0px -40% 0px' });
+sections.forEach(s => observer.observe(s));
+
+/* ==================
+   REVEAL ANIMATIONS
+================== */
+const revealEls = document.querySelectorAll('.reveal');
+const revealObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('in-view');
+      revealObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+revealEls.forEach(el => revealObs.observe(el));
+
+/* ==================
+   HERO CANVAS
+================== */
+const canvas = document.getElementById('hero-canvas');
+const ctx = canvas.getContext('2d');
+let animFrame;
+let nodes = [];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  initNodes();
+}
+
+function initNodes() {
+  nodes = [];
+  const count = Math.floor((canvas.width * canvas.height) / 12000);
+  for (let i = 0; i < count; i++) {
+    nodes.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 2 + 1
+    });
+  }
+}
+
+function drawCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  nodes.forEach(n => {
+    n.x += n.vx;
+    n.y += n.vy;
+    if (n.x < 0 || n.x > canvas.width) n.vx *= -1;
+    if (n.y < 0 || n.y > canvas.height) n.vy *= -1;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(244,175,64,0.4)';
+    ctx.fill();
+  });
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const dx = nodes[i].x - nodes[j].x;
+      const dy = nodes[i].y - nodes[j].y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 100) {
+        ctx.beginPath();
+        ctx.moveTo(nodes[i].x, nodes[i].y);
+        ctx.lineTo(nodes[j].x, nodes[j].y);
+        ctx.strokeStyle = `rgba(244,175,64,${0.15 * (1 - dist/100)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+  animFrame = requestAnimationFrame(drawCanvas);
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+drawCanvas();
+
+/* ==================
+   ARCHITECTURE LAYERS
+================== */
+const layerData = {
+  access: {
+    title: 'Access Layer: <span>Work From Anywhere</span>',
+    body: 'The Access Layer is how your team interacts with Apex AI. The web application provides the full platform experience — agents, skill builder, knowledge base management, and task scheduler — in any modern browser. The Telegram integration brings Alex and your agents into the messaging app your team already uses, enabling mobile access, on-the-go research, and instant responses without opening a laptop. All access is authenticated and tenant-isolated, meaning every user sees only their organization\'s data and configurations.'
+  },
+  agents: {
+    title: 'Agent Layer: <span>Four Specialists + Alex</span>',
+    body: 'The Agent Layer is where intelligence lives. Each of the four specialist agents — Researcher, Strategist, Content Writer, and Meeting Prep — is purpose-built for a specific domain of sales and presales work. Rather than a single general-purpose AI, you get focused specialists that produce better outputs because they operate with domain-specific context, skill configurations, and knowledge base grounding. Alex, your AI assistant, operates across all agents — providing a conversational interface, building new skills on your behalf, and answering questions from your knowledge base in real time.'
+  },
+  orchestration: {
+    title: 'Orchestration Layer: <span>Skills, Scheduling &amp; Automation</span>',
+    body: 'The Orchestration Layer is how work gets defined and executed. Skills are the instructions agents follow — defining exactly what they do, how they approach a task, what inputs they take, and what outputs they produce. The Skill Builder lets any team member create custom skills using a guided interface, or describe what they need to Alex and have it built instantly. Pre-built Skill Packs provide immediate value across sales, presales, competitive intelligence, and content creation workflows. The Task Scheduler extends this into automation — any skill can run on a schedule, turning Apex AI from a responsive assistant into a proactive intelligence engine.'
+  },
+  data: {
+    title: 'Data Layer: <span>Grounding, Context &amp; Memory</span>',
+    body: 'The Data Layer is what makes Apex AI uniquely yours. By uploading your product documentation, battlecards, past proposals, brand guidelines, and sales methodology into the Knowledge Base, you create a shared intelligence layer that every agent draws from. Documents are chunked and indexed using vector embeddings, enabling semantic search — so agents find truly relevant context, not just keyword matches. The more you invest in your Knowledge Base, the more accurate and on-brand every output becomes. This is the layer that differentiates Apex AI outputs from generic AI responses, and it compounds in value over time.'
+  },
+  models: {
+    title: 'Model Layer: <span>Any AI Model. No Lock-In.</span>',
+    body: 'The Model Layer is intentionally abstracted from everything above it. Apex AI is model-agnostic — skills can specify which AI model they use, or the platform default applies. This means you can use OpenAI\'s GPT-4o for complex reasoning tasks, a faster model for high-volume research, and a specialized model for specific output types, all within the same platform. As AI technology evolves — and it will, rapidly — your Apex AI investment is protected. No re-engineering, no workflow disruption. Solutionment monitors the model landscape and proactively recommends upgrades as part of the managed service.'
+  }
+};
+
+function activateLayer(el) {
+  document.querySelectorAll('.arch-layer').forEach(l => l.classList.remove('active'));
+  el.classList.add('active');
+  const key = el.dataset.layer;
+  const detail = document.getElementById('arch-detail');
+  document.getElementById('arch-detail-title').innerHTML = layerData[key].title;
+  document.getElementById('arch-detail-body').textContent = layerData[key].body;
+  detail.classList.remove('visible');
+  detail.classList.add('visible');
+  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ==================
+   CHAT TYPING ANIMATION
+================== */
+setTimeout(() => {
+  const typing = document.querySelector('.chat-msg.typing');
+  if (typing) {
+    setTimeout(() => {
+      typing.classList.remove('typing');
+      typing.innerHTML = '✅ <strong>Competitive brief added.</strong> Acme recently chose Competitor X over your solution at another account. Here\'s the positioning guidance from your battlecard.';
+    }, 2000);
+  }
+}, 3000);
+
+/* Cycle typing */
+setInterval(() => {
+  const typing = document.querySelector('.chat-msg.typing');
+  if (typing) return;
+  const msgs = document.querySelector('.chat-messages');
+  const last = msgs.lastElementChild;
+  if (last && !last.classList.contains('typing')) {
+    const t = document.createElement('div');
+    t.className = 'chat-msg alex typing';
+    t.textContent = '●●●';
+    msgs.appendChild(t);
+    setTimeout(() => {
+      if (t.parentNode) t.remove();
+    }, 2500);
+  }
+}, 8000);
+
+</script>
+</body>
+</html>
