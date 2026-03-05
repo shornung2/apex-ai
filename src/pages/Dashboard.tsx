@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Zap, Brain, FileText, TrendingUp, ArrowRight, Briefcase, Megaphone, Loader2, CalendarClock, Clock, X, Sparkles } from "lucide-react";
+import { Zap, Brain, FileText, TrendingUp, ArrowRight, Briefcase, Megaphone, Loader2, CalendarClock, Clock, X, Sparkles, GraduationCap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ const statusColors: Record<string, string> = {
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
-const deptIcons: Record<string, React.ElementType> = { sales: Briefcase, marketing: Megaphone };
+const deptIcons: Record<string, React.ElementType> = { sales: Briefcase, marketing: Megaphone, talent: GraduationCap };
 
 export default function Dashboard() {
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
