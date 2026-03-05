@@ -132,7 +132,7 @@ export default function Department() {
         user_id: user.id,
         skill_id: pendingSkill.id,
         skill_name: pendingSkill.name,
-        title: `${pendingSkill.displayName} — ${new Date().toLocaleDateString()}`,
+        title: `${pendingSkill.name === 'new-employee-onboarding' ? 'Onboarding Coaching Session' : pendingSkill.name === 'career-coach' ? 'Career Coaching Session' : pendingSkill.displayName} — ${new Date().toLocaleDateString()}`,
         status: "active",
         session_data: {},
         messages: [],
