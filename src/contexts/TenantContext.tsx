@@ -54,7 +54,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const userId = profile ? profile.id ?? null : null;
+  const userId = profile?.tenant_id ?? null; // just for query key dependency
 
   const { data: hasActiveAssignment = false, isLoading: loadingAssignment } = useQuery({
     queryKey: ["my-active-assignment", userId],
