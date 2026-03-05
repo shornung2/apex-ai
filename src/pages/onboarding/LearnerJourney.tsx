@@ -219,15 +219,6 @@ export default function LearnerJourney() {
     });
   }, [program?.enforce_checkpoint_gating, currentQuestions, currentCheckpointResponses]);
 
-  // Loading state
-  if (loadingAssignment) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   // Check for completed assignment
   const { data: completedAssignment } = useQuery({
     queryKey: ["my-completed-assignment", user?.id],
@@ -244,6 +235,15 @@ export default function LearnerJourney() {
       return data;
     },
   });
+
+  // Loading state
+  if (loadingAssignment) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   // Empty state
   if (!assignment && !completedAssignment) {
