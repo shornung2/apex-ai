@@ -77,35 +77,26 @@ Apex AI is a platform that puts AI agents to work across your Sales, Marketing, 
   {
     id: "coach-agent",
     title: "Coach Agent & Skills",
-    content: `The **Coach** agent is a versatile coaching and preparation engine that powers three key skill areas: Meeting Preparation, New Employee Onboarding, and Career Coaching.
+    content: `The **Coach** agent is a versatile coaching and preparation engine that powers Meeting Preparation and Career Coaching skills.
 
 ### Meeting Prep Coach
 Pre-meeting coaching, discovery agendas, talk tracks, and objection handling guides — so every rep shows up sharp, regardless of their experience level. Available in both **Sales** and **Talent** departments.
 - Inputs: Prospect/company name, meeting type, attendees, prior meeting notes (file upload), objectives.
 - Output: Customized agenda, key questions, talk tracks, objection handling strategies.
 
-### New Employee Onboarding Coach
-AI-powered onboarding built on Solutionment's **Role-Readiness Acceleration** methodology. This skill generates comprehensive, personalized onboarding plans that accelerate time-to-productivity.
-- **Success Profiles** — Defines what "great" looks like with specific behaviors, competencies, and attributes that predict top performance.
-- **Teach Me → Show Me → Let Me Show You** — A proven 90-day framework that moves new hires from foundational knowledge through observed practice to independent, evaluated execution.
-- **AI Coaching Simulations** — Practice scenarios for discovery calls, negotiations, and objection handling with scored feedback — before the stakes are real.
-- **Check Ride Evaluations** — Rigorous readiness validation where candidates demonstrate competency against defined criteria.
-- Inputs: Employee name, role/title, department, start date, success profile/competencies, 90-day objectives, prior experience summary.
-- Output: Personalized onboarding plan with week-by-week milestones, AI coaching simulation scenarios, and readiness check-ride criteria.
-
 ### Career Coach
 Personalized career development coaching for existing employees.
 - Inputs: Employee name, current role, career goals, strengths, development areas, timeframe.
 - Output: Personalized development plan, skill gap analysis, recommended learning path, coaching conversation guides, and milestone checkpoints.
 
+### Structured Onboarding System
+Employee onboarding is now powered by the dedicated **Onboarding** module in the Talent department. Navigate to **Talent > Onboarding** in the sidebar to access Success Profiles, Programs, Assignments, and the Learner Journey.
+
 ### Business Outcomes
 - Reduce time-to-productivity by **25–50%** — develop people against the competencies that matter.
 - Scale quality as you grow — AI coaching scales infinitely, maintaining consistency across 5 or 500 people.
 - Cut early-stage turnover — structured programs with AI support create engagement that prevents 6-month attrition.
-- Prove ROI with real data — readiness scores, gap analysis, and benchmarks give leadership quantified evidence.
-
-### Who It's For
-Organizations with customer-facing, consultative, or complex execution roles: presales, solutions consulting, sales engineering, professional services, delivery teams, and leaders in new or expanded roles.`,
+- Prove ROI with real data — readiness scores, gap analysis, and benchmarks give leadership quantified evidence.`,
   },
   {
     id: "deck-generation",
@@ -340,7 +331,7 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 
 ### Coach Skills on Telegram
 
-All Coach agent skills — Meeting Prep, New Employee Onboarding, and Career Coaching — are fully accessible via Telegram. The bot will walk you through each required input one at a time, then dispatch the Coach agent with your inputs.
+Coach agent skills — Meeting Prep and Career Coaching — are fully accessible via Telegram. The bot will walk you through each required input one at a time, then dispatch the Coach agent with your inputs.
 
 ### How Running a Skill Works
 
@@ -405,7 +396,7 @@ Skills that produce useful output when re-run with the same inputs are marked as
 - **Research & Intelligence:** Company Research, Contact Research, General Research, Market & Industry Trends, Competitive Battle Card, Market Intelligence Brief, Win/Loss Analysis
 - **Content & Marketing:** Thought Leadership Article, LinkedIn / Social Posts, Marketing Copy, SEO Blog Brief
 - **Sales:** Account Expansion Map
-- **Talent & Coaching:** New Employee Onboarding Coach, Career Coach (for periodic development check-ins)
+- **Talent & Coaching:** Career Coach (for periodic development check-ins)
 
 You can also mark any custom skill as schedulable in the Skill Builder.
 
@@ -472,10 +463,10 @@ Skills with **web search enabled** fetch live results before generating a respon
 **Marketing & Content** (8 skills)
 - Thought Leadership Article, LinkedIn Post Series, Market Intelligence Brief, Campaign Messaging Framework, SEO Blog Brief, Customer Case Study Draft, Email Nurture Sequence, Product Launch Announcement.
 
-**Talent & Coaching** (3 skills)
+**Talent & Coaching** (2 skills)
 - 🎯 Meeting Prep Coach — Pre-meeting coaching, agendas, and talk tracks.
-- 🚀 New Employee Onboarding Coach — AI-powered 90-day onboarding plans using Solutionment's Role-Readiness Acceleration methodology (Teach Me → Show Me → Let Me Show You framework, Success Profiles, AI coaching simulations, Check Ride evaluations).
 - 📈 Career Coach — Personalized development plans, skill gap analysis, learning paths, and coaching conversation guides.
+- Employee onboarding is now managed through the dedicated **Onboarding** module (Talent > Onboarding).
 
 ### How Packs Are Seeded
 - During **onboarding**, you select which packs to install.
