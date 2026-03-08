@@ -535,7 +535,7 @@ export default function Capabilities() {
                   ))}
                 </SelectContent>
               </Select>
- canBuildSkillscanBuildSkillsisAdmin && (
+              {canBuildSkills && (
                 <Button variant="outline" size="sm" className="gap-1.5 ml-auto" onClick={() => { resetBuilder(); setActiveTab("builder"); }}>
                   <Plus className="h-3.5 w-3.5" /> New Skill
                 </Button>
