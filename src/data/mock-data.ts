@@ -116,9 +116,9 @@ export const departmentDefinitions: Record<Department, { name: string; descripti
 
 // Which agents are available in each department
 export const departmentAgents: Record<Department, AgentType[]> = {
-  marketing: ["researcher", "strategist", "content"],
-  sales: ["coach", "content", "strategist"],
-  talent: ["coach", "content", "strategist"],
+  marketing: ["researcher", "strategist", "content", "coach"],
+  sales: ["researcher", "coach", "content", "strategist"],
+  talent: ["researcher", "coach", "content", "strategist"],
 };
 
 // Helper to normalize DB skill row to Skill type
