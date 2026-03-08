@@ -15,6 +15,7 @@ import {
   Shield,
   Building2,
   Compass,
+  Bookmark,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useTenant } from "@/contexts/TenantContext";
