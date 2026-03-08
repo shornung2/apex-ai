@@ -358,7 +358,9 @@ serve(async (req) => {
           .join("\n");
     }
 
-    const systemPromptText = systemPrompt || (AGENT_PERSONAS[agentType] || AGENT_PERSONAS.researcher);
+    const todayStr = new Date().toISOString().split("T")[0]; // e.g. "2026-03-08"
+    const systemPromptText = (systemPrompt || (AGENT_PERSONAS[agentType] || AGENT_PERSONAS.researcher)) +
+      `\n\nToday's date is ${todayStr}. Always ground your response in the most current information available.`;
 
     // Web search: call Brave Search API for live grounding when enabled
     let webSearchSuffix = "";
@@ -366,16 +368,20 @@ serve(async (req) => {
       const braveKey = Deno.env.get("BRAVE_SEARCH_API_KEY");
       if (braveKey) {
         try {
-          const searchQuery = filledTemplate.slice(0, 400);
+          // Build a focused search query from input values, not the full template
+          const inputVals = Object.values(inputs).filter((v): v is string => typeof v === "string" && v.length > 0);
+          const rawQuery = inputVals.join(" ").slice(0, 300);
+          // Distill to key terms: take meaningful words, prepend today's date for freshness
+          const searchQuery = `${todayStr} ${rawQuery}`.slice(0, 400);
           const searchRes = await fetch(
-            `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQuery)}&count=10&freshness=pw`,
+            `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQuery)}&count=10&freshness=pd`,
             { headers: { "Accept": "application/json", "X-Subscription-Token": braveKey } }
           );
           if (searchRes.ok) {
             const searchData = await searchRes.json();
             const results = searchData.web?.results || [];
             if (results.length > 0) {
-              webSearchSuffix = "\n\n## LIVE WEB SEARCH RESULTS\nThe following are recent web search results relevant to this task. Use them to ground your response with current information. Cite sources where appropriate.\n\n" +
+              webSearchSuffix = `\n\n## LIVE WEB SEARCH RESULTS (fetched ${todayStr})\nThe following are today's web search results relevant to this task. Use them to ground your response with current information. Cite sources where appropriate.\n\n` +
                 results.map((r: any, i: number) => `[${i + 1}] **${r.title}**\n${r.description}\nSource: ${r.url}`).join("\n\n");
             }
           } else {
