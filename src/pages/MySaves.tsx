@@ -14,7 +14,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import ReactMarkdown from "react-markdown";
 import {
   Search, Trash2, Download, MoreVertical, FileText, Pencil,
-  ArrowUpDown, Copy, Eye, X, Bookmark,
+  ArrowUpDown, Copy, Eye, X, Bookmark, Loader2,
 } from "lucide-react";
 
 type SavedItem = {
