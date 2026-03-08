@@ -242,7 +242,7 @@ export default function WorkspaceAdmin() {
 
   const toggleOpenRouter = async (enabled: boolean) => {
     setOpenrouterEnabled(enabled);
-    await supabase.from("workspace_settings").upsert({ key: "openrouter_enabled", value: enabled, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "key" });
+    await supabase.from("workspace_settings").upsert({ key: "openrouter_enabled", value: enabled, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "tenant_id,key" });
     toast({ title: `OpenRouter ${enabled ? "enabled" : "disabled"}` });
   };
 
@@ -255,7 +255,7 @@ export default function WorkspaceAdmin() {
       updated = [...selectedModels, model];
     }
     setSavingModels(true);
-    await supabase.from("workspace_settings").upsert({ key: "openrouter_models", value: updated as any, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "key" });
+    await supabase.from("workspace_settings").upsert({ key: "openrouter_models", value: updated as any, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "tenant_id,key" });
     setSelectedModels(updated);
     setSavingModels(false);
   };
@@ -263,14 +263,14 @@ export default function WorkspaceAdmin() {
   const toggleAgent = async (agentType: string, checked: boolean) => {
     const newStates = { ...agentStates, [agentType]: checked };
     setAgentStates(newStates);
-    await supabase.from("workspace_settings").upsert({ key: "agent_toggles", value: newStates as any, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "key" });
+    await supabase.from("workspace_settings").upsert({ key: "agent_toggles", value: newStates as any, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "tenant_id,key" });
     const agentName = agentDefinitions.find((a) => a.type === agentType)?.name || agentType;
     toast({ title: `${agentName} ${checked ? "enabled" : "disabled"}` });
   };
 
   const toggleTelegram = async (enabled: boolean) => {
     setTelegramEnabled(enabled);
-    await supabase.from("workspace_settings").upsert({ key: "telegram_enabled", value: enabled, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "key" });
+    await supabase.from("workspace_settings").upsert({ key: "telegram_enabled", value: enabled, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "tenant_id,key" });
     toast({ title: `Telegram integration ${enabled ? "enabled" : "disabled"}` });
   };
 
@@ -348,7 +348,7 @@ export default function WorkspaceAdmin() {
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                     <div>
                       <p className="text-sm font-medium">AI Gateway</p>
-                      <p className="text-xs text-muted-foreground">Connected via Lovable AI</p>
+                      <p className="text-xs text-muted-foreground">Connected via Apex AI Gateway</p>
                     </div>
                     <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Active</Badge>
                   </div>
