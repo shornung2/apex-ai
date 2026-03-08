@@ -15,6 +15,7 @@ import {
   Shield,
   Building2,
   Compass,
+  Bookmark,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useTenant } from "@/contexts/TenantContext";
@@ -53,7 +54,8 @@ const onboardingLearnerItems = [
 const toolItems = [
   { title: "Tasks", url: "/tasks", icon: CalendarClock },
   { title: "Capabilities", url: "/capabilities", icon: Sparkles },
-  { title: "Content Library", url: "/content-library", icon: FolderOpen },
+  { title: "Workspace Library", url: "/content-library", icon: FolderOpen },
+  { title: "My Saves", url: "/my-saves", icon: Bookmark },
   { title: "Knowledge Base", url: "/knowledge", icon: BookOpen },
   { title: "History", url: "/history", icon: Clock },
 ];

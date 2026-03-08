@@ -100,7 +100,7 @@ function SortableSkillCard({ skill, feedbackStats, openrouterModels, onEdit }: {
   skill: Skill;
   feedbackStats: Record<string, { total: number; positive: number }>;
   openrouterModels: OpenRouterModel[];
-  onEdit: (skill: Skill) => void;
+  onEdit?: (skill: Skill) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: skill.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 10 : undefined };
@@ -113,8 +113,8 @@ function SortableSkillCard({ skill, feedbackStats, openrouterModels, onEdit }: {
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card
-        className={`glass-card hover:border-primary/30 transition-all group ${isDragging ? "cursor-grabbing ring-2 ring-primary/30" : "cursor-grab"}`}
-        onClick={() => { if (!isDragging) onEdit(skill); }}
+        className={`glass-card hover:border-primary/30 transition-all group ${isDragging ? "cursor-grabbing ring-2 ring-primary/30" : onEdit ? "cursor-grab" : "cursor-default"}`}
+        onClick={() => { if (!isDragging && onEdit) onEdit(skill); }}
       >
         <CardContent className="p-5 space-y-3">
           <div className="flex items-start justify-between">
@@ -159,7 +159,7 @@ function SortableSkillCard({ skill, feedbackStats, openrouterModels, onEdit }: {
 
 export default function Capabilities() {
   const { toast } = useToast();
-  const { tenantId } = useTenant();
+  const { tenantId, isAdmin } = useTenant();
   const [activeTab, setActiveTab] = useState("library");
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("all");
@@ -503,7 +503,7 @@ export default function Capabilities() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-muted/50">
             <TabsTrigger value="library" className="gap-1.5"><BookOpen className="h-3.5 w-3.5" /> Skill Library</TabsTrigger>
-            <TabsTrigger value="builder" className="gap-1.5"><Wrench className="h-3.5 w-3.5" /> Skill Builder</TabsTrigger>
+            {isAdmin && <TabsTrigger value="builder" className="gap-1.5"><Wrench className="h-3.5 w-3.5" /> Skill Builder</TabsTrigger>}
           </TabsList>
 
           {/* ── Skill Library ── */}
@@ -531,9 +531,11 @@ export default function Capabilities() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" className="gap-1.5 ml-auto" onClick={() => { resetBuilder(); setActiveTab("builder"); }}>
-                <Plus className="h-3.5 w-3.5" /> New Skill
-              </Button>
+              {isAdmin && (
+                <Button variant="outline" size="sm" className="gap-1.5 ml-auto" onClick={() => { resetBuilder(); setActiveTab("builder"); }}>
+                  <Plus className="h-3.5 w-3.5" /> New Skill
+                </Button>
+              )}
             </div>
 
             {loading ? (
@@ -550,7 +552,7 @@ export default function Capabilities() {
                         skill={skill}
                         feedbackStats={feedbackStats}
                         openrouterModels={openrouterModels}
-                        onEdit={loadSkillIntoBuilder}
+                        onEdit={isAdmin ? loadSkillIntoBuilder : undefined}
                       />
                     ))}
                     {orderedSkills.length === 0 && (

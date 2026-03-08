@@ -21,6 +21,8 @@ import NotFound from "./pages/NotFound";
 import Tasks from "./pages/Tasks";
 import Auth from "./pages/Auth";
 import SuperAdmin from "./pages/SuperAdmin";
+import MySaves from "./pages/MySaves";
+import { AdminGuard } from "@/components/AdminGuard";
 import SuccessProfileList from "./pages/onboarding/SuccessProfileList";
 import SuccessProfileBuilder from "./pages/onboarding/SuccessProfileBuilder";
 import ProgramList from "./pages/onboarding/ProgramList";
@@ -56,6 +58,7 @@ const App = () => (
                         <Route path="/jobs/:jobId" element={<JobDetail />} />
                         <Route path="/knowledge" element={<Knowledge />} />
                         <Route path="/content-library" element={<ContentLibrary />} />
+                        <Route path="/my-saves" element={<MySaves />} />
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/talent/onboarding/profiles" element={<SuccessProfileList />} />
                         <Route path="/talent/onboarding/profiles/new" element={<SuccessProfileBuilder />} />
@@ -70,8 +73,8 @@ const App = () => (
                         <Route path="/talent/onboarding/my-journey/roleplay/:sessionType" element={<RolePlaySessionPage />} />
                         <Route path="/help" element={<Help />} />
                         <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="/workspace-admin" element={<WorkspaceAdmin />} />
-                        <Route path="/super-admin" element={<SuperAdmin />} />
+                        <Route path="/workspace-admin" element={<AdminGuard><WorkspaceAdmin /></AdminGuard>} />
+                        <Route path="/super-admin" element={<AdminGuard requireSuperAdmin><SuperAdmin /></AdminGuard>} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </AppLayout>
