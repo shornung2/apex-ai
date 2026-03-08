@@ -81,7 +81,7 @@ export default function SettingsPage() {
     toast({ title: "Settings saved", description: "Workspace settings updated successfully." });
   }, [tenantId, workspaceName, industry, toast]);
 
-  const tokenPercent = usage ? Math.round((usage.tokensUsed / TOKEN_BUDGET) * 100) : 0;
+  const tokenPercent = usage && tokenBudget > 0 ? Math.round((usage.tokensUsed / tokenBudget) * 100) : 0;
   const tokenColor = tokenPercent > 80 ? "bg-destructive" : tokenPercent > 60 ? "bg-amber-500" : "bg-emerald-500";
   const successRate = usage && usage.totalJobs > 0 ? Math.round((usage.completeJobs / usage.totalJobs) * 100) : 0;
 
