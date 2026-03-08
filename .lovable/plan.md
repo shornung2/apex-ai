@@ -1,153 +1,81 @@
 
 
-# Skill Pack Infrastructure, Production Seed, and Documentation Update
+# Apex AI Platform Audit: Issues Found & Recommended Fixes
 
-## Summary
+## Issues Identified
 
-Create the `skill_packs` and `skill_pack_templates` tables, replace the old `seed-skill-packs` edge function with a new `seed-skill-pack` function that reads from the templates table, seed the 3 packs (24 total skills) with full production-quality definitions from the uploaded MD file, add the 13 non-overlapping skills to the Solutionment tenant, write tests, and update Help + Telegram.
+### 1. Remaining Lovable Branding in `index.html` (HIGH)
+**Location:** `index.html` lines 12-18
+**Issue:** OpenGraph description says "Lovable Generated Project", OG image points to lovable.dev, Twitter card references @Lovable and lovable.dev image.
+**Fix:** Update OG description to "Apex AI by Solutionment — The AI Operating System for Revenue Teams", replace OG/Twitter images with Apex AI branding (or `/favicon.png`), change Twitter site to Solutionment's handle or remove it.
 
-## Part A: Database — Two New Tables
+### 2. Lovable References in User-Facing Text (MEDIUM)
+**Location:** `src/pages/WorkspaceAdmin.tsx` line 351, `src/pages/Help.tsx` line 294
+**Issue:** "Connected via Lovable AI" shown to users in the API Keys section and Help content.
+**Fix:** Change to "Connected via Apex AI Gateway" or simply "AI Gateway — Active".
 
-Migration to create:
+### 3. Missing SPA Fallback in `_redirects` (HIGH)
+**Location:** `public/_redirects`
+**Issue:** The file only has rules for `/about` and `/brochure`. There is NO SPA fallback rule (`/* /index.html 200`). This means any direct navigation to React routes (e.g., `/departments/sales`, `/help`, `/settings`) will return a 404 on production/Netlify.
+**Fix:** Add `/* /index.html 200` as the LAST line in `_redirects`.
 
-```sql
-CREATE TABLE public.skill_packs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  slug TEXT NOT NULL UNIQUE,
-  description TEXT,
-  target_segment TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+### 4. Settings Page Doesn't Persist Workspace Name/Industry (LOW)
+**Location:** `src/pages/Settings.tsx` lines 39-40, 94
+**Issue:** `workspaceName` and `industry` are hardcoded defaults ("Solutionment", "Technology Consulting"). The Save button only shows a toast — it doesn't actually write to the database.
+**Fix:** Load values from `workspace_settings` on mount and upsert on save.
 
-CREATE TABLE public.skill_pack_templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  pack_id UUID NOT NULL REFERENCES public.skill_packs(id) ON DELETE CASCADE,
-  skill_template JSONB NOT NULL,
-  display_order INT DEFAULT 0
-);
+### 5. Skill Builder Missing "file" Input Type Option (MEDIUM)
+**Location:** `src/pages/Capabilities.tsx` lines 27-34
+**Issue:** The `inputTypes` array for the Skill Builder doesn't include `{ value: "file", label: "File Upload" }`, even though the Help docs and SkillForm support it. Users cannot create skills with file inputs via the builder UI.
+**Fix:** Add `{ value: "file", label: "File Upload" }` to the `inputTypes` array.
 
-ALTER TABLE public.skill_packs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.skill_pack_templates ENABLE ROW LEVEL SECURITY;
+### 6. Department Page Agent Description Inconsistency (LOW)
+**Location:** `src/pages/Help.tsx` lines 57-59
+**Issue:** Help docs say Sales has "Agents: Coach, Content Writer, Strategist" (missing Researcher). The code (`departmentAgents`) now has all 4 agents for all departments, but the help text is inconsistent.
+**Fix:** Update Help text to list all 4 agents for each department.
 
-CREATE POLICY "packs_readable" ON public.skill_packs FOR SELECT TO authenticated USING (true);
-CREATE POLICY "templates_readable" ON public.skill_pack_templates FOR SELECT TO authenticated USING (true);
-```
+### 7. `workspace_settings` Upsert Uses `onConflict: "key"` Without Tenant Scoping (MEDIUM)
+**Location:** `src/pages/WorkspaceAdmin.tsx` lines 245, 258, 266, 273
+**Issue:** The upsert uses `onConflict: "key"` but `workspace_settings` likely needs `onConflict: "tenant_id,key"` since it's a multi-tenant table. If the unique constraint is only on `key`, one tenant's settings could overwrite another's.
+**Fix:** Verify the unique constraint on `workspace_settings` and adjust the upsert accordingly to use the composite key.
 
-## Part B: New Edge Function — `seed-skill-pack`
+### 8. AuthGuard Race Condition with `onAuthStateChange` (LOW)
+**Location:** `src/components/AuthGuard.tsx` lines 61-63
+**Issue:** The `onAuthStateChange` listener is set up before `initialized.current` is set to `true`, meaning early auth state changes are silently dropped. This is intentional to prevent premature redirects, but if a sign-out happens during initialization, it could be missed.
+**Fix:** Minor — current behavior is acceptable but could be documented.
 
-Replace the existing `supabase/functions/seed-skill-packs/index.ts` with a new `supabase/functions/seed-skill-pack/index.ts` that:
+### 9. Capabilities Page `displayName` Search Not Included (LOW)
+**Location:** `src/pages/Capabilities.tsx` line 367
+**Issue:** Search only checks `s.name` and `s.description`, not `s.displayName`. Users searching by the visible display name (e.g., "Company Research") won't find skills if the internal name differs.
+**Fix:** Add `!(s.displayName || "").toLowerCase().includes(search.toLowerCase())` to the filter.
 
-- Accepts `{ packSlugs: string[] }`
-- Verifies JWT, looks up caller's `tenant_id` and `role` from `user_profiles`
-- Requires `admin` or `super_admin` role
-- For each slug: fetches `skill_pack_templates` rows for that pack
-- For each template: checks if a skill with the same `name` already exists for this tenant — skips duplicates
-- Inserts into `skills` with `tenant_id`, `is_system = false`, all fields from the template JSONB
-- Returns `{ seeded, skipped, packs }`
+### 10. `agent-client.ts` Uses Anon Key for Auth (NOTE)
+**Location:** `src/lib/agent-client.ts` lines 23, 109
+**Issue:** Uses `VITE_SUPABASE_PUBLISHABLE_KEY` for Authorization header instead of the user's session token. This means edge functions receive the anon key, not the user's JWT, which limits per-user authorization on the backend.
+**Fix:** Get the session token via `supabase.auth.getSession()` and use it in the Authorization header.
 
-Add to `supabase/config.toml`:
-```
-[functions.seed-skill-pack]
-verify_jwt = true
-```
+---
 
-## Part C: Seed the 3 Packs with Production Templates
+## Summary of Recommended Fixes
 
-Use the database insert tool to populate `skill_packs` (3 rows) and `skill_pack_templates` (24 rows) with the full production-quality skill definitions from the uploaded MD file.
+| # | Severity | Issue | File(s) |
+|---|----------|-------|---------|
+| 1 | HIGH | Lovable branding in OG/Twitter meta tags | `index.html` |
+| 2 | MEDIUM | "Lovable AI" text visible to users | `WorkspaceAdmin.tsx`, `Help.tsx` |
+| 3 | HIGH | Missing SPA fallback in _redirects | `public/_redirects` |
+| 4 | LOW | Settings don't persist to database | `Settings.tsx` |
+| 5 | MEDIUM | Missing "file" input type in Skill Builder | `Capabilities.tsx` |
+| 6 | LOW | Help docs list wrong agents per department | `Help.tsx` |
+| 7 | MEDIUM | Upsert onConflict may not be tenant-scoped | `WorkspaceAdmin.tsx` |
+| 8 | LOW | Auth initialization race condition | `AuthGuard.tsx` |
+| 9 | LOW | Search doesn't include displayName | `Capabilities.tsx` |
+| 10 | NOTE | Anon key used instead of user JWT | `agent-client.ts` |
 
-### Pack 1: Presales Excellence (8 skills)
-1. RFP Analyzer & Scorer — researcher, 9 inputs, ~250-line system prompt
-2. Discovery Call Prep Coach — meeting-prep, 5 inputs
-3. Competitive Battle Card — researcher, 5 inputs
-4. Executive Proposal Draft — content, 7 inputs
-5. Solution Qualification Scorecard — strategist, 6 inputs
-6. Meeting Follow-Up Email — content, 6 inputs
-7. POC & Pilot Plan — strategist, 7 inputs
-8. Objection Response Builder — strategist, 5 inputs
-
-### Pack 2: Sales Productivity (8 skills)
-1. Company Research Brief — researcher, 5 inputs
-2. Personalized Outreach Email — content, 6 inputs
-3. Deal Strategy Session — strategist, 6 inputs
-4. Champion Coaching Guide — strategist, 6 inputs
-5. Pipeline Review Prep — meeting-prep, 5 inputs
-6. Sales Negotiation Prep — strategist, 6 inputs
-7. Account Expansion Map — strategist, 6 inputs
-8. Win/Loss Analysis — researcher, 6 inputs
-
-### Pack 3: Marketing & Content (8 skills)
-1. Thought Leadership Article — content, 6 inputs
-2. LinkedIn Post Series — content, 6 inputs
-3. Market Intelligence Brief — researcher, 5 inputs
-4. Campaign Messaging Framework — strategist, 6 inputs
-5. SEO Blog Brief — strategist, 5 inputs
-6. Customer Case Study Draft — content, 7 inputs
-7. Email Nurture Sequence — content, 6 inputs
-8. Product Launch Announcement — content, 6 inputs
-
-Each template JSONB contains: `name`, `display_name`, `emoji`, `description`, `department`, `agent_type`, `inputs` (full input definitions with labels, types, placeholders, hints, options), `system_prompt` (full production prompt), `preferred_model`, `token_budget`, `timeout_seconds`, `output_format`, `tags`.
-
-## Part D: Add New Skills to Solutionment
-
-Existing Solutionment skills (17 total) overlap with many pack skills. The following 13 skills are genuinely new and will be inserted directly into the `skills` table for the Solutionment tenant:
-
-**From Presales Excellence (5 new):**
-- RFP Analyzer & Scorer (researcher) — no overlap
-- Competitive Battle Card (researcher) — no overlap
-- Solution Qualification Scorecard (strategist) — no overlap
-- POC & Pilot Plan (strategist) — no overlap
-- Objection Response Builder (strategist) — no overlap
-
-**From Sales Productivity (4 new):**
-- Champion Coaching Guide (strategist) — no overlap
-- Pipeline Review Prep (meeting-prep) — no overlap
-- Sales Negotiation Prep (strategist) — no overlap
-- Win/Loss Analysis (researcher) — no overlap
-
-**From Marketing & Content (4 new):**
-- SEO Blog Brief (strategist) — no overlap
-- Customer Case Study Draft (content) — no overlap
-- Email Nurture Sequence (content) — no overlap
-- Product Launch Announcement (content) — no overlap
-
-**Skipped (11 overlapping):** Discovery Call Prep Coach (≈ Meeting Prep Coach), Executive Proposal Draft (≈ Proposal), Meeting Follow-Up Email (≈ Sales Email), Company Research Brief (≈ Company Research), Personalized Outreach Email (≈ Sales Email), Deal Strategy Session (≈ Deal Strategy), Account Expansion Map (≈ Account Strategy), Thought Leadership Article (exists), LinkedIn Post Series (≈ LinkedIn/Social Posts), Market Intelligence Brief (≈ Market & Industry Trends), Campaign Messaging Framework (≈ Marketing Strategy).
-
-## Part E: Tests
-
-Create an edge function test `supabase/functions/seed-skill-pack/index.test.ts` that:
-- Tests unauthenticated requests are rejected
-- Tests that seeding works with valid pack slugs
-- Tests duplicate skip behavior
-
-## Part F: Help Center Update
-
-Add a new section **"Skill Packs"** to `src/pages/Help.tsx` describing:
-- What skill packs are (curated sets of production-quality skills)
-- The 3 starter packs and their contents
-- How packs are seeded during onboarding
-- How admins can seed packs later via the API
-
-Update the **Onboarding & Setup** section to mention the new production-quality prompts.
-
-## Part G: Telegram Bot Update
-
-Update `/help` and `/start` in `supabase/functions/telegram-bot/index.ts` to mention:
-- Skill Packs with 24 production-quality skills across 3 packs
-- Updated skill counts
-
-## Files Affected
-
-| File | Action |
-|---|---|
-| Database migration | Create: `skill_packs` + `skill_pack_templates` tables |
-| Database insert | Seed 3 packs + 24 templates |
-| Database insert | Add 13 new skills to Solutionment tenant |
-| `supabase/functions/seed-skill-pack/index.ts` | Create: new edge function |
-| `supabase/functions/seed-skill-packs/index.ts` | Keep (legacy, could deprecate later) |
-| `supabase/config.toml` | Add `seed-skill-pack` entry |
-| `supabase/functions/seed-skill-pack/index.test.ts` | Create: edge function test |
-| `src/pages/Help.tsx` | Edit: add Skill Packs section |
-| `supabase/functions/telegram-bot/index.ts` | Edit: update help/start text |
+### Implementation Priority
+1. Fix `_redirects` SPA fallback (breaks production routing)
+2. Remove all Lovable branding from `index.html` and user-facing text
+3. Add "file" input type to Skill Builder
+4. Fix search to include displayName
+5. Update Help docs agent lists
+6. Address settings persistence and upsert scoping as follow-ups
 
