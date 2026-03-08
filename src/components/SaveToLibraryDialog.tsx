@@ -54,22 +54,25 @@ export function SaveToLibraryDialog({
 
   const save = async () => {
     setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase.from("content_items").insert({
       title,
       content,
-      folder_id: selectedFolder,
+      folder_id: scope === "personal" ? null : selectedFolder,
       agent_type: agentType || null,
       skill_id: skillId || null,
       skill_name: skillName || null,
       department: department || null,
       job_id: jobId || null,
       tenant_id: tenantId!,
+      scope,
+      user_id: scope === "personal" ? user?.id || null : null,
     });
     setSaving(false);
     if (error) {
       toast({ title: "Error saving", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Saved to Content Library" });
+      toast({ title: scope === "personal" ? "Saved to My Saves" : "Saved to Workspace Library" });
       setOpen(false);
     }
   };
