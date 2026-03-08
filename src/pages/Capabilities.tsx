@@ -100,7 +100,7 @@ function SortableSkillCard({ skill, feedbackStats, openrouterModels, onEdit }: {
   skill: Skill;
   feedbackStats: Record<string, { total: number; positive: number }>;
   openrouterModels: OpenRouterModel[];
-  onEdit: (skill: Skill) => void;
+  onEdit?: (skill: Skill) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: skill.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 10 : undefined };
