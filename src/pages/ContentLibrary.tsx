@@ -63,7 +63,7 @@ export default function ContentLibrary() {
   const fetchData = useCallback(async () => {
     const [fRes, iRes] = await Promise.all([
       supabase.from("content_folders").select("*").order("name"),
-      supabase.from("content_items").select("*").order("created_at", { ascending: false }),
+      supabase.from("content_items").select("*").eq("scope", "workspace").order("created_at", { ascending: false }),
     ]);
     if (fRes.data) setFolders(fRes.data as ContentFolder[]);
     if (iRes.data) setItems(iRes.data as ContentItem[]);
