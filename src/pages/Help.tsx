@@ -144,7 +144,7 @@ The Coach agent also powers the **Onboarding module's** interactive experiences:
 
 ### Skill Library
 - Browse all skills across departments in one view.
-- Filter by department, agent type, or search by name.
+- Filter by department, agent type, or search by name or display name.
 - **Drag to reorder** — grab any skill card and drag it to rearrange the order. Your custom order is saved automatically and remembered across sessions.
 - Click any skill to view its details or run it.
 
@@ -313,7 +313,7 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
   {
     id: "telegram-bot",
     title: "Telegram Bot Integration",
-    content: `Run any Apex AI skill directly from Telegram — same agents, same skills, just a chat interface. You can also chat with Alex, your AI assistant, view your scheduled tasks, and access your onboarding journey.
+    content: `Run any Apex AI skill directly from Telegram — same agents, same skills, just a chat interface. You can also chat with Alex, your AI assistant, and view your scheduled tasks and usage.
 
 **Important:** The Telegram integration is **disabled by default**. A workspace administrator must enable it in **Workspace Admin > Integrations** before the bot will respond to commands.
 
@@ -333,13 +333,10 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 - \`/skills\` — Browse all available skills, grouped by department (Sales, Marketing, Talent).
 - \`/run <skill_name>\` — Start running a specific skill by name.
 - \`/tasks\` — View your active scheduled tasks.
+- \`/usage\` — View your monthly usage summary (jobs, tokens, estimated cost).
 - \`/cancel\` — Cancel the current skill input collection.
 - \`/clear\` — Reset your Alex conversation history.
 - \`/help\` — Show the list of available commands.
-
-### Coach Skills on Telegram
-
-Coach agent skills — Meeting Prep and Career Coaching — are fully accessible via Telegram. The bot will walk you through each required input one at a time, then dispatch the Coach agent with your inputs.
 
 ### How Running a Skill Works
 
@@ -347,14 +344,11 @@ Coach agent skills — Meeting Prep and Career Coaching — are fully accessible
 2. The bot asks for each required input **one at a time**.
 3. Once all inputs are collected, the bot dispatches the job to the agent.
 4. The agent's output is sent back as a Telegram message.
+5. Skills with PowerPoint output automatically generate .pptx files with a download link.
 
-### Onboarding Journey on Telegram
+### Agent Availability
 
-If you have an active onboarding program assigned to you, you can access your onboarding journey directly from Telegram. This makes it easy to engage with your onboarding content on the go:
-- View your current phase and progress.
-- Complete checkpoint assessments.
-- Access learning materials and resources.
-- Receive notifications about upcoming deadlines and milestones.
+If a workspace administrator has disabled an agent type in **Workspace Admin > Agents**, skills using that agent will return a "disabled" message when selected on Telegram.
 
 ### Chatting with Alex on Telegram
 
@@ -363,7 +357,7 @@ If you have an active onboarding program assigned to you, you can access your on
 - Send \`/clear\` to reset your conversation history.
 
 ### Tips & Troubleshooting
-- **Bot not responding?** Check that the bot token is correct and the integration is enabled in Workspace Admin.
+- **Bot not responding?** Check that the bot token is correct and the integration is enabled in Workspace Admin > Integrations.
 - **Getting errors?** Make sure the skill name matches when using \`/run\`.
 - **Results too long?** They're automatically split — no action needed.
 - **Multiple skills?** You can run skills back-to-back.`,
@@ -555,13 +549,9 @@ When assigned to a program, a "My Journey" link appears in the sidebar under Onb
    - **Capstone Role-Play** — A comprehensive scenario where you present and defend company capabilities in a realistic business situation.
 6. **Progress Tracking** — Visual progress indicators show completion status for each phase.
 
-### Accessing Onboarding via Telegram
+### Telegram Integration
 
-If you have an active onboarding assignment, you can engage with your onboarding journey through **Telegram**:
-- Access learning materials and content on the go.
-- Complete checkpoint assessments conversationally.
-- Review your progress and upcoming deadlines.
-- This makes it easy to stay on track with your onboarding even when you're away from your desk.
+You can run any Apex AI skill via the **Telegram bot**, including Coach skills used in onboarding programs. Use \`/skills\` to browse and run skills on the go. See the **Telegram Bot Integration** guide for full details.
 
 ### Administration
 

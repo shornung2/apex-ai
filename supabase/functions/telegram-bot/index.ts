@@ -135,17 +135,16 @@ async function handleStart(chatId: number, firstName?: string) {
   await sendMessage(
     chatId,
     `👋 <b>Welcome${name ? `, ${escapeHtml(name)}` : ""}!</b>\n\n` +
-      `I'm your <b>Apex AI Assistant</b> with production-quality skills across 4 packs: Presales Excellence, Sales Productivity, Marketing & Content, and Talent & Coaching.\n\n` +
-      `<b>🏋️ New!</b> The <b>Coach</b> agent now powers Meeting Prep, New Employee Onboarding, and Career Coaching skills.\n\n` +
+      `I'm your <b>Apex AI Assistant</b> — run AI-powered skills across Sales, Marketing, and Talent departments.\n\n` +
       `<b>Commands:</b>\n` +
       `/skills — Browse available skills\n` +
+      `/run &lt;name&gt; — Run a skill by name\n` +
       `/tasks — View your scheduled tasks\n` +
       `/usage — View your monthly usage summary\n` +
       `/cancel — Cancel current operation\n` +
       `/clear — Reset Alex conversation history\n` +
       `/help — Show this help message\n\n` +
       `💡 Just type any message to <b>chat with Alex</b>, your AI assistant!\n\n` +
-      `📊 Rate any job output with 👍/👎 in the web app to help improve quality.\n\n` +
       `Try <b>/skills</b> to get started!`
   );
 }
@@ -156,6 +155,7 @@ async function handleHelp(chatId: number) {
     `<b>Apex AI Bot Commands</b>\n\n` +
       `/start — Welcome message\n` +
       `/skills — List all available skills by department\n` +
+      `/run &lt;name&gt; — Run a skill by name\n` +
       `/tasks — View your active scheduled tasks\n` +
       `/usage — Monthly usage summary (jobs, tokens, cost)\n` +
       `/cancel — Cancel current skill input\n` +
@@ -170,21 +170,15 @@ async function handleHelp(chatId: number) {
       `💼 <b>Sales</b> — Deal strategy, proposals, meeting prep, outreach\n` +
       `📢 <b>Marketing</b> — Content, SEO, campaigns, thought leadership\n` +
       `🎓 <b>Talent</b> — Onboarding, career coaching, meeting prep\n\n` +
-      `<b>Skill Packs:</b>\n` +
-      `📋 <b>Presales Excellence</b> — 12 skills (RFP analysis, discovery prep, battle cards, proposals)\n` +
-      `💼 <b>Sales Productivity</b> — 10 skills (research, outreach, deal strategy, meeting prep)\n` +
-      `📢 <b>Marketing & Content</b> — 8 skills (thought leadership, LinkedIn, SEO, case studies)\n` +
-      `🎓 <b>Talent & Coaching</b> — 3 skills (onboarding, career coaching, meeting prep)\n\n` +
-      `<b>🏋️ Coach Agent Skills:</b>\n` +
-      `🎯 <b>Meeting Prep Coach</b> — Pre-meeting coaching, agendas, talk tracks\n` +
-      `🚀 <b>New Employee Onboarding</b> — AI-powered 90-day onboarding plans\n` +
-      `📈 <b>Career Coach</b> — Development plans, skill gap analysis, coaching guides\n\n` +
+      `<b>Agents:</b>\n` +
+      `🔍 <b>Researcher</b> — Deep-dive research and intelligence gathering\n` +
+      `🧠 <b>Strategist</b> — Strategic analysis and planning\n` +
+      `✍️ <b>Content Writer</b> — Polished written materials\n` +
+      `🏋️ <b>Coach</b> — Meeting prep, onboarding, career coaching\n\n` +
       `<b>Features:</b>\n` +
-      `📊 <b>Usage tracking</b> — use /usage to see your monthly token consumption.\n` +
-      `👍👎 <b>Output feedback</b> — rate job results in the web app.\n` +
-      `🧙 <b>Onboarding wizard</b> — new users are guided through workspace setup.\n\n` +
-      `Deck generation: Skills with PowerPoint output automatically generate .pptx files.\n` +
-      `Use /tasks to see your automated scheduled tasks.\n\n` +
+      `📊 Deck generation: Skills with PowerPoint output automatically generate .pptx files.\n` +
+      `👍👎 Rate job outputs in the web app to help improve quality.\n` +
+      `📅 Use /tasks to see your automated scheduled tasks.\n\n` +
       `Or just <b>type any message</b> to chat with Alex, your AI assistant!`
   );
 }
@@ -578,7 +572,7 @@ serve(async (req) => {
       await answerCallback(cb.id);
 
       if (!isTelegramEnabled) {
-        await sendMessage(chatId, "⚠️ The Telegram integration is currently disabled for this workspace. Please ask your workspace administrator to enable it in Settings > Integrations.");
+        await sendMessage(chatId, "⚠️ The Telegram integration is currently disabled for this workspace. Please ask your workspace administrator to enable it in Workspace Admin > Integrations.");
         return new Response("ok");
       }
 
@@ -598,11 +592,11 @@ serve(async (req) => {
 
     // Block all commands except /start and /help when disabled
     if (!isTelegramEnabled && text !== "/start" && text !== "/help") {
-      await sendMessage(chatId, "⚠️ The Telegram integration is currently disabled for this workspace. Please ask your workspace administrator to enable it in Settings > Integrations.");
+      await sendMessage(chatId, "⚠️ The Telegram integration is currently disabled for this workspace. Please ask your workspace administrator to enable it in Workspace Admin > Integrations.");
       return new Response("ok");
     }
     if (!isTelegramEnabled && (text === "/start" || text === "/help")) {
-      await sendMessage(chatId, "👋 <b>Apex AI Bot</b>\n\nThe Telegram integration is currently <b>disabled</b> for this workspace.\n\nTo enable it, ask your workspace administrator to go to <b>Settings > Integrations</b> in the Apex AI web app and turn on the Telegram toggle.");
+      await sendMessage(chatId, "👋 <b>Apex AI Bot</b>\n\nThe Telegram integration is currently <b>disabled</b> for this workspace.\n\nTo enable it, ask your workspace administrator to go to <b>Workspace Admin > Integrations</b> in the Apex AI web app and turn on the Telegram toggle.");
       return new Response("ok");
     }
 
@@ -693,7 +687,7 @@ serve(async (req) => {
           `• Total events: <b>${(events || []).length}</b>\n` +
           `• Tokens used: <b>${totalTokens.toLocaleString()}</b>\n` +
           `• Estimated cost: <b>$${estimatedCost.toFixed(2)}</b>\n\n` +
-          `View detailed breakdowns in the web app under Settings > Usage & Billing.`
+          `View detailed breakdowns in the web app under Workspace Admin > Usage & Billing.`
       );
       return new Response("ok");
     }
