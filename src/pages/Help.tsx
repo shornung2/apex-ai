@@ -19,7 +19,7 @@ Apex AI is a platform that puts AI agents to work across your Sales, Marketing, 
 4. **Jobs** are individual runs of a skill. You fill in the inputs, click Run, and the agent produces an output.
 
 ### Navigation
-- The **sidebar** on the left gives you access to every area: Overview, Departments (Sales, Marketing, Talent), Capabilities, Tasks, Knowledge Base, Content Library, History, Help, and Settings.
+- The **sidebar** on the left gives you access to every area: Overview, Departments (Sales, Marketing, Talent), Capabilities, Tasks, Workspace Library, My Saves, Knowledge Base, History, Help, and Settings.
 - Click any department to see its available skills and run them.
 - Use the **Overview** dashboard for a quick snapshot of activity, token usage, and upcoming scheduled tasks.
 - If you have an active **Onboarding** program assigned to you, a dedicated "My Journey" link appears in the sidebar under Onboarding.
