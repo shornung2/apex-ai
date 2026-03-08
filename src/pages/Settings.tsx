@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/contexts/TenantContext";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -35,17 +36,20 @@ interface UsageStats {
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  const { tenantId } = useTenant();
   const [usage, setUsage] = useState<UsageStats | null>(null);
-  const [workspaceName, setWorkspaceName] = useState("Solutionment");
-  const [industry, setIndustry] = useState("Technology Consulting");
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    async function fetchUsage() {
-      const [jobsRes, docsRes, skillsRes, tasksRes] = await Promise.all([
+    async function fetchData() {
+      const [jobsRes, docsRes, skillsRes, tasksRes, settingsRes] = await Promise.all([
         supabase.from("agent_jobs").select("status, tokens_used"),
         supabase.from("knowledge_documents").select("id", { count: "exact", head: true }),
         supabase.from("skills").select("id", { count: "exact", head: true }),
         supabase.from("scheduled_tasks").select("id", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("workspace_settings").select("key, value").in("key", ["workspace_name", "workspace_industry"]),
       ]);
       const jobs = jobsRes.data || [];
       setUsage({
@@ -56,9 +60,25 @@ export default function SettingsPage() {
         activeSkills: skillsRes.count || 0,
         scheduledTasks: tasksRes.count || 0,
       });
+      const settings = settingsRes.data || [];
+      const nameRow = settings.find((s) => s.key === "workspace_name");
+      const industryRow = settings.find((s) => s.key === "workspace_industry");
+      setWorkspaceName(nameRow ? String(nameRow.value) : "");
+      setIndustry(industryRow ? String(industryRow.value) : "");
     }
-    fetchUsage();
+    fetchData();
   }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!tenantId) return;
+    setSaving(true);
+    await Promise.all([
+      supabase.from("workspace_settings").upsert({ key: "workspace_name", value: workspaceName as any, tenant_id: tenantId, updated_at: new Date().toISOString() }, { onConflict: "tenant_id,key" }),
+      supabase.from("workspace_settings").upsert({ key: "workspace_industry", value: industry as any, tenant_id: tenantId, updated_at: new Date().toISOString() }, { onConflict: "tenant_id,key" }),
+    ]);
+    setSaving(false);
+    toast({ title: "Settings saved", description: "Workspace settings updated successfully." });
+  }, [tenantId, workspaceName, industry, toast]);
 
   const tokenPercent = usage ? Math.round((usage.tokensUsed / TOKEN_BUDGET) * 100) : 0;
   const tokenColor = tokenPercent > 80 ? "bg-destructive" : tokenPercent > 60 ? "bg-amber-500" : "bg-emerald-500";
@@ -91,7 +111,7 @@ export default function SettingsPage() {
                   <Label>Industry</Label>
                   <Input value={industry} onChange={(e) => setIndustry(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" />
                 </div>
-                <Button size="sm" onClick={() => toast({ title: "Settings saved", description: "Workspace settings updated successfully." })}>Save</Button>
+                <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
               </CardContent>
             </Card>
           </TabsContent>

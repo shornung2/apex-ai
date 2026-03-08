@@ -31,6 +31,7 @@ const inputTypes = [
   { value: "select", label: "Dropdown" },
   { value: "radio", label: "Radio Group" },
   { value: "multi-select", label: "Multi-Select" },
+  { value: "file", label: "File Upload" },
 ];
 
 const AI_MODELS = [
@@ -364,7 +365,7 @@ export default function Capabilities() {
   const filtered = allSkills.filter((s) => {
     if (deptFilter !== "all" && s.department !== deptFilter) return false;
     if (agentFilter !== "all" && s.agentType !== agentFilter) return false;
-    if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !(s.description || "").toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !(s.displayName || "").toLowerCase().includes(search.toLowerCase()) && !(s.description || "").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 

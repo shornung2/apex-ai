@@ -54,9 +54,9 @@ Apex AI is a platform that puts AI agents to work across your Sales, Marketing, 
 
 ### The Three Departments
 
-- **Sales** — Revenue-driving skills for prospecting, deal strategy, proposals, meeting preparation, and more. Agents: Coach, Content Writer, Strategist.
-- **Marketing** — Market intelligence, content creation, thought leadership, and brand strategy. Agents: Researcher, Strategist, Content Writer.
-- **Talent** — Employee onboarding, career coaching, and meeting preparation — powered by Solutionment's Role-Readiness Acceleration methodology. Agents: Coach, Content Writer, Strategist.
+- **Sales** — Revenue-driving skills for prospecting, deal strategy, proposals, meeting preparation, and more. Agents: Researcher, Strategist, Content Writer, Coach.
+- **Marketing** — Market intelligence, content creation, thought leadership, and brand strategy. Agents: Researcher, Strategist, Content Writer, Coach.
+- **Talent** — Employee onboarding, career coaching, and meeting preparation — powered by Solutionment's Role-Readiness Acceleration methodology. Agents: Researcher, Strategist, Content Writer, Coach.
 
 ### Browsing a Department
 1. Click **Sales**, **Marketing**, or **Talent** in the sidebar under "Departments".
@@ -291,7 +291,7 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 
 **Agents** — Enable or disable specific agent types across departments (Researcher, Strategist, Content Writer, Coach). When an agent is disabled, all skills using that agent type are blocked from execution.
 
-**API Keys** — AI Gateway (always active via Lovable AI) and OpenRouter Integration for additional AI models.
+**API Keys** — AI Gateway (always active via Apex AI Gateway) and OpenRouter Integration for additional AI models.
 
 **Integrations** — Telegram Bot: enable or disable the Telegram integration for your workspace. Telegram is disabled by default for new workspaces.
 
