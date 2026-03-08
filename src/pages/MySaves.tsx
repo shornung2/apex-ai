@@ -14,7 +14,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import ReactMarkdown from "react-markdown";
 import {
   Search, Trash2, Download, MoreVertical, FileText, Pencil,
-  ArrowUpDown, Copy, Eye, X, Bookmark,
+  ArrowUpDown, Copy, Eye, X, Bookmark, Loader2,
 } from "lucide-react";
 
 type SavedItem = {
@@ -41,6 +41,7 @@ export default function MySaves() {
   const [renameItemId, setRenameItemId] = useState<string | null>(null);
   const [renameItemValue, setRenameItemValue] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: "item" | "bulk"; id?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     const { data } = await supabase
@@ -49,6 +50,7 @@ export default function MySaves() {
       .eq("scope", "personal")
       .order("created_at", { ascending: false });
     if (data) setItems(data as SavedItem[]);
+    setLoading(false);
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -179,7 +181,11 @@ export default function MySaves() {
       </motion.div>
 
       <motion.div variants={item} className="rounded-lg border border-border/50 bg-card/60 backdrop-blur-xl overflow-hidden">
-        {filtered.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : filtered.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>

@@ -16,8 +16,6 @@ import { useTenant } from "@/contexts/TenantContext";
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
-const TOKEN_BUDGET = 50_000;
-
 const themeOptions = [
   { value: "light", label: "Light", icon: Sun, preview: "bg-white border-border" },
   { value: "dark", label: "Dark", icon: Moon, preview: "bg-[hsl(240,15%,4%)] border-border" },
@@ -36,22 +34,25 @@ interface UsageStats {
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const { tenantId } = useTenant();
+  const { tenantId, isAdmin } = useTenant();
   const [usage, setUsage] = useState<UsageStats | null>(null);
+  const [tokenBudget, setTokenBudget] = useState(0);
   const [workspaceName, setWorkspaceName] = useState("");
   const [industry, setIndustry] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
-      const [jobsRes, docsRes, skillsRes, tasksRes, settingsRes] = await Promise.all([
+      const [jobsRes, docsRes, skillsRes, tasksRes, settingsRes, tenantRes] = await Promise.all([
         supabase.from("agent_jobs").select("status, tokens_used"),
         supabase.from("knowledge_documents").select("id", { count: "exact", head: true }),
         supabase.from("skills").select("id", { count: "exact", head: true }),
         supabase.from("scheduled_tasks").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("workspace_settings").select("key, value").in("key", ["workspace_name", "workspace_industry"]),
+        supabase.from("tenants").select("token_budget_monthly").single(),
       ]);
       const jobs = jobsRes.data || [];
+      setTokenBudget(tenantRes.data?.token_budget_monthly || 50_000);
       setUsage({
         totalJobs: jobs.length,
         completeJobs: jobs.filter((j) => j.status === "complete").length,
@@ -80,7 +81,7 @@ export default function SettingsPage() {
     toast({ title: "Settings saved", description: "Workspace settings updated successfully." });
   }, [tenantId, workspaceName, industry, toast]);
 
-  const tokenPercent = usage ? Math.round((usage.tokensUsed / TOKEN_BUDGET) * 100) : 0;
+  const tokenPercent = usage && tokenBudget > 0 ? Math.round((usage.tokensUsed / tokenBudget) * 100) : 0;
   const tokenColor = tokenPercent > 80 ? "bg-destructive" : tokenPercent > 60 ? "bg-amber-500" : "bg-emerald-500";
   const successRate = usage && usage.totalJobs > 0 ? Math.round((usage.completeJobs / usage.totalJobs) * 100) : 0;
 
@@ -105,13 +106,17 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Workspace Name</Label>
-                  <Input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" />
+                  <Input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" disabled={!isAdmin} />
                 </div>
                 <div className="space-y-2">
                   <Label>Industry</Label>
-                  <Input value={industry} onChange={(e) => setIndustry(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" />
+                  <Input value={industry} onChange={(e) => setIndustry(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" disabled={!isAdmin} />
                 </div>
-                <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+                {isAdmin ? (
+                  <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Only workspace admins can edit these settings.</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -157,7 +162,7 @@ export default function SettingsPage() {
                     <div className="space-y-2 max-w-md">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Used</span>
-                        <span className="font-medium">{usage.tokensUsed.toLocaleString()} / {TOKEN_BUDGET.toLocaleString()}</span>
+                        <span className="font-medium">{usage.tokensUsed.toLocaleString()} / {tokenBudget.toLocaleString()}</span>
                       </div>
                       <div className="h-2.5 rounded-full bg-muted overflow-hidden">
                         <div className={`h-full rounded-full transition-all ${tokenColor}`} style={{ width: `${Math.min(tokenPercent, 100)}%` }} />
