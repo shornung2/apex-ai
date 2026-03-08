@@ -202,6 +202,7 @@ export default function WorkspaceAdmin() {
   const [savingModels, setSavingModels] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [telegramEnabled, setTelegramEnabled] = useState(false);
+  const [skillBuilderAccess, setSkillBuilderAccess] = useState<"admin" | "all">("admin");
 
   useEffect(() => {
     async function fetchSettings() {
@@ -209,13 +210,14 @@ export default function WorkspaceAdmin() {
       const { data } = await supabase
         .from("workspace_settings")
         .select("key, value")
-        .in("key", ["openrouter_enabled", "openrouter_models", "agent_toggles", "telegram_enabled"]);
+        .in("key", ["openrouter_enabled", "openrouter_models", "agent_toggles", "telegram_enabled", "skill_builder_access"]);
       if (data) {
         for (const row of data) {
           if (row.key === "openrouter_enabled") setOpenrouterEnabled(row.value === true);
           if (row.key === "openrouter_models" && Array.isArray(row.value)) setSelectedModels(row.value as unknown as OpenRouterModel[]);
           if (row.key === "agent_toggles" && typeof row.value === "object" && row.value !== null) setAgentStates((prev) => ({ ...prev, ...(row.value as Record<string, boolean>) }));
           if (row.key === "telegram_enabled") setTelegramEnabled(row.value === true);
+          if (row.key === "skill_builder_access" && (row.value === "admin" || row.value === "all")) setSkillBuilderAccess(row.value);
         }
       }
       setLoadingSettings(false);
@@ -272,6 +274,15 @@ export default function WorkspaceAdmin() {
     setTelegramEnabled(enabled);
     await supabase.from("workspace_settings").upsert({ key: "telegram_enabled", value: enabled, updated_at: new Date().toISOString(), tenant_id: tenantId! }, { onConflict: "tenant_id,key" });
     toast({ title: `Telegram integration ${enabled ? "enabled" : "disabled"}` });
+  };
+
+  const toggleSkillBuilderAccess = async (value: "admin" | "all") => {
+    setSkillBuilderAccess(value);
+    await supabase.from("workspace_settings").upsert(
+      { key: "skill_builder_access", value: value as any, updated_at: new Date().toISOString(), tenant_id: tenantId! },
+      { onConflict: "tenant_id,key" }
+    );
+    toast({ title: `Skill Builder access set to ${value === "admin" ? "Admins only" : "All members"}` });
   };
 
   const filteredCatalog = catalogModels.filter((m) =>
@@ -335,6 +346,29 @@ export default function WorkspaceAdmin() {
                     <Switch checked={agentStates[agent.type] ?? true} onCheckedChange={(checked) => toggleAgent(agent.type, checked)} />
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card">
+              <CardHeader><CardTitle className="text-lg">Skill Builder Access</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Control who can create and edit skills in the Capabilities page.
+                </p>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <p className="text-sm font-medium">Allow all members to build skills</p>
+                    <p className="text-xs text-muted-foreground">
+                      {skillBuilderAccess === "all"
+                        ? "All workspace members can create and edit skills"
+                        : "Only admins can create and edit skills"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={skillBuilderAccess === "all"}
+                    onCheckedChange={(checked) => toggleSkillBuilderAccess(checked ? "all" : "admin")}
+                  />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

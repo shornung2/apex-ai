@@ -172,6 +172,7 @@ export default function Capabilities() {
 
   const [openrouterEnabled, setOpenrouterEnabled] = useState(false);
   const [openrouterModels, setOpenrouterModels] = useState<OpenRouterModel[]>([]);
+  const [canBuildSkills, setCanBuildSkills] = useState(false);
 
   // Builder state
   const [builderName, setBuilderName] = useState("");
@@ -346,12 +347,15 @@ export default function Capabilities() {
 
   useEffect(() => {
     async function fetchOpenRouterSettings() {
-      const { data } = await supabase.from("workspace_settings").select("key, value").in("key", ["openrouter_enabled", "openrouter_models"]);
+      const { data } = await supabase.from("workspace_settings").select("key, value").in("key", ["openrouter_enabled", "openrouter_models", "skill_builder_access"]);
       if (data) {
         for (const row of data) {
           if (row.key === "openrouter_enabled") setOpenrouterEnabled(row.value === true);
           if (row.key === "openrouter_models" && Array.isArray(row.value)) setOpenrouterModels(row.value as unknown as OpenRouterModel[]);
+          if (row.key === "skill_builder_access") setCanBuildSkills(row.value === "all" ? true : isAdmin);
         }
+        // If no setting found, default based on role
+        if (!data.some(r => r.key === "skill_builder_access")) setCanBuildSkills(isAdmin);
       }
     }
     fetchOpenRouterSettings();
@@ -503,7 +507,7 @@ export default function Capabilities() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-muted/50">
             <TabsTrigger value="library" className="gap-1.5"><BookOpen className="h-3.5 w-3.5" /> Skill Library</TabsTrigger>
-            {isAdmin && <TabsTrigger value="builder" className="gap-1.5"><Wrench className="h-3.5 w-3.5" /> Skill Builder</TabsTrigger>}
+            {canBuildSkills && <TabsTrigger value="builder" className="gap-1.5"><Wrench className="h-3.5 w-3.5" /> Skill Builder</TabsTrigger>}
           </TabsList>
 
           {/* ── Skill Library ── */}
@@ -531,7 +535,7 @@ export default function Capabilities() {
                   ))}
                 </SelectContent>
               </Select>
-              {isAdmin && (
+              {canBuildSkills && (
                 <Button variant="outline" size="sm" className="gap-1.5 ml-auto" onClick={() => { resetBuilder(); setActiveTab("builder"); }}>
                   <Plus className="h-3.5 w-3.5" /> New Skill
                 </Button>
@@ -552,7 +556,7 @@ export default function Capabilities() {
                         skill={skill}
                         feedbackStats={feedbackStats}
                         openrouterModels={openrouterModels}
-                        onEdit={isAdmin ? loadSkillIntoBuilder : undefined}
+    onEdit={canBuildSkills ? loadSkillIntoBuilder : undefined}
                       />
                     ))}
                     {orderedSkills.length === 0 && (
