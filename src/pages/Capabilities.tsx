@@ -556,7 +556,7 @@ export default function Capabilities() {
                         skill={skill}
                         feedbackStats={feedbackStats}
                         openrouterModels={openrouterModels}
-    onEdit={canBuildSkills ? loadSkillIncanBuildSkillstoBuilder : undefined}
+    onEdit={canBuildSkills ? loadSkillIntoBuilder : undefined}
                       />
                     ))}
                     {orderedSkills.length === 0 && (
