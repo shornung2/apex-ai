@@ -195,11 +195,13 @@ export type Database = {
           id: string
           job_id: string | null
           owner: string
+          scope: string
           skill_id: string | null
           skill_name: string | null
           tenant_id: string
           title: string
           updated_at: string
+          user_id: string | null
           view_count: number
         }
         Insert: {
@@ -211,11 +213,13 @@ export type Database = {
           id?: string
           job_id?: string | null
           owner?: string
+          scope?: string
           skill_id?: string | null
           skill_name?: string | null
           tenant_id: string
           title: string
           updated_at?: string
+          user_id?: string | null
           view_count?: number
         }
         Update: {
@@ -227,11 +231,13 @@ export type Database = {
           id?: string
           job_id?: string | null
           owner?: string
+          scope?: string
           skill_id?: string | null
           skill_name?: string | null
           tenant_id?: string
           title?: string
           updated_at?: string
+          user_id?: string | null
           view_count?: number
         }
         Relationships: [
