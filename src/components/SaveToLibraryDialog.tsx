@@ -81,7 +81,7 @@ export function SaveToLibraryDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled={disabled}>
-          <BookOpen className="h-3 w-3" /> Save to Library
+          <BookOpen className="h-3 w-3" /> {scope === "personal" ? "Save to My Saves" : "Save to Library"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
