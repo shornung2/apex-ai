@@ -172,6 +172,7 @@ export default function Capabilities() {
 
   const [openrouterEnabled, setOpenrouterEnabled] = useState(false);
   const [openrouterModels, setOpenrouterModels] = useState<OpenRouterModel[]>([]);
+  const [canBuildSkills, setCanBuildSkills] = useState(false);
 
   // Builder state
   const [builderName, setBuilderName] = useState("");
