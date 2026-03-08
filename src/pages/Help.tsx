@@ -262,7 +262,7 @@ My Saves is your **personal** content space — only you can see items saved her
 - **Inputs** — See exactly what was submitted to the agent.
 - **Metadata** — Tokens used, confidence score, and duration.
 - **Real-time Output** — For running jobs, watch the output stream live.
-- **Actions** — Copy output, Save to Content Library, or Save to Knowledge Base.
+- **Actions** — Copy output, Save to Workspace Library, Save to My Saves, or Save to Knowledge Base.
 - **Download .pptx** — For deck generation skills, a download button appears when complete.
 
 ### Status Indicators
