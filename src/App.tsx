@@ -58,6 +58,7 @@ const App = () => (
                         <Route path="/jobs/:jobId" element={<JobDetail />} />
                         <Route path="/knowledge" element={<Knowledge />} />
                         <Route path="/content-library" element={<ContentLibrary />} />
+                        <Route path="/my-saves" element={<MySaves />} />
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/talent/onboarding/profiles" element={<SuccessProfileList />} />
                         <Route path="/talent/onboarding/profiles/new" element={<SuccessProfileBuilder />} />
