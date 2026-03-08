@@ -104,6 +104,9 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="text-center">
               <p className="text-[11px] text-foreground/80">by Solutionment</p>
+              {tenantName && (
+                <p className="text-[10px] text-muted-foreground mt-0.5 truncate max-w-[140px]">{tenantName}</p>
+              )}
             </div>
           )}
         </div>

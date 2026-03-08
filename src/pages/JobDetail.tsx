@@ -243,6 +243,16 @@ export default function JobDetail() {
                   department={job.department}
                   jobId={job.id}
                 />
+                <SaveToLibraryDialog
+                  title={job.title}
+                  content={job.output}
+                  agentType={job.agent_type}
+                  skillId={job.skill_id}
+                  skillName={agent?.name}
+                  department={job.department}
+                  jobId={job.id}
+                  scope="personal"
+                />
               </div>
             </CardHeader>
             <CardContent>

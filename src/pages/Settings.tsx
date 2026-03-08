@@ -162,7 +162,7 @@ export default function SettingsPage() {
                     <div className="space-y-2 max-w-md">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Used</span>
-                        <span className="font-medium">{usage.tokensUsed.toLocaleString()} / {TOKEN_BUDGET.toLocaleString()}</span>
+                        <span className="font-medium">{usage.tokensUsed.toLocaleString()} / {tokenBudget.toLocaleString()}</span>
                       </div>
                       <div className="h-2.5 rounded-full bg-muted overflow-hidden">
                         <div className={`h-full rounded-full transition-all ${tokenColor}`} style={{ width: `${Math.min(tokenPercent, 100)}%` }} />

@@ -286,7 +286,7 @@ export default function ContentLibrary() {
       {/* Breadcrumb */}
       <motion.div variants={item} className="flex items-center gap-1 text-sm text-muted-foreground">
         <button onClick={() => setCurrentFolderId(null)} className="flex items-center gap-1 hover:text-foreground transition-colors">
-          <Home className="h-3.5 w-3.5" /> All Content
+          <Home className="h-3.5 w-3.5" /> Workspace Library
         </button>
         {breadcrumb.map((f) => (
           <span key={f.id} className="flex items-center gap-1">
