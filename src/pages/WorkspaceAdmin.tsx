@@ -217,6 +217,7 @@ export default function WorkspaceAdmin() {
           if (row.key === "openrouter_models" && Array.isArray(row.value)) setSelectedModels(row.value as unknown as OpenRouterModel[]);
           if (row.key === "agent_toggles" && typeof row.value === "object" && row.value !== null) setAgentStates((prev) => ({ ...prev, ...(row.value as Record<string, boolean>) }));
           if (row.key === "telegram_enabled") setTelegramEnabled(row.value === true);
+          if (row.key === "skill_builder_access" && (row.value === "admin" || row.value === "all")) setSkillBuilderAccess(row.value);
         }
       }
       setLoadingSettings(false);
