@@ -73,8 +73,8 @@ const App = () => (
                         <Route path="/talent/onboarding/my-journey/roleplay/:sessionType" element={<RolePlaySessionPage />} />
                         <Route path="/help" element={<Help />} />
                         <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="/workspace-admin" element={<WorkspaceAdmin />} />
-                        <Route path="/super-admin" element={<SuperAdmin />} />
+                        <Route path="/workspace-admin" element={<AdminGuard><WorkspaceAdmin /></AdminGuard>} />
+                        <Route path="/super-admin" element={<AdminGuard requireSuperAdmin><SuperAdmin /></AdminGuard>} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </AppLayout>
