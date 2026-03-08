@@ -1,153 +1,78 @@
 
 
-# Skill Pack Infrastructure, Production Seed, and Documentation Update
+# Tenant-Scoped Access Control Audit & Personal Content Library
 
-## Summary
+## Current State Assessment
 
-Create the `skill_packs` and `skill_pack_templates` tables, replace the old `seed-skill-packs` edge function with a new `seed-skill-pack` function that reads from the templates table, seed the 3 packs (24 total skills) with full production-quality definitions from the uploaded MD file, add the 13 non-overlapping skills to the Solutionment tenant, write tests, and update Help + Telegram.
+**What's working correctly:**
+- RLS policies on all tables use `get_my_tenant_id()` — data isolation is enforced at the database level
+- `TenantContext` provides `isAdmin`, `isSuperAdmin`, `userRole` flags
+- Workspace Admin page is behind `isAdmin` check in sidebar
+- Super Admin page is behind `isSuperAdmin` check in sidebar
+- All workspace data (skills, jobs, knowledge, content, tasks) is tenant-scoped via RLS
 
-## Part A: Database — Two New Tables
+**Issues Found:**
 
-Migration to create:
+1. **No route-level guards on admin pages** — WorkspaceAdmin and SuperAdmin pages are hidden from the sidebar but accessible by URL. Anyone can navigate to `/workspace-admin` or `/super-admin` directly.
 
-```sql
-CREATE TABLE public.skill_packs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  slug TEXT NOT NULL UNIQUE,
-  description TEXT,
-  target_segment TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+2. **Capabilities page lacks admin gating** — The Skill Builder (create/edit/delete skills) is available to all members. Regular members should be able to *use* skills but not *build/edit/delete* them.
 
-CREATE TABLE public.skill_pack_templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  pack_id UUID NOT NULL REFERENCES public.skill_packs(id) ON DELETE CASCADE,
-  skill_template JSONB NOT NULL,
-  display_order INT DEFAULT 0
-);
+3. **No personal content library** — Content Library is workspace-scoped only. Need a user-level space for personal saves/notes.
 
-ALTER TABLE public.skill_packs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.skill_pack_templates ENABLE ROW LEVEL SECURITY;
+## Plan
 
-CREATE POLICY "packs_readable" ON public.skill_packs FOR SELECT TO authenticated USING (true);
-CREATE POLICY "templates_readable" ON public.skill_pack_templates FOR SELECT TO authenticated USING (true);
-```
+### 1. Add Route-Level Access Guards
 
-## Part B: New Edge Function — `seed-skill-pack`
+Add an `<AdminGuard>` wrapper component that redirects non-admin users away from protected routes. Apply it to:
+- `/workspace-admin` — requires `isAdmin`
+- `/super-admin` — requires `isSuperAdmin`
 
-Replace the existing `supabase/functions/seed-skill-packs/index.ts` with a new `supabase/functions/seed-skill-pack/index.ts` that:
+**Files:** Create `src/components/AdminGuard.tsx`, update `src/App.tsx`
 
-- Accepts `{ packSlugs: string[] }`
-- Verifies JWT, looks up caller's `tenant_id` and `role` from `user_profiles`
-- Requires `admin` or `super_admin` role
-- For each slug: fetches `skill_pack_templates` rows for that pack
-- For each template: checks if a skill with the same `name` already exists for this tenant — skips duplicates
-- Inserts into `skills` with `tenant_id`, `is_system = false`, all fields from the template JSONB
-- Returns `{ seeded, skipped, packs }`
+### 2. Scope Capabilities Page by Role
 
-Add to `supabase/config.toml`:
-```
-[functions.seed-skill-pack]
-verify_jwt = true
-```
+- All users: can *view* and *run* skills
+- Admins only: can *create*, *edit*, *delete* skills via the Skill Builder tab
 
-## Part C: Seed the 3 Packs with Production Templates
+In `Capabilities.tsx`, hide the "Skill Builder" tab and related CRUD buttons for non-admin users. The skill *list* and *run* functionality remain available to everyone.
 
-Use the database insert tool to populate `skill_packs` (3 rows) and `skill_pack_templates` (24 rows) with the full production-quality skill definitions from the uploaded MD file.
+**File:** `src/pages/Capabilities.tsx`
 
-### Pack 1: Presales Excellence (8 skills)
-1. RFP Analyzer & Scorer — researcher, 9 inputs, ~250-line system prompt
-2. Discovery Call Prep Coach — meeting-prep, 5 inputs
-3. Competitive Battle Card — researcher, 5 inputs
-4. Executive Proposal Draft — content, 7 inputs
-5. Solution Qualification Scorecard — strategist, 6 inputs
-6. Meeting Follow-Up Email — content, 6 inputs
-7. POC & Pilot Plan — strategist, 7 inputs
-8. Objection Response Builder — strategist, 5 inputs
+### 3. Add Personal Content Library ("My Saves")
 
-### Pack 2: Sales Productivity (8 skills)
-1. Company Research Brief — researcher, 5 inputs
-2. Personalized Outreach Email — content, 6 inputs
-3. Deal Strategy Session — strategist, 6 inputs
-4. Champion Coaching Guide — strategist, 6 inputs
-5. Pipeline Review Prep — meeting-prep, 5 inputs
-6. Sales Negotiation Prep — strategist, 6 inputs
-7. Account Expansion Map — strategist, 6 inputs
-8. Win/Loss Analysis — researcher, 6 inputs
+**Naming strategy** to avoid confusion:
+- Existing workspace content library stays as **"Content Library"** (workspace-level, shared)
+- New personal library: **"My Saves"** (user-level, private)
 
-### Pack 3: Marketing & Content (8 skills)
-1. Thought Leadership Article — content, 6 inputs
-2. LinkedIn Post Series — content, 6 inputs
-3. Market Intelligence Brief — researcher, 5 inputs
-4. Campaign Messaging Framework — strategist, 6 inputs
-5. SEO Blog Brief — strategist, 5 inputs
-6. Customer Case Study Draft — content, 7 inputs
-7. Email Nurture Sequence — content, 6 inputs
-8. Product Launch Announcement — content, 6 inputs
+**Database changes:**
+- Add `user_id` column (nullable) to `content_items` table
+- Add `scope` column (`workspace` | `personal`, default `workspace`) to `content_items`
+- Add RLS policy: personal items visible only to their owner
+- Update existing RLS select policy to include `scope = 'personal' AND user_id = auth.uid()`
 
-Each template JSONB contains: `name`, `display_name`, `emoji`, `description`, `department`, `agent_type`, `inputs` (full input definitions with labels, types, placeholders, hints, options), `system_prompt` (full production prompt), `preferred_model`, `token_budget`, `timeout_seconds`, `output_format`, `tags`.
+**Frontend changes:**
+- New page `src/pages/MySaves.tsx` — similar UI to ContentLibrary but filtered to `scope = 'personal'` and `user_id = current user`
+- Add "My Saves" nav item to sidebar (under Tools, with a `Bookmark` icon)
+- Add "Save to My Saves" action in job detail view and Content Library item detail
+- New route `/my-saves`
 
-## Part D: Add New Skills to Solutionment
+**Files:** Migration SQL, `src/pages/MySaves.tsx`, `src/components/AppSidebar.tsx`, `src/App.tsx`, update `src/pages/ContentLibrary.tsx` header to clarify "Workspace Content Library"
 
-Existing Solutionment skills (17 total) overlap with many pack skills. The following 13 skills are genuinely new and will be inserted directly into the `skills` table for the Solutionment tenant:
+### 4. Content Library Scoping Clarification
 
-**From Presales Excellence (5 new):**
-- RFP Analyzer & Scorer (researcher) — no overlap
-- Competitive Battle Card (researcher) — no overlap
-- Solution Qualification Scorecard (strategist) — no overlap
-- POC & Pilot Plan (strategist) — no overlap
-- Objection Response Builder (strategist) — no overlap
+- Rename Content Library header from "Content Library" to **"Workspace Library"**
+- Subtitle: "Shared content produced by agents across your workspace"
+- My Saves subtitle: "Your personal saved content and notes"
 
-**From Sales Productivity (4 new):**
-- Champion Coaching Guide (strategist) — no overlap
-- Pipeline Review Prep (meeting-prep) — no overlap
-- Sales Negotiation Prep (strategist) — no overlap
-- Win/Loss Analysis (researcher) — no overlap
+## Summary of Changes
 
-**From Marketing & Content (4 new):**
-- SEO Blog Brief (strategist) — no overlap
-- Customer Case Study Draft (content) — no overlap
-- Email Nurture Sequence (content) — no overlap
-- Product Launch Announcement (content) — no overlap
-
-**Skipped (11 overlapping):** Discovery Call Prep Coach (≈ Meeting Prep Coach), Executive Proposal Draft (≈ Proposal), Meeting Follow-Up Email (≈ Sales Email), Company Research Brief (≈ Company Research), Personalized Outreach Email (≈ Sales Email), Deal Strategy Session (≈ Deal Strategy), Account Expansion Map (≈ Account Strategy), Thought Leadership Article (exists), LinkedIn Post Series (≈ LinkedIn/Social Posts), Market Intelligence Brief (≈ Market & Industry Trends), Campaign Messaging Framework (≈ Marketing Strategy).
-
-## Part E: Tests
-
-Create an edge function test `supabase/functions/seed-skill-pack/index.test.ts` that:
-- Tests unauthenticated requests are rejected
-- Tests that seeding works with valid pack slugs
-- Tests duplicate skip behavior
-
-## Part F: Help Center Update
-
-Add a new section **"Skill Packs"** to `src/pages/Help.tsx` describing:
-- What skill packs are (curated sets of production-quality skills)
-- The 3 starter packs and their contents
-- How packs are seeded during onboarding
-- How admins can seed packs later via the API
-
-Update the **Onboarding & Setup** section to mention the new production-quality prompts.
-
-## Part G: Telegram Bot Update
-
-Update `/help` and `/start` in `supabase/functions/telegram-bot/index.ts` to mention:
-- Skill Packs with 24 production-quality skills across 3 packs
-- Updated skill counts
-
-## Files Affected
-
-| File | Action |
-|---|---|
-| Database migration | Create: `skill_packs` + `skill_pack_templates` tables |
-| Database insert | Seed 3 packs + 24 templates |
-| Database insert | Add 13 new skills to Solutionment tenant |
-| `supabase/functions/seed-skill-pack/index.ts` | Create: new edge function |
-| `supabase/functions/seed-skill-packs/index.ts` | Keep (legacy, could deprecate later) |
-| `supabase/config.toml` | Add `seed-skill-pack` entry |
-| `supabase/functions/seed-skill-pack/index.test.ts` | Create: edge function test |
-| `src/pages/Help.tsx` | Edit: add Skill Packs section |
-| `supabase/functions/telegram-bot/index.ts` | Edit: update help/start text |
+| Change | Files |
+|--------|-------|
+| AdminGuard component | New: `AdminGuard.tsx`, Edit: `App.tsx` |
+| Route protection | `App.tsx` |
+| Capabilities role scoping | `Capabilities.tsx` |
+| Personal content DB schema | New migration |
+| My Saves page | New: `MySaves.tsx` |
+| Sidebar + routing | `AppSidebar.tsx`, `App.tsx` |
+| Content Library rename | `ContentLibrary.tsx` |
 
