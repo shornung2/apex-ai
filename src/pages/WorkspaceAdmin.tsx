@@ -202,6 +202,7 @@ export default function WorkspaceAdmin() {
   const [savingModels, setSavingModels] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [telegramEnabled, setTelegramEnabled] = useState(false);
+  const [skillBuilderAccess, setSkillBuilderAccess] = useState<"admin" | "all">("admin");
 
   useEffect(() => {
     async function fetchSettings() {
