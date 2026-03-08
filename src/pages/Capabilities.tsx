@@ -507,7 +507,7 @@ export default function Capabilities() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-muted/50">
             <TabsTrigger value="library" className="gap-1.5"><BookOpen className="h-3.5 w-3.5" /> Skill Library</TabsTrigger>
-            {canBuildSkills && <TabsTrigger value="builder" className="gap-1.5"><Wrench className="h-3.5 w-3.5" /> Skill Builder</TabsTrigger>}
+            {canBuildSkillser value="builder" className="gap-1.5"><Wrench className="h-3.5 w-3.5" /> Skill Builder</TabsTrigger>}
           </TabsList>
 
           {/* ── Skill Library ── */}
@@ -556,7 +556,7 @@ export default function Capabilities() {
                         skill={skill}
                         feedbackStats={feedbackStats}
                         openrouterModels={openrouterModels}
-                  canBuildSkillsnEdit={isAdmin ? loadSkillIntoBuilder : undefined}
+                  canBuildSkillsonEdit={canBuildSkillstoBuilder : undefined}
                       />
                     ))}
                     {orderedSkills.length === 0 && (
