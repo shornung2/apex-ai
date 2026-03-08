@@ -273,8 +273,8 @@ export default function ContentLibrary() {
       {/* Header */}
       <motion.div variants={item} className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Content Library</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage agent-produced content and documents.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Workspace Library</h1>
+          <p className="text-sm text-muted-foreground mt-1">Shared content produced by agents across your workspace</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setNewFolderOpen(true)}>

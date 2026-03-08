@@ -21,6 +21,8 @@ import NotFound from "./pages/NotFound";
 import Tasks from "./pages/Tasks";
 import Auth from "./pages/Auth";
 import SuperAdmin from "./pages/SuperAdmin";
+import MySaves from "./pages/MySaves";
+import { AdminGuard } from "@/components/AdminGuard";
 import SuccessProfileList from "./pages/onboarding/SuccessProfileList";
 import SuccessProfileBuilder from "./pages/onboarding/SuccessProfileBuilder";
 import ProgramList from "./pages/onboarding/ProgramList";
