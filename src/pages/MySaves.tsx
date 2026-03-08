@@ -41,6 +41,7 @@ export default function MySaves() {
   const [renameItemId, setRenameItemId] = useState<string | null>(null);
   const [renameItemValue, setRenameItemValue] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: "item" | "bulk"; id?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     const { data } = await supabase
