@@ -18,6 +18,7 @@ interface SaveToLibraryDialogProps {
   department?: string;
   jobId?: string;
   disabled?: boolean;
+  scope?: "workspace" | "personal";
 }
 
 export function SaveToLibraryDialog({

@@ -113,8 +113,8 @@ function SortableSkillCard({ skill, feedbackStats, openrouterModels, onEdit }: {
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card
-        className={`glass-card hover:border-primary/30 transition-all group ${isDragging ? "cursor-grabbing ring-2 ring-primary/30" : "cursor-grab"}`}
-        onClick={() => { if (!isDragging) onEdit(skill); }}
+        className={`glass-card hover:border-primary/30 transition-all group ${isDragging ? "cursor-grabbing ring-2 ring-primary/30" : onEdit ? "cursor-grab" : "cursor-default"}`}
+        onClick={() => { if (!isDragging && onEdit) onEdit(skill); }}
       >
         <CardContent className="p-5 space-y-3">
           <div className="flex items-start justify-between">
