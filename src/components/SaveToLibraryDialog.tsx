@@ -22,7 +22,7 @@ interface SaveToLibraryDialogProps {
 }
 
 export function SaveToLibraryDialog({
-  title, content, agentType, skillId, skillName, department, jobId, disabled,
+  title, content, agentType, skillId, skillName, department, jobId, disabled, scope = "workspace",
 }: SaveToLibraryDialogProps) {
   const { toast } = useToast();
   const { tenantId } = useTenant();
