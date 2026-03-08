@@ -312,7 +312,8 @@ My Saves is your **personal** content space — only you can see items saved her
 
 **Onboarding Assignments** — Assign users to onboarding programs. Each user can have only one active assignment at a time. Use the "Assign to Program" button to select a program and then assign a user.
 
-### Multi-Tenant Access
+### Access Control
+- **Workspace Admin** and **Super Admin** pages are protected — non-authorized users are automatically redirected if they try to access these pages directly.
 - Access is determined by your email domain.
 - The first user from a new organization is automatically granted the admin role.
 - Contact hello@solutionment.com to register your organization.`,
