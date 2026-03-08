@@ -157,6 +157,10 @@ Create custom skills using a streamlined single-page form with collapsible secti
 - **System Prompt** — Write the system prompt with variable placeholders like \`{{field_name}}\`. Use the "Insert variable" buttons to quickly add references.
 - **Behavior & Options** — Estimated cost, web search toggle, and schedulable toggle.
 
+### Skill Builder Access Control
+- By default, only **workspace admins** can create and edit skills.
+- Admins can change this in **Workspace Admin > Agents > Skill Builder Access** — toggle "Allow all members to build skills" to let everyone create and edit skills.
+
 ### Build with Alex
 The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assistant specifically tuned for skill creation and prompt engineering.
 
