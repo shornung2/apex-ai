@@ -16,8 +16,6 @@ import { useTenant } from "@/contexts/TenantContext";
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
-const TOKEN_BUDGET = 50_000;
-
 const themeOptions = [
   { value: "light", label: "Light", icon: Sun, preview: "bg-white border-border" },
   { value: "dark", label: "Dark", icon: Moon, preview: "bg-[hsl(240,15%,4%)] border-border" },
