@@ -276,6 +276,15 @@ export default function WorkspaceAdmin() {
     toast({ title: `Telegram integration ${enabled ? "enabled" : "disabled"}` });
   };
 
+  const toggleSkillBuilderAccess = async (value: "admin" | "all") => {
+    setSkillBuilderAccess(value);
+    await supabase.from("workspace_settings").upsert(
+      { key: "skill_builder_access", value: value as any, updated_at: new Date().toISOString(), tenant_id: tenantId! },
+      { onConflict: "tenant_id,key" }
+    );
+    toast({ title: `Skill Builder access set to ${value === "admin" ? "Admins only" : "All members"}` });
+  };
+
   const filteredCatalog = catalogModels.filter((m) =>
     m.id.toLowerCase().includes(catalogSearch.toLowerCase()) ||
     m.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
