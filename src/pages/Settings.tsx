@@ -106,13 +106,17 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Workspace Name</Label>
-                  <Input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" />
+                  <Input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" disabled={!isAdmin} />
                 </div>
                 <div className="space-y-2">
                   <Label>Industry</Label>
-                  <Input value={industry} onChange={(e) => setIndustry(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" />
+                  <Input value={industry} onChange={(e) => setIndustry(e.target.value)} className="bg-muted/50 border-border/50 max-w-sm" disabled={!isAdmin} />
                 </div>
-                <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+                {isAdmin ? (
+                  <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Only workspace admins can edit these settings.</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
