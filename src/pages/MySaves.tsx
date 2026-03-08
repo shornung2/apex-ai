@@ -50,6 +50,7 @@ export default function MySaves() {
       .eq("scope", "personal")
       .order("created_at", { ascending: false });
     if (data) setItems(data as SavedItem[]);
+    setLoading(false);
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
