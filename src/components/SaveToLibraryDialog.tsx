@@ -92,39 +92,41 @@ export function SaveToLibraryDialog({
           {scope !== "personal" && (
             <>
               <p className="text-sm text-muted-foreground">Choose a folder (optional):</p>
-          <div className="space-y-1 max-h-40 overflow-y-auto">
-            <button
-              onClick={() => setSelectedFolder(null)}
-              className={`w-full text-left text-sm px-3 py-1.5 rounded-md flex items-center gap-2 transition-colors ${selectedFolder === null ? "bg-sidebar-accent text-primary font-medium" : "hover:bg-muted"}`}
-            >
-              <FolderOpen className="h-3.5 w-3.5" /> No Folder
-            </button>
-            {folders.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setSelectedFolder(f.id)}
-                className={`w-full text-left text-sm px-3 py-1.5 rounded-md flex items-center gap-2 transition-colors ${selectedFolder === f.id ? "bg-sidebar-accent text-primary font-medium" : "hover:bg-muted"}`}
-              >
-                <FolderOpen className="h-3.5 w-3.5" /> {f.name}
-              </button>
-            ))}
-          </div>
-          {creatingFolder ? (
-            <div className="flex gap-2">
-              <Input
-                autoFocus
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="Folder name"
-                onKeyDown={(e) => e.key === "Enter" && createFolder()}
-                className="h-8 text-sm"
-              />
-              <Button size="sm" onClick={createFolder} className="h-8">Add</Button>
-            </div>
-          ) : (
-            <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => setCreatingFolder(true)}>
-              <FolderPlus className="h-3 w-3" /> New Folder
-            </Button>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                <button
+                  onClick={() => setSelectedFolder(null)}
+                  className={`w-full text-left text-sm px-3 py-1.5 rounded-md flex items-center gap-2 transition-colors ${selectedFolder === null ? "bg-sidebar-accent text-primary font-medium" : "hover:bg-muted"}`}
+                >
+                  <FolderOpen className="h-3.5 w-3.5" /> No Folder
+                </button>
+                {folders.map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setSelectedFolder(f.id)}
+                    className={`w-full text-left text-sm px-3 py-1.5 rounded-md flex items-center gap-2 transition-colors ${selectedFolder === f.id ? "bg-sidebar-accent text-primary font-medium" : "hover:bg-muted"}`}
+                  >
+                    <FolderOpen className="h-3.5 w-3.5" /> {f.name}
+                  </button>
+                ))}
+              </div>
+              {creatingFolder ? (
+                <div className="flex gap-2">
+                  <Input
+                    autoFocus
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    placeholder="Folder name"
+                    onKeyDown={(e) => e.key === "Enter" && createFolder()}
+                    className="h-8 text-sm"
+                  />
+                  <Button size="sm" onClick={createFolder} className="h-8">Add</Button>
+                </div>
+              ) : (
+                <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => setCreatingFolder(true)}>
+                  <FolderPlus className="h-3 w-3" /> New Folder
+                </Button>
+              )}
+            </>
           )}
           <Button onClick={save} disabled={saving} className="w-full">
             {saving ? "Saving..." : "Save"}
