@@ -34,22 +34,25 @@ interface UsageStats {
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const { tenantId } = useTenant();
+  const { tenantId, isAdmin } = useTenant();
   const [usage, setUsage] = useState<UsageStats | null>(null);
+  const [tokenBudget, setTokenBudget] = useState(0);
   const [workspaceName, setWorkspaceName] = useState("");
   const [industry, setIndustry] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
-      const [jobsRes, docsRes, skillsRes, tasksRes, settingsRes] = await Promise.all([
+      const [jobsRes, docsRes, skillsRes, tasksRes, settingsRes, tenantRes] = await Promise.all([
         supabase.from("agent_jobs").select("status, tokens_used"),
         supabase.from("knowledge_documents").select("id", { count: "exact", head: true }),
         supabase.from("skills").select("id", { count: "exact", head: true }),
         supabase.from("scheduled_tasks").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("workspace_settings").select("key, value").in("key", ["workspace_name", "workspace_industry"]),
+        supabase.from("tenants").select("token_budget_monthly").single(),
       ]);
       const jobs = jobsRes.data || [];
+      setTokenBudget(tenantRes.data?.token_budget_monthly || 50_000);
       setUsage({
         totalJobs: jobs.length,
         completeJobs: jobs.filter((j) => j.status === "complete").length,
