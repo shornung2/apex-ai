@@ -352,7 +352,10 @@ export default function Capabilities() {
         for (const row of data) {
           if (row.key === "openrouter_enabled") setOpenrouterEnabled(row.value === true);
           if (row.key === "openrouter_models" && Array.isArray(row.value)) setOpenrouterModels(row.value as unknown as OpenRouterModel[]);
+          if (row.key === "skill_builder_access") setCanBuildSkills(row.value === "all" ? true : isAdmin);
         }
+        // If no setting found, default based on role
+        if (!data.some(r => r.key === "skill_builder_access")) setCanBuildSkills(isAdmin);
       }
     }
     fetchOpenRouterSettings();
