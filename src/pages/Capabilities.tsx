@@ -159,7 +159,7 @@ function SortableSkillCard({ skill, feedbackStats, openrouterModels, onEdit }: {
 
 export default function Capabilities() {
   const { toast } = useToast();
-  const { tenantId } = useTenant();
+  const { tenantId, isAdmin } = useTenant();
   const [activeTab, setActiveTab] = useState("library");
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState<string>("all");
