@@ -347,7 +347,7 @@ export default function Capabilities() {
 
   useEffect(() => {
     async function fetchOpenRouterSettings() {
-      const { data } = await supabase.from("workspace_settings").select("key, value").in("key", ["openrouter_enabled", "openrouter_models"]);
+      const { data } = await supabase.from("workspace_settings").select("key, value").in("key", ["openrouter_enabled", "openrouter_models", "skill_builder_access"]);
       if (data) {
         for (const row of data) {
           if (row.key === "openrouter_enabled") setOpenrouterEnabled(row.value === true);
