@@ -296,7 +296,7 @@ My Saves is your **personal** content space — only you can see items saved her
 
 ### AI & Platform Section
 
-**Agents** — Enable or disable specific agent types across departments (Researcher, Strategist, Content Writer, Coach). When an agent is disabled, all skills using that agent type are blocked from execution.
+**Agents** — Enable or disable specific agent types across departments (Researcher, Strategist, Content Writer, Coach). When an agent is disabled, all skills using that agent type are blocked from execution. Also includes the **Skill Builder Access** toggle — control whether all members or only admins can create and edit skills (defaults to admins only).
 
 **API Keys** — AI Gateway (always active via Apex AI Gateway) and OpenRouter Integration for additional AI models.
 
