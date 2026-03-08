@@ -70,7 +70,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAdmin, isSuperAdmin, hasActiveAssignment } = useTenant();
+  const { isAdmin, isSuperAdmin, hasActiveAssignment, tenantName } = useTenant();
   const deptOpen = location.pathname.startsWith("/departments");
 
   const handleSignOut = async () => {
