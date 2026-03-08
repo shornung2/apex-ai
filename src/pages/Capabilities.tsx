@@ -552,7 +552,7 @@ export default function Capabilities() {
                         skill={skill}
                         feedbackStats={feedbackStats}
                         openrouterModels={openrouterModels}
-                        onEdit={loadSkillIntoBuilder}
+                        onEdit={isAdmin ? loadSkillIntoBuilder : undefined}
                       />
                     ))}
                     {orderedSkills.length === 0 && (
