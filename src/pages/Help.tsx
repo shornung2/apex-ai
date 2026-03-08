@@ -19,7 +19,7 @@ Apex AI is a platform that puts AI agents to work across your Sales, Marketing, 
 4. **Jobs** are individual runs of a skill. You fill in the inputs, click Run, and the agent produces an output.
 
 ### Navigation
-- The **sidebar** on the left gives you access to every area: Overview, Departments (Sales, Marketing, Talent), Capabilities, Tasks, Knowledge Base, Content Library, History, Help, and Settings.
+- The **sidebar** on the left gives you access to every area: Overview, Departments (Sales, Marketing, Talent), Capabilities, Tasks, Workspace Library, My Saves, Knowledge Base, History, Help, and Settings.
 - Click any department to see its available skills and run them.
 - Use the **Overview** dashboard for a quick snapshot of activity, token usage, and upcoming scheduled tasks.
 - If you have an active **Onboarding** program assigned to you, a dedicated "My Journey" link appears in the sidebar under Onboarding.
@@ -157,6 +157,10 @@ Create custom skills using a streamlined single-page form with collapsible secti
 - **System Prompt** — Write the system prompt with variable placeholders like \`{{field_name}}\`. Use the "Insert variable" buttons to quickly add references.
 - **Behavior & Options** — Estimated cost, web search toggle, and schedulable toggle.
 
+### Skill Builder Access Control
+- By default, only **workspace admins** can create and edit skills.
+- Admins can change this in **Workspace Admin > Agents > Skill Builder Access** — toggle "Allow all members to build skills" to let everyone create and edit skills.
+
 ### Build with Alex
 The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assistant specifically tuned for skill creation and prompt engineering.
 
@@ -220,27 +224,30 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
   },
   {
     id: "content-library",
-    title: "Content Library",
-    content: `The Content Library lets you save, organize, and manage agent-produced outputs with full folder hierarchy, metadata tracking, and bulk operations.
+    title: "Workspace Library & My Saves",
+    content: `Apex AI provides two content management spaces: the **Workspace Library** for shared team content, and **My Saves** for your personal bookmarks.
 
-### Layout
+### Workspace Library
+The Workspace Library stores shared, agent-produced outputs visible to everyone in your workspace.
+
 - Content is displayed in a **full-width data table** with sortable columns: Title, Department, Skill, Owner, Created date, and Views.
 - Click any row to open a **slide-in detail panel** from the right.
+- Folders support **unlimited nesting** with **breadcrumb navigation**.
+- **Bulk operations**: select multiple items for Download, Move, or Delete.
+- Search by title, department, skill name, owner, or content.
 
-### Nested Folders
-- Folders support **unlimited nesting**.
-- **Breadcrumb navigation** at the top shows your current path.
+### My Saves
+My Saves is your **personal** content space — only you can see items saved here.
+
+- Access it from the **sidebar** under Tools (Bookmark icon).
+- Save content to My Saves from any completed job using **"Save to My Saves"**.
+- Full table view with search, sort, rename, download, and delete.
+- Great for bookmarking outputs you want to reference later.
 
 ### Saving Content
-- After any agent job completes, click **Save to Content Library** on the Job Detail page.
-- Choose a folder (or create a new one) and save.
-
-### Bulk Operations
-- **Select multiple items** using checkboxes.
-- **Bulk Download**, **Bulk Move**, and **Bulk Delete** are available.
-
-### Search & Filter
-- Use the search bar to filter items by title, department, skill name, owner, or content.`,
+- After any agent job completes, click **Save to Library** to save to the Workspace Library (with optional folder selection).
+- Click **Save to My Saves** to save privately to your personal collection.
+- Both options are available on the Job Detail page.`,
   },
   {
     id: "history",
@@ -255,7 +262,7 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 - **Inputs** — See exactly what was submitted to the agent.
 - **Metadata** — Tokens used, confidence score, and duration.
 - **Real-time Output** — For running jobs, watch the output stream live.
-- **Actions** — Copy output, Save to Content Library, or Save to Knowledge Base.
+- **Actions** — Copy output, Save to Workspace Library, Save to My Saves, or Save to Knowledge Base.
 - **Download .pptx** — For deck generation skills, a download button appears when complete.
 
 ### Status Indicators
@@ -289,7 +296,7 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 
 ### AI & Platform Section
 
-**Agents** — Enable or disable specific agent types across departments (Researcher, Strategist, Content Writer, Coach). When an agent is disabled, all skills using that agent type are blocked from execution.
+**Agents** — Enable or disable specific agent types across departments (Researcher, Strategist, Content Writer, Coach). When an agent is disabled, all skills using that agent type are blocked from execution. Also includes the **Skill Builder Access** toggle — control whether all members or only admins can create and edit skills (defaults to admins only).
 
 **API Keys** — AI Gateway (always active via Apex AI Gateway) and OpenRouter Integration for additional AI models.
 
@@ -305,7 +312,8 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
 
 **Onboarding Assignments** — Assign users to onboarding programs. Each user can have only one active assignment at a time. Use the "Assign to Program" button to select a program and then assign a user.
 
-### Multi-Tenant Access
+### Access Control
+- **Workspace Admin** and **Super Admin** pages are protected — non-authorized users are automatically redirected if they try to access these pages directly.
 - Access is determined by your email domain.
 - The first user from a new organization is automatically granted the admin role.
 - Contact hello@solutionment.com to register your organization.`,
