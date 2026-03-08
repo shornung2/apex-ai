@@ -86,10 +86,12 @@ export function SaveToLibraryDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-base">Save to Content Library</DialogTitle>
+          <DialogTitle className="text-base">{scope === "personal" ? "Save to My Saves" : "Save to Workspace Library"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Choose a folder (optional):</p>
+          {scope !== "personal" && (
+            <>
+              <p className="text-sm text-muted-foreground">Choose a folder (optional):</p>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             <button
               onClick={() => setSelectedFolder(null)}
