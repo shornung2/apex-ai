@@ -224,27 +224,30 @@ The Skill Builder includes a **"Build with Alex"** mode — an AI-powered assist
   },
   {
     id: "content-library",
-    title: "Content Library",
-    content: `The Content Library lets you save, organize, and manage agent-produced outputs with full folder hierarchy, metadata tracking, and bulk operations.
+    title: "Workspace Library & My Saves",
+    content: `Apex AI provides two content management spaces: the **Workspace Library** for shared team content, and **My Saves** for your personal bookmarks.
 
-### Layout
+### Workspace Library
+The Workspace Library stores shared, agent-produced outputs visible to everyone in your workspace.
+
 - Content is displayed in a **full-width data table** with sortable columns: Title, Department, Skill, Owner, Created date, and Views.
 - Click any row to open a **slide-in detail panel** from the right.
+- Folders support **unlimited nesting** with **breadcrumb navigation**.
+- **Bulk operations**: select multiple items for Download, Move, or Delete.
+- Search by title, department, skill name, owner, or content.
 
-### Nested Folders
-- Folders support **unlimited nesting**.
-- **Breadcrumb navigation** at the top shows your current path.
+### My Saves
+My Saves is your **personal** content space — only you can see items saved here.
+
+- Access it from the **sidebar** under Tools (Bookmark icon).
+- Save content to My Saves from any completed job using **"Save to My Saves"**.
+- Full table view with search, sort, rename, download, and delete.
+- Great for bookmarking outputs you want to reference later.
 
 ### Saving Content
-- After any agent job completes, click **Save to Content Library** on the Job Detail page.
-- Choose a folder (or create a new one) and save.
-
-### Bulk Operations
-- **Select multiple items** using checkboxes.
-- **Bulk Download**, **Bulk Move**, and **Bulk Delete** are available.
-
-### Search & Filter
-- Use the search bar to filter items by title, department, skill name, owner, or content.`,
+- After any agent job completes, click **Save to Library** to save to the Workspace Library (with optional folder selection).
+- Click **Save to My Saves** to save privately to your personal collection.
+- Both options are available on the Job Detail page.`,
   },
   {
     id: "history",
