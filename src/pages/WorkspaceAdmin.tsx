@@ -210,7 +210,7 @@ export default function WorkspaceAdmin() {
       const { data } = await supabase
         .from("workspace_settings")
         .select("key, value")
-        .in("key", ["openrouter_enabled", "openrouter_models", "agent_toggles", "telegram_enabled"]);
+        .in("key", ["openrouter_enabled", "openrouter_models", "agent_toggles", "telegram_enabled", "skill_builder_access"]);
       if (data) {
         for (const row of data) {
           if (row.key === "openrouter_enabled") setOpenrouterEnabled(row.value === true);
