@@ -348,6 +348,29 @@ export default function WorkspaceAdmin() {
                 ))}
               </CardContent>
             </Card>
+
+            <Card className="glass-card">
+              <CardHeader><CardTitle className="text-lg">Skill Builder Access</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Control who can create and edit skills in the Capabilities page.
+                </p>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <p className="text-sm font-medium">Allow all members to build skills</p>
+                    <p className="text-xs text-muted-foreground">
+                      {skillBuilderAccess === "all"
+                        ? "All workspace members can create and edit skills"
+                        : "Only admins can create and edit skills"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={skillBuilderAccess === "all"}
+                    onCheckedChange={(checked) => toggleSkillBuilderAccess(checked ? "all" : "admin")}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="api">
